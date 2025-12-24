@@ -195,19 +195,24 @@
 
 #### Kakao API
 
-- [ ] `lib/api/kakao.ts`
-  - [ ] 키워드 검색 (`/v2/local/search/keyword.json`)
-  - [ ] 카테고리 검색 (`/v2/local/search/category.json`)
-  - [ ] 좌표→주소 변환 (`/v2/local/geo/coord2address.json`)
-  - [ ] 자동차 경로 조회 (Kakao Mobility API)
-  - [ ] 재시도 로직 (3회, 지수 백오프)
+- [x] `lib/api/kakao.ts`
+  - [x] 키워드 검색 (`searchByKeyword`)
+  - [x] 카테고리 검색 (`searchByCategory`)
+  - [x] 좌표→주소 변환 (`coordToAddress`)
+  - [x] 자동차 경로 조회 (`getCarRoute`, `getCarDuration`, `getCarDistance`)
+  - [x] 재시도 로직 (3회, 지수 백오프)
+  - [x] 폴리라인 인코딩 (Google Polyline Algorithm)
+  - [x] 다중 키워드 검색 (`searchMultipleKeywords`)
 
 #### ODsay API
 
-- [ ] `lib/api/odsay.ts`
-  - [ ] 대중교통 경로 조회 (`/v1/api/searchPubTransPathT`)
-  - [ ] 환승 정보 파싱
-  - [ ] 재시도 로직
+- [x] `lib/api/odsay.ts`
+  - [x] 대중교통 경로 조회 (`searchTransitRoute`, `getBestTransitRoute`)
+  - [x] 환승 정보 파싱 (`convertODsayPathToTransitRoute` 활용)
+  - [x] 재시도 로직 (3회, 지수 백오프)
+  - [x] 소요시간/요금 빠른 조회 (`getTransitDuration`, `getTransitFare`)
+  - [x] 다중 경로 조회 (`searchMultipleRoutes`)
+  - [x] 경로 필터링/정렬 유틸리티
 
 ### Phase 7: 최적화 엔진
 
