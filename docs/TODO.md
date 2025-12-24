@@ -137,13 +137,13 @@
 
 > 파일: `actions/trips/`
 
-- [ ] `create-trip.ts` - 여행 생성
-  - [ ] Zod 스키마 검증
-  - [ ] daily_start_time, daily_end_time 기본값 설정
-- [ ] `get-trip.ts` - 단일 여행 조회
-- [ ] `get-trips.ts` - 여행 목록 조회 (사용자별)
-- [ ] `update-trip.ts` - 여행 수정
-- [ ] `delete-trip.ts` - 여행 삭제 (CASCADE)
+- [x] `create-trip.ts` - 여행 생성
+  - [x] Zod 스키마 검증
+  - [x] daily_start_time, daily_end_time 기본값 설정
+- [x] `get-trip.ts` - 단일 여행 조회
+- [x] `get-trips.ts` - 여행 목록 조회 (사용자별)
+- [x] `update-trip.ts` - 여행 수정
+- [x] `delete-trip.ts` - 여행 삭제 (CASCADE)
 
 ### Phase 4: 장소 관리 Server Actions
 
