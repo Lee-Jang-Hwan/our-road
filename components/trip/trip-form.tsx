@@ -141,8 +141,8 @@ export function TripForm({
         <div className="space-y-2">
           <FormLabel>출발지 / 도착지</FormLabel>
           <LocationPairInput
-            origin={form.watch("origin")}
-            destination={form.watch("destination")}
+            origin={form.watch("origin") as TripLocation | undefined}
+            destination={form.watch("destination") as TripLocation | undefined}
             onOriginChange={(location) =>
               form.setValue("origin", location as TripLocation, {
                 shouldValidate: true,

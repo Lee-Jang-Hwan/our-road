@@ -475,23 +475,24 @@
 > 파일: `components/itinerary/`
 > **중요**: 일자별 탭 네비게이션 방식
 
-- [ ] `day-tabs.tsx` - 일자별 탭 네비게이션
-  - [ ] 탭 표시: "1일차\n12/24" 형식
-  - [ ] 활성 탭 인디케이터
-  - [ ] **좌우 스와이프로 일자 전환**
-  - [ ] 상단 고정 (sticky)
-- [ ] `day-content.tsx` - 일자별 일정 내용
-  - [ ] 장소 타임라인 표시
-- [ ] `schedule-item.tsx` - 개별 일정 항목
-  - [ ] 장소명 + 시간 + 체류시간
-  - [ ] 고정 일정 배경색 구분
-- [ ] `route-segment.tsx` - 구간별 이동 정보
-  - [ ] 이동수단 아이콘
-  - [ ] 소요시간, 거리
-- [ ] `day-summary.tsx` - 일자별 요약
-  - [ ] 총 이동거리/시간
-  - [ ] 장소 수, 체류시간
-- [ ] `itinerary-export.tsx` - 내보내기 (링크 복사, 이미지)
+- [x] `day-tabs.tsx` - 일자별 탭 네비게이션
+  - [x] 탭 표시: "1일차\n12/24" 형식
+  - [x] 활성 탭 인디케이터
+  - [x] **좌우 스와이프로 일자 전환**
+  - [x] 상단 고정 (sticky)
+- [x] `day-content.tsx` - 일자별 일정 내용
+  - [x] 장소 타임라인 표시
+- [x] `schedule-item.tsx` - 개별 일정 항목
+  - [x] 장소명 + 시간 + 체류시간
+  - [x] 고정 일정 배경색 구분
+- [x] `route-segment.tsx` - 구간별 이동 정보
+  - [x] 이동수단 아이콘
+  - [x] 소요시간, 거리
+- [x] `day-summary.tsx` - 일자별 요약
+  - [x] 총 이동거리/시간
+  - [x] 장소 수, 체류시간
+- [x] `itinerary-export.tsx` - 내보내기 (링크 복사, 이미지)
+- [x] `index.ts` - 통합 export
 
 ### Phase 7: 지도 관련 UI 컴포넌트
 
@@ -529,7 +530,7 @@
 - [ ] `use-kakao-map.ts` - 맵 인스턴스 관리
 - [ ] `use-geolocation.ts` - 현재 위치 추적
 - [ ] `use-debounce.ts` - 디바운스 훅
-- [ ] `use-swipe.ts` - 스와이프 제스처 훅
+- [x] `use-swipe.ts` - 스와이프 제스처 훅
 
 ### Phase 10: 페이지 구현
 

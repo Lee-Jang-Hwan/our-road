@@ -144,7 +144,7 @@ export function TransportChip({ mode, className }: TransportChipProps) {
         className
       )}
     >
-      {React.cloneElement(option.icon as React.ReactElement, {
+      {React.cloneElement(option.icon as React.ReactElement<{ className?: string }>, {
         className: "h-3 w-3",
       })}
       {option.label}
