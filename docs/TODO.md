@@ -452,10 +452,23 @@
 
 > 파일: `components/schedule/`
 
-- [ ] `fixed-schedule-form.tsx` - 고정 일정 입력 폼
-  - [ ] 장소 선택
-  - [ ] 시작/종료 시간 입력
-- [ ] `schedule-timeline.tsx` - 일정 타임라인 뷰
+- [x] `fixed-schedule-form.tsx` - 고정 일정 입력 폼
+  - [x] 장소 선택 (Select)
+  - [x] 날짜 선택 (Calendar, 여행 기간 내)
+  - [x] 시작/종료 시간 입력 (30분 단위)
+  - [x] 메모 입력 (Textarea)
+  - [x] FixedScheduleDialog (모바일: Sheet, 데스크톱: Dialog)
+  - [x] FixedScheduleCard 카드 컴포넌트
+  - [x] react-hook-form + zod 검증 통합
+- [x] `schedule-timeline.tsx` - 일정 타임라인 뷰
+  - [x] ScheduleTimelineItem 단일 항목
+  - [x] ScheduleTimeline 타임라인 목록
+  - [x] DailyScheduleTimeline 일자별 타임라인 (헤더+요약)
+  - [x] 이동 정보 표시 (수단, 시간, 거리, 요금)
+  - [x] 고정 일정 배지 표시
+  - [x] 로딩 스켈레톤, 빈 상태 UI
+- [x] `index.ts` - 통합 export
+- [x] `alert` shadcn 컴포넌트 추가 설치
 
 ### Phase 6: 일정표 UI 컴포넌트 (일자별 탭)
 
