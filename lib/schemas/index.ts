@@ -108,6 +108,26 @@ export type {
 } from "./optimize";
 
 // ============================================
+// Route Schemas (경로 조회)
+// ============================================
+export {
+  routePrioritySchema,
+  baseRouteSchema,
+  carRouteSchema,
+  transitRouteSchema,
+  walkingRouteSchema,
+  routeQuerySchema,
+} from "./route";
+export type {
+  RoutePriorityInput,
+  BaseRouteInput,
+  CarRouteInput,
+  TransitRouteInput,
+  WalkingRouteInput,
+  RouteQueryInput,
+} from "./route";
+
+// ============================================
 // Admin Schemas (관리자)
 // ============================================
 export {

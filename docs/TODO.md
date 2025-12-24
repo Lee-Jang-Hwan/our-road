@@ -257,11 +257,19 @@
 
 > 파일: `actions/routes/`
 
-- [ ] `get-car-route.ts` - 자동차 경로 조회 (Kakao Mobility)
-- [ ] `get-transit-route.ts` - 대중교통 경로 조회 (ODsay)
-- [ ] `get-walking-route.ts` - 도보 경로 조회
-- [ ] **중요**: 선호 수단으로만 조회 (자동 전환 없음)
-- [ ] 경로 없음 시 RouteNotFoundError 반환
+- [x] `get-car-route.ts` - 자동차 경로 조회 (Kakao Mobility)
+  - [x] 경유지 지원 (최대 5개)
+  - [x] getCarDuration, getCarDistance 편의 함수
+- [x] `get-transit-route.ts` - 대중교통 경로 조회 (ODsay)
+  - [x] 다중 경로 지원 (최적 + 대안)
+  - [x] getBestTransitRoute, getTransitDuration, getTransitFare 편의 함수
+- [x] `get-walking-route.ts` - 도보 경로 조회
+  - [x] Haversine 기반 거리 계산
+  - [x] 최대 10km 제한
+  - [x] isWalkable 도보 가능 여부 확인 함수
+- [x] `index.ts` - 통합 export
+- [x] **중요**: 선호 수단으로만 조회 (자동 전환 없음)
+- [x] 경로 없음 시 ROUTE_NOT_FOUND 에러 반환
 
 ### Phase 9: 최적화 실행 Server Actions
 
