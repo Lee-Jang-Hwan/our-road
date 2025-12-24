@@ -400,15 +400,26 @@
 
 > 파일: `components/trip/`
 
-- [ ] `trip-form.tsx` - 여행 기본 정보 폼
-- [ ] `date-picker.tsx` - 날짜 선택 (시작일/종료일)
-- [ ] `location-input.tsx` - 출발지/도착지 입력
-  - [ ] Kakao 자동완성 연동
-  - [ ] 현재 위치 버튼
-  - [ ] **시작 시간 드롭다운** (기본 10:00)
-  - [ ] **도착 시간 드롭다운** (기본 22:00)
-- [ ] `transport-selector.tsx` - 이동수단 선택
-  - [ ] 도보+대중교통 / 차량 옵션
+- [x] `trip-form.tsx` - 여행 기본 정보 폼
+  - [x] react-hook-form + zod 검증 통합
+  - [x] 모든 하위 컴포넌트 통합
+  - [x] TripFormSummary 요약 컴포넌트
+- [x] `date-picker.tsx` - 날짜 선택 (시작일/종료일)
+  - [x] DatePicker 단일 날짜 선택
+  - [x] DateRangePicker 시작일/종료일 선택
+  - [x] 한국어 로케일 (date-fns/locale/ko)
+  - [x] 최대 30일 제한
+- [x] `location-input.tsx` - 출발지/도착지 입력
+  - [x] Kakao 자동완성 연동 (API 준비)
+  - [x] 현재 위치 버튼 (Geolocation API)
+  - [x] **시작 시간 드롭다운** (기본 10:00)
+  - [x] **도착 시간 드롭다운** (기본 22:00)
+  - [x] LocationPairInput 출발지/도착지 쌍 입력
+- [x] `transport-selector.tsx` - 이동수단 선택
+  - [x] 도보+대중교통 / 차량 옵션
+  - [x] TransportChip 배지 컴포넌트
+  - [x] TransportIcon 아이콘 컴포넌트
+- [x] `index.ts` - 통합 export
 
 ### Phase 4: 장소 관련 UI 컴포넌트
 
