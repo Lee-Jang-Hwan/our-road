@@ -1,12 +1,14 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { LuChevronLeft, LuMapPin, LuCalendarClock, LuSparkles, LuSettings } from "react-icons/lu";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useTripDraft } from "@/hooks/use-trip-draft";
 import type { TripStatus } from "@/types/trip";
 
 interface TripEditPageProps {
@@ -15,9 +17,8 @@ interface TripEditPageProps {
 
 export default function TripEditPage({ params }: TripEditPageProps) {
   const { tripId } = use(params);
-
-  // TODO: 실제 여행 데이터 로드
-  const trip: {
+  const { getDraftByTripId, isLoaded } = useTripDraft();
+  const [tripData, setTripData] = useState<{
     id: string;
     title: string;
     startDate: string;
@@ -25,15 +26,61 @@ export default function TripEditPage({ params }: TripEditPageProps) {
     status: TripStatus;
     placeCount: number;
     fixedScheduleCount: number;
-  } = {
-    id: tripId,
-    title: "제주도 여행",
-    startDate: "2025-01-15",
-    endDate: "2025-01-18",
-    status: "draft",
-    placeCount: 0,
-    fixedScheduleCount: 0,
-  };
+  } | null>(null);
+
+  // sessionStorage에서 여행 데이터 로드
+  useEffect(() => {
+    if (!isLoaded) return;
+
+    const draft = getDraftByTripId(tripId);
+    if (draft) {
+      setTripData({
+        id: tripId,
+        title: draft.tripInfo.title,
+        startDate: draft.tripInfo.startDate,
+        endDate: draft.tripInfo.endDate,
+        status: "draft",
+        placeCount: draft.places.length,
+        fixedScheduleCount: 0,
+      });
+    } else {
+      // draft가 없으면 기본값 (직접 URL 접근 시)
+      setTripData({
+        id: tripId,
+        title: "새 여행",
+        startDate: new Date().toISOString().split("T")[0],
+        endDate: new Date().toISOString().split("T")[0],
+        status: "draft",
+        placeCount: 0,
+        fixedScheduleCount: 0,
+      });
+    }
+  }, [tripId, getDraftByTripId, isLoaded]);
+
+  // 로딩 상태
+  if (!isLoaded || !tripData) {
+    return (
+      <main className="flex flex-col min-h-[calc(100dvh-64px)]">
+        <header className="flex items-center justify-between px-4 py-3 border-b">
+          <div className="flex items-center gap-3">
+            <Skeleton className="w-10 h-10 rounded-lg" />
+            <div>
+              <Skeleton className="h-5 w-32 mb-1" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+          </div>
+        </header>
+        <div className="flex-1 px-4 py-6 space-y-4">
+          <Skeleton className="h-4 w-48 mb-4" />
+          <Skeleton className="h-24 w-full rounded-lg" />
+          <Skeleton className="h-24 w-full rounded-lg" />
+          <Skeleton className="h-24 w-full rounded-lg" />
+        </div>
+      </main>
+    );
+  }
+
+  const trip = tripData;
 
   const steps = [
     {

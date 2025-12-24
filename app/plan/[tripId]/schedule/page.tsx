@@ -1,14 +1,18 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
 import Link from "next/link";
 import { LuChevronLeft, LuPlus, LuCalendarClock } from "react-icons/lu";
+import { AlertCircle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   FixedScheduleDialog,
   FixedScheduleCard,
 } from "@/components/schedule/fixed-schedule-form";
+import { useTripDraft } from "@/hooks/use-trip-draft";
 import type { Place } from "@/types/place";
 import type { FixedSchedule } from "@/types/schedule";
 import type { CreateFixedScheduleInput } from "@/lib/schemas";
@@ -19,34 +23,48 @@ interface SchedulePageProps {
 
 export default function SchedulePage({ params }: SchedulePageProps) {
   const { tripId } = use(params);
+  const { getDraftByTripId, isLoaded } = useTripDraft();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<FixedSchedule | undefined>();
   const [schedules, setSchedules] = useState<FixedSchedule[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [tripDates, setTripDates] = useState<{ startDate: string; endDate: string }>({
+    startDate: "",
+    endDate: "",
+  });
 
-  // TODO: 실제 데이터 로드
-  const tripDates = {
-    startDate: "2025-01-15",
-    endDate: "2025-01-18",
-  };
+  // sessionStorage에서 여행 데이터 로드
+  useEffect(() => {
+    if (!isLoaded) return;
 
-  // TODO: 실제 장소 목록 로드
-  const places: Place[] = [
-    {
-      id: "1",
-      name: "성산일출봉",
-      address: "제주특별자치도 서귀포시 성산읍",
-      coordinate: { lat: 33.4583, lng: 126.9425 },
-      estimatedDuration: 120,
-    },
-    {
-      id: "2",
-      name: "카페 델문도",
-      address: "제주특별자치도 서귀포시",
-      coordinate: { lat: 33.4, lng: 126.9 },
-      estimatedDuration: 60,
-    },
-  ];
+    const draft = getDraftByTripId(tripId);
+    if (draft) {
+      // 장소 목록 로드
+      setPlaces(draft.places);
+      // 여행 기간 로드
+      setTripDates({
+        startDate: draft.tripInfo.startDate,
+        endDate: draft.tripInfo.endDate,
+      });
+    }
+  }, [tripId, getDraftByTripId, isLoaded]);
+
+  // 로딩 상태
+  if (!isLoaded) {
+    return (
+      <main className="flex flex-col min-h-[calc(100dvh-64px)]">
+        <header className="flex items-center gap-3 px-4 py-3 border-b">
+          <Skeleton className="w-10 h-10 rounded-lg" />
+          <Skeleton className="h-5 w-32" />
+        </header>
+        <div className="flex-1 px-4 py-4 space-y-4">
+          <Skeleton className="h-16 w-full rounded-lg" />
+          <Skeleton className="h-24 w-full rounded-lg" />
+        </div>
+      </main>
+    );
+  }
 
   // 새 고정 일정 추가
   const handleAddNew = () => {
@@ -107,6 +125,11 @@ export default function SchedulePage({ params }: SchedulePageProps) {
     return places.find((p) => p.id === placeId)?.name || "알 수 없는 장소";
   };
 
+  // 장소가 없거나 날짜가 설정되지 않은 경우
+  const hasNoPlaces = places.length === 0;
+  const hasNoDates = !tripDates.startDate || !tripDates.endDate;
+  const canAddSchedule = !hasNoPlaces && !hasNoDates;
+
   return (
     <main className="flex flex-col min-h-[calc(100dvh-64px)]">
       {/* 헤더 */}
@@ -117,7 +140,7 @@ export default function SchedulePage({ params }: SchedulePageProps) {
           </Button>
         </Link>
         <h1 className="font-semibold text-lg flex-1">고정 일정 설정</h1>
-        <Button size="sm" onClick={handleAddNew}>
+        <Button size="sm" onClick={handleAddNew} disabled={!canAddSchedule}>
           <LuPlus className="w-4 h-4 mr-1" />
           추가
         </Button>
@@ -131,6 +154,33 @@ export default function SchedulePage({ params }: SchedulePageProps) {
         </p>
       </div>
 
+      {/* 경고: 장소가 없는 경우 */}
+      {hasNoPlaces && (
+        <div className="px-4 pt-4">
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              먼저 장소를 추가해주세요. 고정 일정은 추가된 장소에만 설정할 수 있습니다.
+              <Link href={`/plan/${tripId}/places`} className="ml-1 underline text-primary">
+                장소 추가하러 가기
+              </Link>
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+
+      {/* 경고: 여행 기간이 없는 경우 */}
+      {hasNoDates && !hasNoPlaces && (
+        <div className="px-4 pt-4">
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              여행 기간이 설정되지 않았습니다. 새 여행을 만들어주세요.
+            </AlertDescription>
+          </Alert>
+        </div>
+      )}
+
       {/* 고정 일정 목록 */}
       <div className="flex-1 px-4 py-4">
         {schedules.length === 0 ? (
@@ -142,12 +192,16 @@ export default function SchedulePage({ params }: SchedulePageProps) {
               고정 일정이 없습니다
             </p>
             <p className="text-sm text-muted-foreground/70 mb-4">
-              예약된 일정이 있다면 추가해보세요
+              {hasNoPlaces
+                ? "먼저 장소를 추가해주세요"
+                : "예약된 일정이 있다면 추가해보세요"}
             </p>
-            <Button onClick={handleAddNew}>
-              <LuPlus className="w-4 h-4 mr-1" />
-              고정 일정 추가
-            </Button>
+            {canAddSchedule && (
+              <Button onClick={handleAddNew}>
+                <LuPlus className="w-4 h-4 mr-1" />
+                고정 일정 추가
+              </Button>
+            )}
           </div>
         ) : (
           <div className="space-y-3">

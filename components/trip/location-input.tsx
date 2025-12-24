@@ -14,11 +14,6 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -179,79 +174,57 @@ export function LocationInput({
       )}
 
       <div className="flex gap-2">
-        {/* 장소 검색 */}
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              role="combobox"
-              aria-expanded={open}
+        {/* 장소 검색 - 선택된 위치 표시 또는 검색 입력 */}
+        {value && !open ? (
+          <Button
+            variant="outline"
+            disabled={disabled}
+            onClick={() => setOpen(true)}
+            className={cn(
+              "flex-1 justify-start text-left font-normal touch-target"
+            )}
+          >
+            <MapPin className="mr-2 h-4 w-4 shrink-0" />
+            <span className="truncate">{value.name}</span>
+            <X
+              className="ml-auto h-4 w-4 shrink-0 opacity-50 hover:opacity-100"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleClear();
+              }}
+            />
+          </Button>
+        ) : (
+          <div className="flex-1 relative">
+            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder={placeholder}
+              value={query}
+              onChange={(e) => {
+                setQuery(e.target.value);
+                setOpen(true);
+              }}
+              onFocus={() => setOpen(true)}
               disabled={disabled}
-              className={cn(
-                "flex-1 justify-start text-left font-normal touch-target",
-                !value && "text-muted-foreground"
-              )}
-            >
-              <MapPin className="mr-2 h-4 w-4 shrink-0" />
-              {value ? (
-                <span className="truncate">{value.name}</span>
-              ) : (
-                <span>{placeholder}</span>
-              )}
-              {value && (
-                <X
-                  className="ml-auto h-4 w-4 shrink-0 opacity-50 hover:opacity-100"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleClear();
-                  }}
-                />
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-[300px] p-0" align="start">
-            <Command shouldFilter={false}>
-              <div className="flex items-center border-b px-3">
-                <MapPin className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                <Input
-                  placeholder="장소명 또는 주소 검색..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  className="border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                />
-                {isSearching && (
-                  <Loader2 className="h-4 w-4 animate-spin opacity-50" />
-                )}
+              className="pl-10 pr-10 touch-target"
+            />
+            {(isSearching || query) && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                {isSearching ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                ) : query ? (
+                  <X
+                    className="h-4 w-4 text-muted-foreground cursor-pointer hover:text-foreground"
+                    onClick={() => {
+                      setQuery("");
+                      setResults([]);
+                    }}
+                  />
+                ) : null}
               </div>
-              <CommandList>
-                <CommandEmpty>
-                  {query.length < 2
-                    ? "2글자 이상 입력해주세요"
-                    : "검색 결과가 없습니다"}
-                </CommandEmpty>
-                {results.length > 0 && (
-                  <CommandGroup heading="검색 결과">
-                    {results.map((result) => (
-                      <CommandItem
-                        key={result.id}
-                        value={result.id}
-                        onSelect={() => handleSelect(result)}
-                        className="cursor-pointer"
-                      >
-                        <div className="flex flex-col">
-                          <span className="font-medium">{result.name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {result.roadAddress || result.address}
-                          </span>
-                        </div>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                )}
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
+            )}
+          </div>
+        )}
 
         {/* 현재 위치 버튼 */}
         <Button
@@ -270,6 +243,44 @@ export function LocationInput({
           )}
         </Button>
       </div>
+
+      {/* 검색 결과 - 인라인으로 표시 (모바일 친화적) */}
+      {open && query.length >= 2 && (
+        <div className="rounded-md border bg-popover shadow-md max-h-[40vh] overflow-auto">
+          <Command shouldFilter={false}>
+            <CommandList className="max-h-none">
+              {isSearching ? (
+                <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  검색 중...
+                </div>
+              ) : results.length === 0 ? (
+                <CommandEmpty className="py-6 text-center text-sm">
+                  검색 결과가 없습니다
+                </CommandEmpty>
+              ) : (
+                <CommandGroup heading="검색 결과">
+                  {results.map((result) => (
+                    <CommandItem
+                      key={result.id}
+                      value={result.id}
+                      onSelect={() => handleSelect(result)}
+                      className="cursor-pointer py-3"
+                    >
+                      <div className="flex flex-col">
+                        <span className="font-medium">{result.name}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {result.roadAddress || result.address}
+                        </span>
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+            </CommandList>
+          </Command>
+        </div>
+      )}
 
       {/* 선택된 위치 주소 표시 */}
       {value && (

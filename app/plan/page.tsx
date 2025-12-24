@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TripForm } from "@/components/trip/trip-form";
 import { showErrorToast } from "@/lib/toast";
+import { useTripDraft } from "@/hooks/use-trip-draft";
 import type { CreateTripInput } from "@/lib/schemas";
 
 /**
@@ -58,18 +59,20 @@ export default function NewTripPage() {
   const router = useRouter();
   const { user, isLoaded } = useUser();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { saveTripInfo } = useTripDraft();
 
-  const handleSubmit = async (_data: CreateTripInput) => {
+  const handleSubmit = async (data: CreateTripInput) => {
     if (!user) return;
 
     setIsSubmitting(true);
     try {
-      // TODO: Server Action으로 여행 생성
-      // const trip = await createTrip(_data);
+      // TODO: Server Action으로 여행 생성 후 실제 ID 사용
+      // const trip = await createTrip(data);
       // router.push(`/plan/${trip.id}`);
 
-      // 임시: 랜덤 ID로 이동
+      // 임시: 랜덤 ID 생성 후 sessionStorage에 데이터 저장
       const tempId = crypto.randomUUID();
+      saveTripInfo(data, tempId);
       router.push(`/plan/${tempId}`);
     } catch (error) {
       console.error("여행 생성 실패:", error);

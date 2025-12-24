@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
 import Link from "next/link";
 import { LuChevronLeft, LuPlus } from "react-icons/lu";
 
@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/sheet";
 import { PlaceSearch } from "@/components/places/place-search";
 import { PlaceList, PlaceListHeader } from "@/components/places/place-list";
+import { useTripDraft } from "@/hooks/use-trip-draft";
 import type { Place, PlaceSearchResult } from "@/types/place";
 
 interface PlacesPageProps {
@@ -35,8 +36,26 @@ const DURATION_OPTIONS = [
 
 export default function PlacesPage({ params }: PlacesPageProps) {
   const { tripId } = use(params);
+  const { getDraftByTripId, savePlaces, isLoaded } = useTripDraft();
   const [places, setPlaces] = useState<Place[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // 저장된 장소 로드 (초기 1회만)
+  useEffect(() => {
+    if (!isLoaded || isInitialized) return;
+    const draft = getDraftByTripId(tripId);
+    if (draft?.places) {
+      setPlaces(draft.places);
+    }
+    setIsInitialized(true);
+  }, [tripId, getDraftByTripId, isLoaded, isInitialized]);
+
+  // 장소 변경 시 sessionStorage에 저장 (초기화 후에만)
+  useEffect(() => {
+    if (!isInitialized) return;
+    savePlaces(places);
+  }, [places, isInitialized, savePlaces]);
 
   // 장소 검색 결과 선택
   const handlePlaceSelect = (result: PlaceSearchResult) => {

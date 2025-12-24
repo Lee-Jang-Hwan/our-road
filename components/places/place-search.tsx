@@ -13,11 +13,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { searchPlaces } from "@/actions/places/search-places";
 import type { PlaceSearchResult } from "@/types/place";
 
 interface PlaceSearchProps {
@@ -40,14 +36,14 @@ export function PlaceSearch({
   autoFocus = false,
   className,
 }: PlaceSearchProps) {
-  const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const [results, setResults] = React.useState<PlaceSearchResult[]>([]);
   const [isSearching, setIsSearching] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const debounceRef = React.useRef<NodeJS.Timeout | null>(null);
 
-  // 검색 디바운스 처리 (300ms)
+  // 검색 디바운스 처리 (300ms) - Server Action 사용
   React.useEffect(() => {
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
@@ -55,25 +51,29 @@ export function PlaceSearch({
 
     if (query.length < 2) {
       setResults([]);
+      setError(null);
       return;
     }
 
     debounceRef.current = setTimeout(async () => {
       setIsSearching(true);
+      setError(null);
       try {
-        // TODO: Server Action 연동 (actions/places/search-places.ts)
-        const response = await fetch(
-          `/api/places/search?query=${encodeURIComponent(query)}`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setResults(data.results || []);
+        // Server Action 호출
+        const result = await searchPlaces({ query, page: 1, size: 10 });
+
+        if (result.success && result.data) {
+          setResults(result.data.places);
         } else {
           setResults([]);
+          if (result.error) {
+            setError(result.error);
+          }
         }
-      } catch (error) {
-        console.error("장소 검색 실패:", error);
+      } catch (err) {
+        console.error("장소 검색 실패:", err);
         setResults([]);
+        setError("검색 중 오류가 발생했습니다.");
       } finally {
         setIsSearching(false);
       }
@@ -91,78 +91,79 @@ export function PlaceSearch({
     onSelect(result);
     setQuery("");
     setResults([]);
-    setOpen(false);
   };
 
   // 검색어 초기화
   const handleClear = () => {
     setQuery("");
     setResults([]);
+    setError(null);
     inputRef.current?.focus();
   };
 
+  const showResults = query.length >= 2;
+
   return (
-    <div className={cn("relative", className)}>
-      <Popover open={open && query.length >= 2} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              ref={inputRef}
-              type="text"
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setOpen(true);
-              }}
-              onFocus={() => setOpen(true)}
-              placeholder={placeholder}
-              disabled={disabled}
-              autoFocus={autoFocus}
-              className="pl-10 pr-10 touch-target"
-            />
-            {query && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-                onClick={handleClear}
-              >
-                {isSearching ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <X className="h-4 w-4" />
-                )}
-              </Button>
+    <div className={cn("relative flex flex-col", className)}>
+      {/* 검색 입력 */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          ref={inputRef}
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={placeholder}
+          disabled={disabled}
+          autoFocus={autoFocus}
+          className="pl-10 pr-10 touch-target"
+        />
+        {query && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+            onClick={handleClear}
+          >
+            {isSearching ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <X className="h-4 w-4" />
             )}
-          </div>
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-[var(--radix-popover-trigger-width)] p-0"
-          align="start"
-          onOpenAutoFocus={(e) => e.preventDefault()}
-        >
+          </Button>
+        )}
+      </div>
+
+      {/* 검색 결과 - 인라인으로 표시 (모바일 친화적) */}
+      {showResults && (
+        <div className="mt-2 rounded-md border bg-popover shadow-md max-h-[50vh] overflow-auto">
           <Command shouldFilter={false}>
-            <CommandList>
-              <CommandEmpty>
-                {isSearching
-                  ? "검색 중..."
-                  : query.length < 2
-                    ? "2글자 이상 입력해주세요"
-                    : "검색 결과가 없습니다"}
-              </CommandEmpty>
-              {results.length > 0 && (
-                <CommandGroup heading="검색 결과">
+            <CommandList className="max-h-none">
+              {isSearching ? (
+                <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  검색 중...
+                </div>
+              ) : error ? (
+                <div className="py-6 text-center text-sm text-destructive">
+                  {error}
+                </div>
+              ) : results.length === 0 ? (
+                <CommandEmpty className="py-6 text-center text-sm">
+                  검색 결과가 없습니다
+                </CommandEmpty>
+              ) : (
+                <CommandGroup heading={`검색 결과 (${results.length}건)`}>
                   {results.map((result) => (
                     <CommandItem
                       key={result.id}
                       value={result.id}
                       onSelect={() => handleSelect(result)}
-                      className="cursor-pointer py-3"
+                      className="cursor-pointer py-3 px-3"
                     >
-                      <MapPin className="mr-2 h-4 w-4 shrink-0 text-muted-foreground" />
-                      <div className="flex flex-col min-w-0">
+                      <MapPin className="mr-3 h-4 w-4 shrink-0 text-muted-foreground" />
+                      <div className="flex flex-col min-w-0 flex-1">
                         <span className="font-medium truncate">
                           {result.name}
                         </span>
@@ -176,7 +177,7 @@ export function PlaceSearch({
                         )}
                       </div>
                       {result.distance && (
-                        <span className="ml-auto text-xs text-muted-foreground shrink-0">
+                        <span className="ml-2 text-xs text-muted-foreground shrink-0">
                           {result.distance >= 1000
                             ? `${(result.distance / 1000).toFixed(1)}km`
                             : `${result.distance}m`}
@@ -188,8 +189,15 @@ export function PlaceSearch({
               )}
             </CommandList>
           </Command>
-        </PopoverContent>
-      </Popover>
+        </div>
+      )}
+
+      {/* 검색 안내 */}
+      {!showResults && !query && (
+        <p className="mt-2 text-xs text-muted-foreground">
+          2글자 이상 입력하면 검색됩니다
+        </p>
+      )}
     </div>
   );
 }
