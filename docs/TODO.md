@@ -555,7 +555,13 @@
 - [x] `use-sync-user.ts` - Clerk→Supabase 사용자 동기화
 - [x] `use-kakao-map.ts` - 맵 인스턴스 관리 (components/map/kakao-map.tsx에 포함)
 - [x] `use-geolocation.ts` - 현재 위치 추적 (components/map/current-location.tsx에 포함)
-- [ ] `use-debounce.ts` - 디바운스 훅
+- [x] `use-debounce.ts` - 디바운스/스로틀 훅
+  - [x] useDebounce - 디바운스된 값
+  - [x] useDebouncedCallback - 디바운스된 콜백
+  - [x] useDebouncedState - 즉시값 + 디바운스값 상태
+  - [x] useDebouncedCallbackWithControl - 취소/즉시실행 가능한 디바운스
+  - [x] useThrottle - 스로틀된 값
+  - [x] useThrottledCallback - 스로틀된 콜백
 - [x] `use-swipe.ts` - 스와이프 제스처 훅
 - [x] `use-media-query.ts` - 미디어 쿼리 훅 (useMediaQuery, useIsMobile, useIsDesktop)
 
