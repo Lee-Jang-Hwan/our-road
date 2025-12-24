@@ -220,28 +220,38 @@
 
 #### 핵심 알고리즘
 
-- [ ] `lib/optimize/types.ts` - 최적화 관련 타입 정의
-- [ ] `lib/optimize/distance-matrix.ts` - 거리 행렬 계산
-  - [ ] Haversine 공식 (직선거리)
-  - [ ] API 기반 실제 거리 (선택)
-- [ ] `lib/optimize/nearest-neighbor.ts` - Nearest Neighbor 알고리즘
-  - [ ] O(n²) 시간 복잡도
-  - [ ] 초기 경로 생성
-- [ ] `lib/optimize/two-opt.ts` - 2-opt 개선 알고리즘
-  - [ ] 최대 100회 반복
-  - [ ] 개선율 5~10% 목표
-- [ ] `lib/optimize/daily-distributor.ts` - 일자별 분배 로직
-  - [ ] 일일 최대 480분 (8시간) 제한
-  - [ ] daily_start_time, daily_end_time 반영
-- [ ] `lib/optimize/constraint-handler.ts` - 고정 일정 제약 처리
-  - [ ] 시간 창 제약 (Time Windows)
-  - [ ] 충돌 감지 및 에러 반환
-- [ ] `lib/optimize/index.ts` - 통합 export
+- [x] `lib/optimize/types.ts` - 최적화 관련 타입 정의
+  - [x] OptimizeNode, DistanceEntry, TimeWindow 등 내부 타입
+  - [x] 시간 변환 유틸리티 (timeToMinutes, minutesToTime 등)
+- [x] `lib/optimize/distance-matrix.ts` - 거리 행렬 계산
+  - [x] Haversine 공식 (직선거리)
+  - [x] API 기반 실제 거리 (선택)
+  - [x] 배치 처리 및 진행 콜백 지원
+- [x] `lib/optimize/nearest-neighbor.ts` - Nearest Neighbor 알고리즘
+  - [x] O(n²) 시간 복잡도
+  - [x] 초기 경로 생성
+  - [x] 출발지/도착지 고정 버전 포함
+- [x] `lib/optimize/two-opt.ts` - 2-opt 개선 알고리즘
+  - [x] 최대 100회 반복
+  - [x] 개선율 5~10% 목표
+  - [x] 반복적 2-opt, 개선 가능성 추정 함수 포함
+- [x] `lib/optimize/daily-distributor.ts` - 일자별 분배 로직
+  - [x] 일일 최대 480분 (8시간) 제한
+  - [x] daily_start_time, daily_end_time 반영
+  - [x] 고정 일정 우선 배치, 검증 함수 포함
+- [x] `lib/optimize/constraint-handler.ts` - 고정 일정 제약 처리
+  - [x] 시간 창 제약 (Time Windows)
+  - [x] 충돌 감지 및 에러 반환
+  - [x] 일자별 가용 시간 슬롯 계산
+- [x] `lib/optimize/index.ts` - 통합 export
 
 #### 유틸리티
 
-- [ ] `lib/utils/haversine.ts` - Haversine 거리 계산
-- [ ] `lib/utils/retry.ts` - 재시도 유틸리티 (지수 백오프)
+- [x] `lib/utils/haversine.ts` - Haversine 거리 계산
+  - [x] 직선거리, 예상 이동 시간, 거리 행렬 생성
+- [x] `lib/utils/retry.ts` - 재시도 유틸리티 (지수 백오프)
+  - [x] withRetry, batchProcess, fetchWithRetry
+- [x] `lib/utils/index.ts` - 통합 export
 
 ### Phase 8: 경로 조회 Server Actions
 
