@@ -19,7 +19,7 @@
 
 ### 환경 설정
 
-- [x] Next.js 15.5.7 + React 19 프로젝트 설정
+- [x] Next.js 15.5.9 + React 19 프로젝트 설정
 - [x] Clerk 인증 설정 (한국어 로컬라이제이션 포함)
 - [x] Supabase 연동 설정
 - [x] Tailwind CSS v4 설정
@@ -598,8 +598,8 @@
 
 #### 마이페이지
 
-- [ ] `app/my/page.tsx` - 저장된 여행 목록
-- [ ] `app/my/trips/[tripId]/page.tsx` - 저장된 여행 상세
+- [x] `app/my/page.tsx` - 저장된 여행 목록
+- [x] `app/my/trips/[tripId]/page.tsx` - 저장된 여행 상세
 
 #### 네비게이션 페이지
 
@@ -799,11 +799,11 @@
 | 마일스톤 | 목표 | 주요 완료 항목 | 상태 |
 |---------|------|--------------|------|
 | **M0** | 프로젝트 초기화 | Next.js, Clerk, Supabase 연동, DB 스키마 | ✅ 완료 |
-| **M1** | MVP 입력 기능 | 여행 생성, 장소 추가, 지도 표시 | 🔄 진행중 |
-| **M2** | 최적화 엔진 | TSP 알고리즘, 일자 분배, 경로 조회 | ⏳ 대기 |
-| **M3** | 결과 & 저장 | 일정표 UI (일자별 탭), 마이페이지, 저장 기능 | ⏳ 대기 |
-| **M4** | 네비게이션 | 현재 위치, 경로 안내, 앱 연동 | ⏳ 대기 |
-| **M5** | 관리자 기능 | 에러 로그 관리 페이지 | ⏳ 대기 |
+| **M1** | MVP 입력 기능 | 여행 생성, 장소 추가, 지도 표시 | ✅ 완료 |
+| **M2** | 최적화 엔진 | TSP 알고리즘, 일자 분배, 경로 조회 | ✅ 완료 |
+| **M3** | 결과 & 저장 | 일정표 UI (일자별 탭), 마이페이지, 저장 기능 | ✅ 완료 |
+| **M4** | 네비게이션 | 현재 위치, 경로 안내, 앱 연동 | ✅ 완료 |
+| **M5** | 관리자 기능 | 에러 로그 관리 페이지 | ✅ 완료 |
 | **M6** | 마케팅 준비 | 브랜드 에셋, SNS 계정, 콘텐츠 제작 | ⏳ 대기 |
 | **M7** | 런칭 | 서비스 오픈, 런칭 캠페인, 모니터링 | ⏳ 대기 |
 
@@ -813,18 +813,37 @@
 
 ### 완료된 항목 (✅)
 
-- **인프라**: Next.js 15, React 19, Clerk 인증, Supabase 연동, Tailwind CSS v4
+- **인프라**: Next.js 15.5.9, React 19, Clerk 인증, Supabase 연동, Tailwind CSS v4
 - **DB**: 전체 스키마 생성 (7개 테이블 + RLS + Storage + 유틸리티 함수)
 - **Supabase 클라이언트**: 4종 (clerk-client, server, service-role, client)
 - **사용자 동기화**: Clerk → Supabase 자동 동기화 구현
-- **UI 컴포넌트**: shadcn 기본 컴포넌트 7개 설치
+- **UI 컴포넌트**: shadcn 18개 컴포넌트 설치 완료
+- **타입 정의**: 9개 타입 파일 (trip, place, route, schedule, optimize, admin, kakao, odsay)
+- **Zod 스키마**: 9개 스키마 파일 완료
+- **Server Actions**: 36개 액션 (trips, places, schedules, routes, optimize, itinerary, admin)
+- **외부 API**: Kakao API (Local, Mobility), ODsay API 클라이언트 완료
+- **최적화 엔진**: Nearest Neighbor + 2-opt 알고리즘, 일자별 분배 로직
+- **UI 컴포넌트**: trip, places, schedule, itinerary, map, admin, ux 전체 구현
+- **커스텀 훅**: use-sync-user, use-debounce, use-media-query, use-swipe
+- **페이지**: 메인, 인증, 여행 계획, 네비게이션, 관리자 페이지 완료
 
-### 다음 단계 (🔄)
+### 미완성 항목 (🔄)
 
-1. Kakao/ODsay API 키 등록
-2. TypeScript 타입 정의
-3. Zod 스키마 정의
-4. 여행 CRUD Server Actions 구현
+1. 마케팅 에셋 및 캠페인 (Phase 1~7)
+
+### 주요 파일 통계
+
+| 카테고리 | 파일 수 | 상태 |
+|---------|--------|------|
+| actions/ | 36 | ✅ 완료 |
+| types/ | 9 | ✅ 완료 |
+| lib/schemas/ | 9 | ✅ 완료 |
+| lib/api/ | 2 | ✅ 완료 |
+| lib/optimize/ | 6 | ✅ 완료 |
+| lib/utils/ | 3 | ✅ 완료 |
+| components/ | 38 | ✅ 완료 |
+| hooks/ | 4 | ✅ 완료 |
+| app/ | 18+ | ✅ 완료 |
 
 ---
 

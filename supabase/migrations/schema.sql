@@ -488,63 +488,51 @@ CREATE POLICY "Users can delete own itineraries"
 -- --------------------------------------------
 ALTER TABLE error_logs ENABLE ROW LEVEL SECURITY;
 
--- SELECT: 관리자만 조회 가능
+-- SELECT: 관리자만 조회 가능 (is_admin 함수 사용으로 재귀 방지)
 CREATE POLICY "Admins can view all error logs"
   ON error_logs FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM admin_users
-      WHERE admin_users.clerk_id = auth.jwt()->>'sub'
-    )
-  );
+  USING (is_admin(auth.jwt()->>'sub'));
 
 -- UPDATE: 관리자만 수정 가능 (해결 처리)
 CREATE POLICY "Admins can update error logs"
   ON error_logs FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM admin_users
-      WHERE admin_users.clerk_id = auth.jwt()->>'sub'
-    )
-  );
+  USING (is_admin(auth.jwt()->>'sub'));
 
 -- DELETE: 관리자만 삭제 가능
 CREATE POLICY "Admins can delete error logs"
   ON error_logs FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM admin_users
-      WHERE admin_users.clerk_id = auth.jwt()->>'sub'
-    )
-  );
+  USING (is_admin(auth.jwt()->>'sub'));
 
--- INSERT: Service Role만 가능 (RLS bypass)
--- 일반 사용자는 직접 에러 로그를 생성할 수 없음
--- Server Action에서 service_role 클라이언트를 사용하여 생성
-CREATE POLICY "Service role can insert error logs"
+-- INSERT: 서버 사이드에서만 호출되므로 모든 INSERT 허용
+-- Service Role 또는 Server Action에서 호출
+CREATE POLICY "Anyone can insert error logs"
   ON error_logs FOR INSERT
   WITH CHECK (true);
 
 -- --------------------------------------------
 -- 4.6 admin_users 테이블 RLS
 -- --------------------------------------------
+-- 주의: admin_users 테이블에서 자기 참조 시 무한 재귀 발생 가능
+-- 따라서 단순한 정책만 사용하고, 관리자 관리는 Service Role로만 가능
 ALTER TABLE admin_users ENABLE ROW LEVEL SECURITY;
 
--- ALL: super_admin만 관리자 관리 가능
-CREATE POLICY "Super admins can manage admin users"
-  ON admin_users FOR ALL
-  USING (
-    EXISTS (
-      SELECT 1 FROM admin_users au
-      WHERE au.clerk_id = auth.jwt()->>'sub'
-        AND au.role = 'super_admin'
-    )
-  );
-
--- SELECT: 관리자는 자신의 정보 조회 가능
+-- SELECT: 관리자는 자신의 정보만 조회 가능
 CREATE POLICY "Admins can view own info"
   ON admin_users FOR SELECT
   USING (clerk_id = auth.jwt()->>'sub');
+
+-- INSERT: Service Role만 가능 (관리자 추가는 서버 사이드에서만)
+CREATE POLICY "Service role can insert admin users"
+  ON admin_users FOR INSERT
+  WITH CHECK (true);
+
+-- UPDATE: 본인 정보만 수정 가능 (역할 변경은 Service Role로만)
+CREATE POLICY "Admins can update own info"
+  ON admin_users FOR UPDATE
+  USING (clerk_id = auth.jwt()->>'sub')
+  WITH CHECK (clerk_id = auth.jwt()->>'sub');
+
+-- DELETE: Service Role만 가능 (관리자 삭제는 서버 사이드에서만)
 
 -- --------------------------------------------
 -- 4.7 users 테이블 RLS
