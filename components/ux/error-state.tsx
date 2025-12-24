@@ -5,15 +5,15 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import {
-  LuAlertCircle,
-  LuAlertTriangle,
-  LuWifiOff,
-  LuServerOff,
-  LuRefreshCw,
-  LuChevronLeft,
-  LuHome,
-  LuBug,
-} from "react-icons/lu";
+  CircleAlert,
+  TriangleAlert,
+  WifiOff,
+  ServerOff,
+  RefreshCw,
+  ChevronLeft,
+  House,
+  Bug,
+} from "lucide-react";
 
 export type ErrorType =
   | "generic"
@@ -33,37 +33,37 @@ interface ErrorConfig {
 
 const errorConfigs: Record<Exclude<ErrorType, "custom">, ErrorConfig> = {
   generic: {
-    icon: <LuAlertCircle className="w-8 h-8" />,
+    icon: <CircleAlert className="w-8 h-8" />,
     title: "오류가 발생했습니다",
     description: "잠시 후 다시 시도해주세요",
     actionLabel: "다시 시도",
   },
   network: {
-    icon: <LuWifiOff className="w-8 h-8" />,
+    icon: <WifiOff className="w-8 h-8" />,
     title: "네트워크 연결 오류",
     description: "인터넷 연결을 확인하고 다시 시도해주세요",
     actionLabel: "다시 시도",
   },
   server: {
-    icon: <LuServerOff className="w-8 h-8" />,
+    icon: <ServerOff className="w-8 h-8" />,
     title: "서버 오류",
     description: "서버에 문제가 발생했습니다. 잠시 후 다시 시도해주세요",
     actionLabel: "다시 시도",
   },
   notFound: {
-    icon: <LuAlertTriangle className="w-8 h-8" />,
+    icon: <TriangleAlert className="w-8 h-8" />,
     title: "페이지를 찾을 수 없습니다",
     description: "요청하신 페이지가 존재하지 않거나 삭제되었습니다",
     actionLabel: "홈으로 이동",
   },
   permission: {
-    icon: <LuAlertCircle className="w-8 h-8" />,
+    icon: <CircleAlert className="w-8 h-8" />,
     title: "접근 권한이 없습니다",
     description: "이 페이지에 접근할 권한이 없습니다",
     actionLabel: "돌아가기",
   },
   validation: {
-    icon: <LuBug className="w-8 h-8" />,
+    icon: <Bug className="w-8 h-8" />,
     title: "입력값이 올바르지 않습니다",
     description: "입력한 내용을 확인하고 다시 시도해주세요",
   },
@@ -174,10 +174,10 @@ export function ErrorState({
         {showMainAction && displayActionLabel && (
           <Button onClick={handleMainAction} className="w-full touch-target">
             {(onRetry || type === "generic" || type === "network" || type === "server") && (
-              <LuRefreshCw className="w-4 h-4 mr-2" />
+              <RefreshCw className="w-4 h-4 mr-2" />
             )}
-            {type === "notFound" && <LuHome className="w-4 h-4 mr-2" />}
-            {type === "permission" && <LuChevronLeft className="w-4 h-4 mr-2" />}
+            {type === "notFound" && <House className="w-4 h-4 mr-2" />}
+            {type === "permission" && <ChevronLeft className="w-4 h-4 mr-2" />}
             {displayActionLabel}
           </Button>
         )}

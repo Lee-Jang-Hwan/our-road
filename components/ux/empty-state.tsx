@@ -5,15 +5,15 @@ import { cn } from "@/lib/utils";
 import { Button, type buttonVariants } from "@/components/ui/button";
 import type { VariantProps } from "class-variance-authority";
 import {
-  LuMapPin,
-  LuCalendar,
-  LuSearch,
-  LuFileText,
-  LuMap,
-  LuAlertCircle,
-  LuPlus,
-  LuRefreshCw,
-} from "react-icons/lu";
+  MapPin,
+  Calendar,
+  Search,
+  FileText,
+  Map,
+  CircleAlert,
+  Plus,
+  RefreshCw,
+} from "lucide-react";
 
 export type EmptyStateType =
   | "trips"
@@ -34,43 +34,43 @@ interface EmptyStateConfig {
 
 const defaultConfigs: Record<Exclude<EmptyStateType, "custom">, EmptyStateConfig> = {
   trips: {
-    icon: <LuMap className="w-8 h-8" />,
+    icon: <Map className="w-8 h-8" />,
     title: "저장된 여행이 없습니다",
     description: "새 여행을 만들어 일정을 계획해보세요",
     actionLabel: "새 여행 만들기",
-    actionIcon: <LuPlus className="w-4 h-4" />,
+    actionIcon: <Plus className="w-4 h-4" />,
   },
   places: {
-    icon: <LuMapPin className="w-8 h-8" />,
+    icon: <MapPin className="w-8 h-8" />,
     title: "추가된 장소가 없습니다",
     description: "방문할 장소를 검색하여 추가해보세요",
     actionLabel: "장소 검색",
-    actionIcon: <LuSearch className="w-4 h-4" />,
+    actionIcon: <Search className="w-4 h-4" />,
   },
   schedules: {
-    icon: <LuCalendar className="w-8 h-8" />,
+    icon: <Calendar className="w-8 h-8" />,
     title: "고정 일정이 없습니다",
     description: "식사 시간, 숙소 체크인 등 고정된 일정을 추가해보세요",
     actionLabel: "일정 추가",
-    actionIcon: <LuPlus className="w-4 h-4" />,
+    actionIcon: <Plus className="w-4 h-4" />,
   },
   search: {
-    icon: <LuSearch className="w-8 h-8" />,
+    icon: <Search className="w-8 h-8" />,
     title: "검색 결과가 없습니다",
     description: "다른 키워드로 검색해보세요",
   },
   itinerary: {
-    icon: <LuFileText className="w-8 h-8" />,
+    icon: <FileText className="w-8 h-8" />,
     title: "최적화된 일정이 없습니다",
     description: "장소를 추가하고 일정을 최적화해보세요",
     actionLabel: "일정 최적화",
   },
   error: {
-    icon: <LuAlertCircle className="w-8 h-8" />,
+    icon: <CircleAlert className="w-8 h-8" />,
     title: "오류가 발생했습니다",
     description: "잠시 후 다시 시도해주세요",
     actionLabel: "다시 시도",
-    actionIcon: <LuRefreshCw className="w-4 h-4" />,
+    actionIcon: <RefreshCw className="w-4 h-4" />,
   },
 };
 
@@ -177,7 +177,7 @@ export function EmptyStateInline({
         className
       )}
     >
-      {icon || <LuSearch className="w-4 h-4 shrink-0" />}
+      {icon || <Search className="w-4 h-4 shrink-0" />}
       <span>{message}</span>
     </div>
   );
