@@ -302,9 +302,22 @@
 
 > 파일: `actions/itinerary/`
 
-- [ ] `get-itinerary.ts` - 최적화 결과 조회
-- [ ] `update-itinerary.ts` - 결과 수동 수정
-- [ ] 결과 캐싱 로직 구현
+- [x] `get-itinerary.ts` - 최적화 결과 조회
+  - [x] 전체 일정 조회 (getItinerary)
+  - [x] 특정 일자 일정 조회 (getDayItinerary)
+  - [x] 일정 요약 정보 조회 (getItinerarySummary)
+  - [x] 일정 개수 조회 (getItineraryCount)
+  - [x] 캐시된 일정 조회 (getCachedItinerary)
+- [x] `update-itinerary.ts` - 결과 수동 수정
+  - [x] 일자별 일정 수정 (updateDayItinerary)
+  - [x] 일정 항목 순서 변경 (reorderScheduleItems)
+  - [x] 일정 항목 이동 - 다른 일자로 (moveScheduleItem)
+  - [x] 단일 항목 수정 (updateScheduleItem)
+  - [x] 일정 항목 삭제 (deleteScheduleItem)
+- [x] 결과 캐싱 로직 구현
+  - [x] Next.js unstable_cache 사용 (60초 재검증)
+  - [x] revalidateTag/revalidatePath로 캐시 무효화
+- [x] `index.ts` - 통합 export
 
 ### Phase 11: 관리자 기능 Server Actions
 
