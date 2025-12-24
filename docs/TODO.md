@@ -323,15 +323,30 @@
 
 > 파일: `actions/admin/`
 
-- [ ] `get-error-logs.ts` - 에러 로그 목록 조회
-  - [ ] 필터링 (resolved, severity, errorCode, source, 기간)
-  - [ ] 페이지네이션 (기본 50건)
-- [ ] `resolve-error-log.ts` - 에러 로그 해결 처리
-  - [ ] resolved_at, resolved_by 자동 기록
-  - [ ] resolution_note 저장
-- [ ] `delete-error-log.ts` - 에러 로그 삭제
-  - [ ] 해결된 항목만 삭제 가능
-- [ ] `log-error.ts` - 에러 로그 기록 (서비스 내부용)
+- [x] `get-error-logs.ts` - 에러 로그 목록 조회
+  - [x] 필터링 (resolved, severity, errorCode, source, 기간)
+  - [x] 페이지네이션 (기본 50건)
+  - [x] 단일 에러 로그 조회 (getErrorLog)
+  - [x] 에러 통계 조회 (getErrorStatistics)
+  - [x] 에러 코드/발생 위치 목록 조회 (필터 UI용)
+- [x] `resolve-error-log.ts` - 에러 로그 해결 처리
+  - [x] resolved_at, resolved_by 자동 기록
+  - [x] resolution_note 저장
+  - [x] 일괄 해결 처리 (bulkResolveErrorLogs)
+  - [x] 해결 취소 (unresolveErrorLog)
+  - [x] 해결 메모 수정 (updateResolutionNote)
+- [x] `delete-error-log.ts` - 에러 로그 삭제
+  - [x] 해결된 항목만 삭제 가능
+  - [x] 일괄 삭제 (bulkDeleteErrorLogs)
+  - [x] 해결된 로그 전체 삭제 (Super Admin)
+  - [x] 오래된 로그 정리 (cleanupOldResolvedLogs)
+- [x] `log-error.ts` - 에러 로그 기록 (서비스 내부용)
+  - [x] 기본 에러 로깅 (logError)
+  - [x] API 에러 헬퍼 (logApiError, logApiTimeout, logApiRateLimit)
+  - [x] 최적화 에러 헬퍼 (logOptimizeError)
+  - [x] DB 에러 헬퍼 (logDatabaseError)
+  - [x] Critical 에러 헬퍼 (logCriticalError)
+- [x] `index.ts` - 통합 export
 
 ---
 
