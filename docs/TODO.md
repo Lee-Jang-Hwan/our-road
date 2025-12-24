@@ -425,18 +425,28 @@
 
 > 파일: `components/places/`
 
-- [ ] `place-search.tsx` - 장소 검색 입력창
-  - [ ] debounce 적용 (300ms)
-  - [ ] Kakao 키워드 검색 연동
-- [ ] `place-card.tsx` - 장소 카드
-  - [ ] 이미지, 이름, 카테고리 표시
-  - [ ] **체류 시간 드롭다운** (30분~12시간, 30분 단위)
-- [ ] `place-list.tsx` - 선택된 장소 리스트
-  - [ ] 드래그 앤 드롭 순서 변경
-  - [ ] 스와이프 삭제
-- [ ] `nearby-recommendations.tsx` - 주변 추천 모달
-  - [ ] 카테고리별 필터 (음식점, 카페, 관광명소)
-  - [ ] 반경 500m~1km
+- [x] `place-search.tsx` - 장소 검색 입력창
+  - [x] debounce 적용 (300ms)
+  - [x] Kakao 키워드 검색 연동 (API 준비)
+  - [x] PlaceSearchInput 간단 입력 컴포넌트
+- [x] `place-card.tsx` - 장소 카드
+  - [x] 카테고리 아이콘 및 라벨 표시
+  - [x] **체류 시간 드롭다운** (30분~12시간, 30분 단위)
+  - [x] PlaceCardCompact 간략 카드
+  - [x] PlaceCardSkeleton 로딩 스켈레톤
+  - [x] 드래그 핸들, 삭제 메뉴 지원
+- [x] `place-list.tsx` - 선택된 장소 리스트
+  - [x] 드래그 앤 드롭 순서 변경 (마우스 + 터치)
+  - [x] 스와이프 삭제 (터치)
+  - [x] PlaceListHeader 헤더 컴포넌트
+  - [x] 빈 상태, 로딩 상태 UI
+- [x] `nearby-recommendations.tsx` - 주변 추천 모달
+  - [x] 카테고리별 필터 (음식점, 카페, 관광명소, 쇼핑)
+  - [x] 반경 슬라이더 (500m~1km)
+  - [x] 모바일: Sheet, 데스크톱: Dialog 반응형
+  - [x] NearbyButton 트리거 버튼
+- [x] `index.ts` - 통합 export
+- [x] `dropdown-menu` shadcn 컴포넌트 추가 설치
 
 ### Phase 5: 일정 관련 UI 컴포넌트
 
