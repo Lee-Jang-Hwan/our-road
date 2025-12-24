@@ -149,14 +149,26 @@
 
 > 파일: `actions/places/`
 
-- [ ] `add-place.ts` - 장소 추가
-  - [ ] estimated_duration 검증 (30~720분)
-- [ ] `remove-place.ts` - 장소 삭제
-- [ ] `update-place.ts` - 장소 수정 (체류시간 등)
-- [ ] `reorder-places.ts` - 장소 순서 변경
-- [ ] `get-places.ts` - 여행별 장소 목록
-- [ ] `search-places.ts` - 장소 검색 (Kakao Local API)
-- [ ] `get-nearby.ts` - 주변 추천 (Kakao 카테고리 검색)
+- [x] `add-place.ts` - 장소 추가
+  - [x] estimated_duration 검증 (30~720분)
+  - [x] 여행당 최대 50개 장소 제한
+  - [x] 자동 priority 할당
+- [x] `remove-place.ts` - 장소 삭제
+  - [x] 단일 삭제 및 일괄 삭제 지원
+- [x] `update-place.ts` - 장소 수정 (체류시간 등)
+  - [x] 부분 업데이트 지원
+  - [x] updatePlaceDuration 편의 함수
+- [x] `reorder-places.ts` - 장소 순서 변경
+  - [x] 배열 기반 순서 변경
+  - [x] movePlaceToIndex 단일 이동 함수
+- [x] `get-places.ts` - 여행별 장소 목록
+  - [x] 단일 조회, 목록 조회, 개수 조회
+- [x] `search-places.ts` - 장소 검색 (Kakao Local API)
+  - [x] 키워드 검색 (/v2/local/search/keyword.json)
+  - [x] autocompletePlace 자동완성 함수
+- [x] `get-nearby.ts` - 주변 추천 (Kakao 카테고리 검색)
+  - [x] 카테고리 검색 (/v2/local/search/category.json)
+  - [x] getNearbyMultiCategory 다중 카테고리 검색
 
 ### Phase 5: 고정 일정 Server Actions
 
