@@ -122,16 +122,16 @@
 
 > 파일: `lib/schemas/`
 
-- [ ] coordinateSchema - 좌표 검증 (lat: -90~90, lng: -180~180)
-- [ ] placeSchema - 장소 검증
-- [ ] fixedScheduleSchema - 고정 일정 검증 (시작 < 종료 시간)
-- [ ] createTripSchema - 여행 생성 검증 (최대 30일)
-- [ ] optimizeRequestSchema - 최적화 요청 검증
-- [ ] durationSchema - 체류 시간 검증 (30분~12시간, 30분 단위)
-- [ ] timeSchema - 시간 검증 (HH:mm 형식)
-- [ ] createErrorLogSchema - 에러 로그 생성 검증
-- [ ] resolveErrorLogSchema - 에러 로그 해결 검증
-- [ ] errorLogFilterSchema - 에러 로그 필터 검증
+- [x] coordinateSchema - 좌표 검증 (lat: -90~90, lng: -180~180)
+- [x] placeSchema - 장소 검증
+- [x] fixedScheduleSchema - 고정 일정 검증 (시작 < 종료 시간)
+- [x] createTripSchema - 여행 생성 검증 (최대 30일)
+- [x] optimizeRequestSchema - 최적화 요청 검증
+- [x] durationSchema - 체류 시간 검증 (30분~12시간, 30분 단위)
+- [x] timeSchema - 시간 검증 (HH:mm 형식)
+- [x] createErrorLogSchema - 에러 로그 생성 검증
+- [x] resolveErrorLogSchema - 에러 로그 해결 검증
+- [x] errorLogFilterSchema - 에러 로그 필터 검증
 
 ### Phase 3: 여행 CRUD Server Actions
 
