@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { MapSkeleton, EmptyState, ErrorState } from "@/components/ux";
 
 import { KakaoMap, useKakaoMap, useMapBounds } from "@/components/map/kakao-map";
 import { PlaceMarkers } from "@/components/map/place-markers";
@@ -239,12 +240,13 @@ function NavigationBottomPanel({
             size="icon"
             onClick={onPrevious}
             disabled={!hasPrevious}
+            className="touch-target"
           >
             <LuChevronLeft className="w-5 h-5" />
           </Button>
           <Button
             variant="outline"
-            className="flex-1"
+            className="flex-1 touch-target"
             onClick={onOpenKakaoMap}
           >
             <LuExternalLink className="w-4 h-4 mr-2" />
@@ -252,7 +254,7 @@ function NavigationBottomPanel({
           </Button>
           <Button
             variant="outline"
-            className="flex-1"
+            className="flex-1 touch-target"
             onClick={onOpenNaverMap}
           >
             <LuExternalLink className="w-4 h-4 mr-2" />
@@ -263,6 +265,7 @@ function NavigationBottomPanel({
             size="icon"
             onClick={onNext}
             disabled={!hasNext}
+            className="touch-target"
           >
             <LuChevronRight className="w-5 h-5" />
           </Button>
@@ -552,8 +555,11 @@ export default function NavigatePage({ params }: NavigatePageProps) {
         <header className="flex items-center gap-3 px-4 py-3 border-b">
           <Skeleton className="w-10 h-10 rounded-lg" />
           <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-8 w-16 ml-auto rounded-md" />
         </header>
-        <div className="flex-1 bg-muted animate-pulse" />
+        <div className="flex-1">
+          <MapSkeleton className="h-full" />
+        </div>
       </main>
     );
   }
@@ -564,7 +570,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
       <main className="flex flex-col items-center justify-center h-[calc(100dvh-64px)] px-4 gap-4">
         <p className="text-muted-foreground">로그인이 필요합니다</p>
         <Link href="/sign-in">
-          <Button>로그인하기</Button>
+          <Button className="touch-target">로그인하기</Button>
         </Link>
       </main>
     );
@@ -576,18 +582,17 @@ export default function NavigatePage({ params }: NavigatePageProps) {
       <main className="flex flex-col h-[calc(100dvh-64px)]">
         <header className="flex items-center gap-3 px-4 py-3 border-b">
           <Link href={`/my/trips/${tripId}`}>
-            <Button variant="ghost" size="icon" className="shrink-0">
+            <Button variant="ghost" size="icon" className="shrink-0 touch-target">
               <LuChevronLeft className="w-5 h-5" />
             </Button>
           </Link>
           <h1 className="font-semibold text-lg">네비게이션</h1>
         </header>
-        <div className="flex-1 flex flex-col items-center justify-center px-4 gap-4">
-          <p className="text-destructive">{error || "여행 정보를 찾을 수 없습니다."}</p>
-          <Link href={`/my/trips/${tripId}`}>
-            <Button variant="outline">돌아가기</Button>
-          </Link>
-        </div>
+        <ErrorState
+          type="generic"
+          description={error || "여행 정보를 찾을 수 없습니다."}
+          onBack={() => window.history.back()}
+        />
       </main>
     );
   }
@@ -598,22 +603,18 @@ export default function NavigatePage({ params }: NavigatePageProps) {
       <main className="flex flex-col h-[calc(100dvh-64px)]">
         <header className="flex items-center gap-3 px-4 py-3 border-b">
           <Link href={`/my/trips/${tripId}`}>
-            <Button variant="ghost" size="icon" className="shrink-0">
+            <Button variant="ghost" size="icon" className="shrink-0 touch-target">
               <LuChevronLeft className="w-5 h-5" />
             </Button>
           </Link>
           <h1 className="font-semibold text-lg">{trip.title}</h1>
         </header>
-        <div className="flex-1 flex flex-col items-center justify-center px-4 gap-4">
-          <LuNavigation className="w-16 h-16 text-muted-foreground" />
-          <p className="text-muted-foreground text-center">
-            최적화된 일정이 없습니다.<br />
-            일정을 최적화한 후 네비게이션을 시작해주세요.
-          </p>
-          <Link href={`/plan/${tripId}`}>
-            <Button>일정 편집하기</Button>
-          </Link>
-        </div>
+        <EmptyState
+          type="itinerary"
+          description="최적화된 일정이 없습니다. 일정을 최적화한 후 네비게이션을 시작해주세요."
+          actionLabel="일정 편집하기"
+          onAction={() => window.location.href = `/plan/${tripId}`}
+        />
       </main>
     );
   }
@@ -624,22 +625,19 @@ export default function NavigatePage({ params }: NavigatePageProps) {
       <main className="flex flex-col h-[calc(100dvh-64px)]">
         <header className="flex items-center gap-3 px-4 py-3 border-b">
           <Link href={`/my/trips/${tripId}`}>
-            <Button variant="ghost" size="icon" className="shrink-0">
+            <Button variant="ghost" size="icon" className="shrink-0 touch-target">
               <LuChevronLeft className="w-5 h-5" />
             </Button>
           </Link>
           <h1 className="font-semibold text-lg">{trip.title}</h1>
         </header>
-        <div className="flex-1 flex flex-col items-center justify-center px-4 gap-4">
-          <LuMapPin className="w-16 h-16 text-muted-foreground" />
-          <p className="text-muted-foreground text-center">
-            {selectedDayIndex + 1}일차에 일정이 없습니다.<br />
-            다른 일차를 선택해주세요.
-          </p>
-          <Button onClick={() => setDaySelectOpen(true)}>
-            일차 선택
-          </Button>
-        </div>
+        <EmptyState
+          icon={<LuMapPin className="w-8 h-8" />}
+          title={`${selectedDayIndex + 1}일차에 일정이 없습니다`}
+          description="다른 일차를 선택해주세요."
+          actionLabel="일차 선택"
+          onAction={() => setDaySelectOpen(true)}
+        />
       </main>
     );
   }
@@ -654,7 +652,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
       {/* 헤더 */}
       <header className="flex items-center gap-3 px-4 py-3 border-b bg-background z-10">
         <Link href={`/my/trips/${tripId}`}>
-          <Button variant="ghost" size="icon" className="shrink-0">
+          <Button variant="ghost" size="icon" className="shrink-0 touch-target">
             <LuChevronLeft className="w-5 h-5" />
           </Button>
         </Link>
@@ -665,6 +663,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
           variant="outline"
           size="sm"
           onClick={() => setDaySelectOpen(true)}
+          className="touch-target"
         >
           {currentDayItinerary.dayNumber}일차
           <LuChevronDown className="w-4 h-4 ml-1" />

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
@@ -33,6 +33,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+
+import {
+  TripCardSkeleton,
+  EmptyState,
+  ErrorState,
+  PullToRefresh,
+} from "@/components/ux";
+import { showSuccessToast, showErrorToast } from "@/lib/toast";
 
 import { getTripList } from "@/actions/trips/get-trips";
 import { deleteTrip } from "@/actions/trips/delete-trip";
@@ -103,7 +111,7 @@ function TripCard({
         <div className="flex items-start justify-between gap-3">
           <button
             onClick={onView}
-            className="flex-1 text-left focus:outline-none"
+            className="flex-1 text-left focus:outline-none touch-target no-tap-highlight"
           >
             <div className="space-y-2">
               {/* 제목 + 상태 */}
@@ -134,20 +142,20 @@ function TripCard({
           {/* 메뉴 버튼 */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="shrink-0 -mt-1 -mr-2">
+              <Button variant="ghost" size="icon" className="shrink-0 -mt-1 -mr-2 touch-target">
                 <LuEllipsisVertical className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onView}>
+              <DropdownMenuItem onClick={onView} className="touch-target">
                 <LuMap className="w-4 h-4 mr-2" />
                 상세 보기
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={onEdit}>
+              <DropdownMenuItem onClick={onEdit} className="touch-target">
                 <LuPencil className="w-4 h-4 mr-2" />
                 편집하기
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={onDelete} className="text-destructive">
+              <DropdownMenuItem onClick={onDelete} className="text-destructive touch-target">
                 <LuTrash2 className="w-4 h-4 mr-2" />
                 삭제하기
               </DropdownMenuItem>
@@ -160,51 +168,24 @@ function TripCard({
 }
 
 /**
- * 여행 카드 스켈레톤
+ * 로딩 스켈레톤 컴포넌트
  */
-function TripCardSkeleton() {
+function LoadingSkeleton() {
   return (
-    <Card className="py-0">
-      <CardContent className="p-4">
-        <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Skeleton className="h-5 w-32" />
-            <Skeleton className="h-5 w-16" />
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Skeleton className="w-4 h-4 rounded" />
-            <Skeleton className="h-4 w-40" />
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Skeleton className="w-4 h-4 rounded" />
-            <Skeleton className="h-4 w-20" />
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+    <main className="flex flex-col min-h-[calc(100dvh-64px)]">
+      {/* 헤더 */}
+      <header className="flex items-center justify-between px-4 py-3 border-b">
+        <h1 className="font-semibold text-lg">내 여행</h1>
+        <Skeleton className="w-10 h-10 rounded-lg" />
+      </header>
 
-/**
- * 빈 상태 컴포넌트
- */
-function EmptyState() {
-  return (
-    <div className="flex flex-col items-center justify-center py-16 px-4">
-      <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-        <LuMap className="w-8 h-8 text-muted-foreground" />
+      {/* 스켈레톤 리스트 */}
+      <div className="flex-1 px-4 py-4 space-y-3">
+        <TripCardSkeleton />
+        <TripCardSkeleton />
+        <TripCardSkeleton />
       </div>
-      <h3 className="font-semibold text-lg mb-2">저장된 여행이 없습니다</h3>
-      <p className="text-muted-foreground text-sm text-center mb-6">
-        새 여행을 만들어 일정을 계획해보세요
-      </p>
-      <Link href="/plan">
-        <Button>
-          <LuPlus className="w-4 h-4 mr-2" />
-          새 여행 만들기
-        </Button>
-      </Link>
-    </div>
+    </main>
   );
 }
 
@@ -219,30 +200,35 @@ export default function MyTripsPage() {
   const [isPending, startTransition] = useTransition();
 
   // 여행 목록 로드
-  useEffect(() => {
-    async function loadTrips() {
-      if (!user) return;
+  const loadTrips = useCallback(async () => {
+    if (!user) return;
 
-      setIsLoading(true);
-      setError(null);
+    setIsLoading(true);
+    setError(null);
 
-      const result = await getTripList({ limit: 50 });
+    const result = await getTripList({ limit: 50 });
 
-      if (result.success && result.data) {
-        setTrips(result.data);
-      } else {
-        setError(result.error || "여행 목록을 불러오는데 실패했습니다.");
-      }
-
-      setIsLoading(false);
+    if (result.success && result.data) {
+      setTrips(result.data);
+    } else {
+      setError(result.error || "여행 목록을 불러오는데 실패했습니다.");
     }
 
+    setIsLoading(false);
+  }, [user]);
+
+  useEffect(() => {
     if (isLoaded && user) {
       loadTrips();
     } else if (isLoaded && !user) {
       setIsLoading(false);
     }
-  }, [user, isLoaded]);
+  }, [user, isLoaded, loadTrips]);
+
+  // 새로고침 핸들러 (Pull-to-refresh)
+  const handleRefresh = useCallback(async () => {
+    await loadTrips();
+  }, [loadTrips]);
 
   // 삭제 확인 다이얼로그 열기
   const handleDeleteClick = (trip: TripListItem) => {
@@ -261,30 +247,16 @@ export default function MyTripsPage() {
         setTrips((prev) => prev.filter((t) => t.id !== tripToDelete.id));
         setDeleteDialogOpen(false);
         setTripToDelete(null);
+        showSuccessToast("여행이 삭제되었습니다");
       } else {
-        setError(result.error || "삭제에 실패했습니다.");
+        showErrorToast(result.error || "삭제에 실패했습니다");
       }
     });
   };
 
   // 로딩 중
   if (!isLoaded || isLoading) {
-    return (
-      <main className="flex flex-col min-h-[calc(100dvh-64px)]">
-        {/* 헤더 */}
-        <header className="flex items-center justify-between px-4 py-3 border-b">
-          <h1 className="font-semibold text-lg">내 여행</h1>
-          <Skeleton className="w-10 h-10 rounded-lg" />
-        </header>
-
-        {/* 스켈레톤 리스트 */}
-        <div className="flex-1 px-4 py-4 space-y-3">
-          <TripCardSkeleton />
-          <TripCardSkeleton />
-          <TripCardSkeleton />
-        </div>
-      </main>
-    );
+    return <LoadingSkeleton />;
   }
 
   // 미로그인 상태
@@ -293,8 +265,24 @@ export default function MyTripsPage() {
       <main className="flex flex-col items-center justify-center min-h-[calc(100dvh-64px)] px-4 gap-4">
         <p className="text-muted-foreground">로그인이 필요합니다</p>
         <Link href="/sign-in">
-          <Button>로그인하기</Button>
+          <Button className="touch-target">로그인하기</Button>
         </Link>
+      </main>
+    );
+  }
+
+  // 에러 상태
+  if (error && trips.length === 0) {
+    return (
+      <main className="flex flex-col min-h-[calc(100dvh-64px)]">
+        <header className="flex items-center justify-between px-4 py-3 border-b">
+          <h1 className="font-semibold text-lg">내 여행</h1>
+        </header>
+        <ErrorState
+          type="generic"
+          description={error}
+          onRetry={loadTrips}
+        />
       </main>
     );
   }
@@ -305,37 +293,35 @@ export default function MyTripsPage() {
       <header className="flex items-center justify-between px-4 py-3 border-b">
         <h1 className="font-semibold text-lg">내 여행</h1>
         <Link href="/plan">
-          <Button size="icon" variant="ghost">
+          <Button size="icon" variant="ghost" className="touch-target">
             <LuPlus className="w-5 h-5" />
           </Button>
         </Link>
       </header>
 
-      {/* 에러 메시지 */}
-      {error && (
-        <div className="mx-4 mt-4 p-3 bg-destructive/10 text-destructive rounded-lg text-sm">
-          {error}
+      {/* 여행 목록 with Pull-to-refresh */}
+      <PullToRefresh onRefresh={handleRefresh} className="flex-1">
+        <div className="px-4 py-4">
+          {trips.length === 0 ? (
+            <EmptyState
+              type="trips"
+              onAction={() => router.push("/plan")}
+            />
+          ) : (
+            <div className="space-y-3">
+              {trips.map((trip) => (
+                <TripCard
+                  key={trip.id}
+                  trip={trip}
+                  onView={() => router.push(`/my/trips/${trip.id}`)}
+                  onEdit={() => router.push(`/plan/${trip.id}`)}
+                  onDelete={() => handleDeleteClick(trip)}
+                />
+              ))}
+            </div>
+          )}
         </div>
-      )}
-
-      {/* 여행 목록 */}
-      <div className="flex-1 px-4 py-4">
-        {trips.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <div className="space-y-3">
-            {trips.map((trip) => (
-              <TripCard
-                key={trip.id}
-                trip={trip}
-                onView={() => router.push(`/my/trips/${trip.id}`)}
-                onEdit={() => router.push(`/plan/${trip.id}`)}
-                onDelete={() => handleDeleteClick(trip)}
-              />
-            ))}
-          </div>
-        )}
-      </div>
+      </PullToRefresh>
 
       {/* 삭제 확인 다이얼로그 */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
@@ -353,6 +339,7 @@ export default function MyTripsPage() {
               variant="outline"
               onClick={() => setDeleteDialogOpen(false)}
               disabled={isPending}
+              className="touch-target"
             >
               취소
             </Button>
@@ -360,6 +347,7 @@ export default function MyTripsPage() {
               variant="destructive"
               onClick={handleDeleteConfirm}
               disabled={isPending}
+              className="touch-target"
             >
               {isPending ? (
                 <>

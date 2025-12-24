@@ -617,14 +617,37 @@
 
 ### Phase 11: UX 완성도
 
-- [ ] 모바일 고정형 레이아웃 전체 적용 확인
-- [ ] 터치 타겟 검증 (최소 44px, 권장 48px)
-- [ ] 로딩 스켈레톤 적용
-- [ ] 에러 상태 UI
-- [ ] 빈 상태 UI
-- [ ] 토스트 알림 시스템
-- [ ] 풀다운 새로고침 (Pull-to-refresh)
-- [ ] 스와이프 제스처 힌트
+- [x] 모바일 고정형 레이아웃 전체 적용 확인
+  - [x] app-container-safe 클래스 적용 (layout.tsx)
+  - [x] Safe Area 대응 CSS 유틸리티 추가
+- [x] 터치 타겟 검증 (최소 44px, 권장 48px)
+  - [x] touch-target, touch-target-lg 클래스 정의
+  - [x] 주요 버튼 및 인터랙티브 요소에 적용
+- [x] 로딩 스켈레톤 적용
+  - [x] components/ux/loading-skeleton.tsx 생성
+  - [x] PageHeaderSkeleton, TripCardSkeleton, PlaceCardSkeleton 등
+  - [x] LoadingSpinner, LoadingOverlay 컴포넌트
+- [x] 에러 상태 UI
+  - [x] components/ux/error-state.tsx 생성
+  - [x] ErrorState (풀페이지), ErrorAlert (인라인), ErrorMessage
+  - [x] 에러 타입별 프리셋 (generic, network, server, notFound, permission)
+- [x] 빈 상태 UI
+  - [x] components/ux/empty-state.tsx 생성
+  - [x] EmptyState, EmptyStateInline 컴포넌트
+  - [x] 타입별 프리셋 (trips, places, schedules, search, itinerary)
+- [x] 토스트 알림 시스템
+  - [x] sonner 컴포넌트 layout.tsx에 추가
+  - [x] lib/toast.ts 유틸리티 함수 생성
+  - [x] showSuccessToast, showErrorToast, showPromiseToast 등
+  - [x] toastMessages 프리셋 메시지
+- [x] 풀다운 새로고침 (Pull-to-refresh)
+  - [x] components/ux/pull-to-refresh.tsx 생성
+  - [x] PullToRefresh 컴포넌트, usePullToRefresh 훅
+- [x] 스와이프 제스처 힌트
+  - [x] components/ux/swipe-hint.tsx 생성
+  - [x] SwipeHint, SwipeIndicator, SwipeNavArrows
+  - [x] SwipeableContainer, SwipeDeleteHint
+  - [x] globals.css에 swipe-hint 애니메이션 추가
 
 ---
 
