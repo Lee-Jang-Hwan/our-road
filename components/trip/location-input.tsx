@@ -28,6 +28,7 @@ import {
 import type { TripLocation } from "@/types/trip";
 import type { PlaceSearchResult } from "@/types/place";
 import { generateTimeOptions } from "@/lib/schemas";
+import { searchPlaces } from "@/actions/places";
 
 interface LocationInputProps {
   /** 선택된 위치 */
@@ -91,14 +92,11 @@ export function LocationInput({
     debounceRef.current = setTimeout(async () => {
       setIsSearching(true);
       try {
-        // TODO: Kakao API 연동 (actions/places/search-places.ts 사용)
-        // 임시로 빈 결과 반환
-        const response = await fetch(
-          `/api/places/search?query=${encodeURIComponent(query)}`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          setResults(data.results || []);
+        const result = await searchPlaces({ query, page: 1, size: 10 });
+        if (result.success && result.data) {
+          setResults(result.data.places);
+        } else {
+          setResults([]);
         }
       } catch (error) {
         console.error("장소 검색 실패:", error);
