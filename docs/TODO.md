@@ -275,16 +275,28 @@
 
 > 파일: `actions/optimize/`
 
-- [ ] `optimize-route.ts` - 경로 최적화 실행
-  - [ ] 1. 거리 행렬 계산
-  - [ ] 2. Nearest Neighbor 초기 경로
-  - [ ] 3. 2-opt 개선
-  - [ ] 4. 고정 일정 반영
-  - [ ] 5. 일자별 분배
-  - [ ] 6. 구간 이동 정보 조회
-- [ ] `save-itinerary.ts` - 최적화 결과 저장
-- [ ] `calculate-distance.ts` - 거리 행렬 계산 (단독 호출용)
-- [ ] `distribute-days.ts` - 일자별 분배 (단독 호출용)
+- [x] `optimize-route.ts` - 경로 최적화 실행
+  - [x] 1. 거리 행렬 계산
+  - [x] 2. Nearest Neighbor 초기 경로
+  - [x] 3. 2-opt 개선
+  - [x] 4. 고정 일정 반영
+  - [x] 5. 일자별 분배
+  - [x] 6. 구간 이동 정보 조회
+- [x] `save-itinerary.ts` - 최적화 결과 저장
+  - [x] 기존 일정 삭제 후 새 일정 저장
+  - [x] 일정 삭제 (deleteItinerary)
+  - [x] 일정 존재 여부 확인 (hasItinerary)
+- [x] `calculate-distance.ts` - 거리 행렬 계산 (단독 호출용)
+  - [x] 두 좌표 간 거리 계산 (calculateDistance)
+  - [x] 여행 전체 거리 행렬 계산 (calculateDistanceMatrix)
+  - [x] 빠른 거리 행렬 계산 (calculateQuickDistanceMatrix)
+  - [x] 두 장소 간 거리 조회 (getPlaceDistance)
+- [x] `distribute-days.ts` - 일자별 분배 (단독 호출용)
+  - [x] 장소 목록 일자별 분배 (distributeDays)
+  - [x] 전체 장소 분배 (distributeAllPlaces)
+  - [x] 분배 미리보기 (previewDistribution)
+  - [x] 특정 일자 분배 조정 (adjustDayDistribution)
+- [x] `index.ts` - 통합 export
 
 ### Phase 10: 일정 조회/수정 Server Actions
 
