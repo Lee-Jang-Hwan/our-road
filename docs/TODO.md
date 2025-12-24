@@ -19,13 +19,39 @@
 
 ### 환경 설정
 
-- [ ] `.env` 파일 업데이트
-  - [ ] `NEXT_PUBLIC_KAKAO_MAP_KEY` - Kakao Maps JavaScript 키
-  - [ ] `KAKAO_REST_API_KEY` - Kakao Local API 키
-  - [ ] `KAKAO_MOBILITY_KEY` - Kakao Mobility API 키
-  - [ ] `ODSAY_API_KEY` - ODsay 대중교통 API 키
-- [ ] ESLint, Prettier 설정 통일
-- [ ] Git 브랜치 전략 확정
+- [x] Next.js 15.5.7 + React 19 프로젝트 설정
+- [x] Clerk 인증 설정 (한국어 로컬라이제이션 포함)
+- [x] Supabase 연동 설정
+- [x] Tailwind CSS v4 설정
+- [x] ESLint 설정
+- [x] `.env` 파일 업데이트
+  - [x] `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+  - [x] `CLERK_SECRET_KEY`
+  - [x] `NEXT_PUBLIC_SUPABASE_URL`
+  - [x] `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - [x] `SUPABASE_SERVICE_ROLE_KEY`
+  - [x] `NEXT_PUBLIC_KAKAO_MAP_KEY` - Kakao Maps JavaScript 키 (템플릿 추가됨)
+  - [x] `KAKAO_REST_API_KEY` - Kakao Local API 키 (템플릿 추가됨)
+  - [x] `KAKAO_MOBILITY_KEY` - Kakao Mobility API 키 (템플릿 추가됨)
+  - [x] `ODSAY_API_KEY` - ODsay 대중교통 API 키 (템플릿 추가됨)
+- [x] `.env.example` 파일 생성 (API 키 발급 가이드 포함)
+- [x] Git 브랜치 전략 확정 (`docs/GIT_STRATEGY.md`)
+
+### Supabase 클라이언트 설정
+
+> 파일: `lib/supabase/`
+
+- [x] `lib/supabase/clerk-client.ts` - Client Component용 (useClerkSupabaseClient hook)
+- [x] `lib/supabase/server.ts` - Server Component/Server Action용
+- [x] `lib/supabase/service-role.ts` - 관리자 권한 작업용
+- [x] `lib/supabase/client.ts` - 인증 불필요한 공개 데이터용
+- [x] `lib/utils.ts` - 공통 유틸리티 (cn 함수)
+
+### 사용자 동기화 (Clerk → Supabase)
+
+- [x] `hooks/use-sync-user.ts` - 사용자 동기화 훅
+- [x] `components/providers/sync-user-provider.tsx` - 자동 동기화 Provider
+- [x] `app/api/sync-user/route.ts` - 동기화 API 라우트
 
 ### 타입 정의 (공용)
 
@@ -51,34 +77,50 @@
 
 #### 테이블 생성
 
-- [ ] `YYYYMMDD_create_trips.sql`
-  - [ ] trips 테이블 생성
-  - [ ] daily_start_time, daily_end_time 컬럼 포함 (기본 10:00, 22:00)
-  - [ ] RLS 정책 설정 (사용자별 접근 제어)
-- [ ] `YYYYMMDD_create_trip_places.sql`
-  - [ ] trip_places 테이블 생성
-  - [ ] estimated_duration 컬럼 (30~720분, CHECK 제약)
-  - [ ] RLS 정책 설정
-- [ ] `YYYYMMDD_create_fixed_schedules.sql`
-  - [ ] trip_fixed_schedules 테이블 생성
-  - [ ] RLS 정책 설정
-- [ ] `YYYYMMDD_create_itineraries.sql`
-  - [ ] trip_itineraries 테이블 생성
-  - [ ] schedule JSONB 컬럼 (상세 일정 배열)
-  - [ ] RLS 정책 설정
-- [ ] `YYYYMMDD_create_error_logs.sql`
-  - [ ] error_logs 테이블 생성
-  - [ ] 인덱스 생성 (resolved, severity, created_at, error_code)
-  - [ ] RLS 정책 설정 (관리자 전용)
-- [ ] `YYYYMMDD_create_admin_users.sql`
-  - [ ] admin_users 테이블 생성
-  - [ ] RLS 정책 설정 (super_admin만 관리)
-- [ ] `YYYYMMDD_enable_postgis.sql`
-  - [ ] PostGIS 확장 활성화
+- [x] `schema.sql` - 통합 스키마 파일 생성
+  - [x] PostGIS 확장 활성화
+  - [x] users 테이블 생성 (Clerk 동기화용)
+  - [x] trips 테이블 생성
+    - [x] daily_start_time, daily_end_time 컬럼 포함 (기본 10:00, 22:00)
+    - [x] 제약조건 (날짜 검증, 최대 30일)
+  - [x] trip_places 테이블 생성
+    - [x] estimated_duration 컬럼 (30~720분, CHECK 제약)
+    - [x] 30분 단위 제약조건
+  - [x] trip_fixed_schedules 테이블 생성
+  - [x] trip_itineraries 테이블 생성
+    - [x] schedule JSONB 컬럼 (상세 일정 배열)
+  - [x] error_logs 테이블 생성
+    - [x] 인덱스 생성 (resolved, severity, created_at, error_code)
+  - [x] admin_users 테이블 생성
+
+#### RLS 정책 설정
+
+- [x] users 테이블 RLS 정책
+- [x] trips 테이블 RLS 정책 (사용자별 접근 제어)
+- [x] trip_places 테이블 RLS 정책
+- [x] trip_fixed_schedules 테이블 RLS 정책
+- [x] trip_itineraries 테이블 RLS 정책
+- [x] error_logs 테이블 RLS 정책 (관리자 전용)
+- [x] admin_users 테이블 RLS 정책 (super_admin만 관리)
+
+#### Storage 버킷
+
+- [x] uploads 버킷 생성 (비공개, 50MB 제한)
+- [x] trip-images 버킷 생성 (공개, 10MB 제한)
+- [x] Storage RLS 정책 설정
+
+#### 유틸리티 함수
+
+- [x] `is_admin()` - 관리자 여부 확인
+- [x] `is_super_admin()` - Super Admin 여부 확인
+- [x] `is_trip_owner()` - 여행 소유자 확인
+- [x] `calculate_trip_days()` - 여행 일수 계산
+- [x] `format_duration()` - 체류 시간 포맷
+- [x] `update_updated_at_column()` - 트리거 함수
 
 ### Phase 2: Zod 스키마 정의
 
-> 파일: `lib/optimize/schemas.ts`
+> 파일: `lib/schemas/`
 
 - [ ] coordinateSchema - 좌표 검증 (lat: -90~90, lng: -180~180)
 - [ ] placeSchema - 장소 검증
@@ -229,6 +271,9 @@
 
 > **중요**: 모바일 최적화 고정형 레이아웃 (375px~430px)
 
+- [x] `app/layout.tsx` - RootLayout 설정
+  - [x] ClerkProvider 적용
+  - [x] SyncUserProvider 적용
 - [ ] 전역 컨테이너 CSS 설정
   ```css
   .app-container {
@@ -243,6 +288,13 @@
 
 ### Phase 2: shadcn 컴포넌트 설치
 
+- [x] `button` - 버튼 컴포넌트
+- [x] `input` - 입력 컴포넌트
+- [x] `form` - 폼 컴포넌트
+- [x] `label` - 라벨 컴포넌트
+- [x] `dialog` - 다이얼로그 컴포넌트
+- [x] `accordion` - 아코디언 컴포넌트
+- [x] `textarea` - 텍스트에어리어 컴포넌트
 - [ ] `pnpx shadcn@latest add calendar`
 - [ ] `pnpx shadcn@latest add popover`
 - [ ] `pnpx shadcn@latest add command`
@@ -253,7 +305,6 @@
 - [ ] `pnpx shadcn@latest add select`
 - [ ] `pnpx shadcn@latest add slider`
 - [ ] `pnpx shadcn@latest add toast`
-- [ ] `pnpx shadcn@latest add dialog`
 - [ ] `pnpx shadcn@latest add sheet`
 - [ ] `pnpx shadcn@latest add table`
 
@@ -352,6 +403,7 @@
 
 > 파일: `hooks/`
 
+- [x] `use-sync-user.ts` - Clerk→Supabase 사용자 동기화
 - [ ] `use-kakao-map.ts` - 맵 인스턴스 관리
 - [ ] `use-geolocation.ts` - 현재 위치 추적
 - [ ] `use-debounce.ts` - 디바운스 훅
@@ -361,9 +413,17 @@
 
 > 파일: `app/`
 
+#### 기존 페이지
+
+- [x] `app/page.tsx` - 메인 페이지 (임시)
+- [x] `app/layout.tsx` - 루트 레이아웃
+- [x] `app/globals.css` - 전역 스타일
+- [x] `app/auth-test/page.tsx` - 인증 테스트 페이지
+- [x] `app/storage-test/page.tsx` - 스토리지 테스트 페이지
+
 #### 메인/인증 페이지
 
-- [ ] `app/page.tsx` - 랜딩 페이지
+- [ ] `app/page.tsx` - 랜딩 페이지 (리뉴얼)
   - [ ] 모바일 고정형 레이아웃 적용
 - [ ] `app/(auth)/sign-in/[[...sign-in]]/page.tsx` - 로그인
 - [ ] `app/(auth)/sign-up/[[...sign-up]]/page.tsx` - 회원가입
@@ -425,7 +485,7 @@
   - [ ] 로고 사용 가이드
 - [ ] 브랜드 에셋 준비
   - [ ] 로고 SVG/PNG (다양한 크기)
-  - [ ] 파비콘 (`app/favicon.ico`)
+  - [x] 파비콘 (`app/favicon.ico`)
   - [ ] OG 이미지 (1200x630) (`public/og-image.png`)
   - [ ] 앱 아이콘 (`public/icons/`)
 
@@ -557,15 +617,35 @@
 
 ## 마일스톤
 
-| 마일스톤 | 목표 | 주요 완료 항목 |
-|---------|------|--------------|
-| **M1** | MVP 입력 기능 | 여행 생성, 장소 추가, 지도 표시 |
-| **M2** | 최적화 엔진 | TSP 알고리즘, 일자 분배, 경로 조회 |
-| **M3** | 결과 & 저장 | 일정표 UI (일자별 탭), 마이페이지, 저장 기능 |
-| **M4** | 네비게이션 | 현재 위치, 경로 안내, 앱 연동 |
-| **M5** | 관리자 기능 | 에러 로그 관리 페이지 |
-| **M6** | 마케팅 준비 | 브랜드 에셋, SNS 계정, 콘텐츠 제작 |
-| **M7** | 런칭 | 서비스 오픈, 런칭 캠페인, 모니터링 |
+| 마일스톤 | 목표 | 주요 완료 항목 | 상태 |
+|---------|------|--------------|------|
+| **M0** | 프로젝트 초기화 | Next.js, Clerk, Supabase 연동, DB 스키마 | ✅ 완료 |
+| **M1** | MVP 입력 기능 | 여행 생성, 장소 추가, 지도 표시 | 🔄 진행중 |
+| **M2** | 최적화 엔진 | TSP 알고리즘, 일자 분배, 경로 조회 | ⏳ 대기 |
+| **M3** | 결과 & 저장 | 일정표 UI (일자별 탭), 마이페이지, 저장 기능 | ⏳ 대기 |
+| **M4** | 네비게이션 | 현재 위치, 경로 안내, 앱 연동 | ⏳ 대기 |
+| **M5** | 관리자 기능 | 에러 로그 관리 페이지 | ⏳ 대기 |
+| **M6** | 마케팅 준비 | 브랜드 에셋, SNS 계정, 콘텐츠 제작 | ⏳ 대기 |
+| **M7** | 런칭 | 서비스 오픈, 런칭 캠페인, 모니터링 | ⏳ 대기 |
+
+---
+
+## 진행 상황 요약
+
+### 완료된 항목 (✅)
+
+- **인프라**: Next.js 15, React 19, Clerk 인증, Supabase 연동, Tailwind CSS v4
+- **DB**: 전체 스키마 생성 (7개 테이블 + RLS + Storage + 유틸리티 함수)
+- **Supabase 클라이언트**: 4종 (clerk-client, server, service-role, client)
+- **사용자 동기화**: Clerk → Supabase 자동 동기화 구현
+- **UI 컴포넌트**: shadcn 기본 컴포넌트 7개 설치
+
+### 다음 단계 (🔄)
+
+1. Kakao/ODsay API 키 등록
+2. TypeScript 타입 정의
+3. Zod 스키마 정의
+4. 여행 CRUD Server Actions 구현
 
 ---
 
