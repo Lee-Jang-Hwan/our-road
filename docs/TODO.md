@@ -383,18 +383,18 @@
 - [x] `dialog` - 다이얼로그 컴포넌트
 - [x] `accordion` - 아코디언 컴포넌트
 - [x] `textarea` - 텍스트에어리어 컴포넌트
-- [ ] `pnpx shadcn@latest add calendar`
-- [ ] `pnpx shadcn@latest add popover`
-- [ ] `pnpx shadcn@latest add command`
-- [ ] `pnpx shadcn@latest add card`
-- [ ] `pnpx shadcn@latest add tabs`
-- [ ] `pnpx shadcn@latest add badge`
-- [ ] `pnpx shadcn@latest add skeleton`
-- [ ] `pnpx shadcn@latest add select`
-- [ ] `pnpx shadcn@latest add slider`
-- [ ] `pnpx shadcn@latest add toast`
-- [ ] `pnpx shadcn@latest add sheet`
-- [ ] `pnpx shadcn@latest add table`
+- [x] `calendar` - 캘린더 컴포넌트
+- [x] `popover` - 팝오버 컴포넌트
+- [x] `command` - 커맨드 컴포넌트
+- [x] `card` - 카드 컴포넌트
+- [x] `tabs` - 탭 컴포넌트
+- [x] `badge` - 배지 컴포넌트
+- [x] `skeleton` - 스켈레톤 컴포넌트
+- [x] `select` - 셀렉트 컴포넌트
+- [x] `slider` - 슬라이더 컴포넌트
+- [x] `sonner` - 토스트 컴포넌트 (toast deprecated → sonner로 대체)
+- [x] `sheet` - 시트 컴포넌트
+- [x] `table` - 테이블 컴포넌트
 
 ### Phase 3: 여행 관련 UI 컴포넌트
 
