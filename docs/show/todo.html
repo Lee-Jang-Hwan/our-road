@@ -1,0 +1,1643 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OurRoad TODO - 개발 가이드</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/mermaid@10/dist/mermaid.min.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            devA: '#3B82F6',
+            devB: '#10B981',
+            devC: '#F59E0B',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+    body { font-family: 'Noto Sans KR', sans-serif; }
+    code, pre { font-family: 'JetBrains Mono', monospace; }
+    .gradient-a { background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); }
+    .gradient-b { background: linear-gradient(135deg, #10B981 0%, #059669 100%); }
+    .gradient-c { background: linear-gradient(135deg, #F59E0B 0%, #D97706 100%); }
+    .card-shadow { box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
+    .tooltip-content { display: none; }
+    .tooltip:hover .tooltip-content { display: block; }
+    .task-card { transition: all 0.3s ease; }
+    .task-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.15); }
+    .code-hint { background: #1e1e1e; border-radius: 8px; padding: 16px; margin-top: 12px; }
+    .beginner-tip {
+      background: linear-gradient(135deg, #FEF3C7 0%, #FDE68A 100%);
+      border-left: 4px solid #F59E0B;
+    }
+    .nav-tab { transition: all 0.2s ease; }
+    .nav-tab:hover { background: rgba(59, 130, 246, 0.1); }
+    .nav-tab.active { background: #3B82F6; color: white; }
+    details summary { cursor: pointer; }
+    details summary::-webkit-details-marker { display: none; }
+    .phase-connector {
+      position: absolute;
+      left: 24px;
+      top: 48px;
+      bottom: 0;
+      width: 2px;
+      background: linear-gradient(to bottom, #E5E7EB, transparent);
+    }
+  </style>
+</head>
+<body class="bg-gray-50">
+  <!-- Navigation -->
+  <nav class="fixed top-0 left-0 right-0 bg-white/95 backdrop-blur-sm shadow-sm z-50">
+    <div class="max-w-7xl mx-auto px-4 py-3">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <h1 class="text-xl font-bold text-gray-800">OurRoad TODO</h1>
+          <span class="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded-full">초보자 가이드</span>
+        </div>
+        <div class="flex gap-2">
+          <button onclick="showSection('all')" class="nav-tab active px-3 py-1.5 rounded-lg text-sm font-medium" id="tab-all">전체</button>
+          <button onclick="showSection('devA')" class="nav-tab px-3 py-1.5 rounded-lg text-sm font-medium text-devA" id="tab-devA">Dev A</button>
+          <button onclick="showSection('devB')" class="nav-tab px-3 py-1.5 rounded-lg text-sm font-medium text-devB" id="tab-devB">Dev B</button>
+          <button onclick="showSection('devC')" class="nav-tab px-3 py-1.5 rounded-lg text-sm font-medium text-devC" id="tab-devC">Dev C</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <header class="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 text-white pt-20 pb-12">
+    <div class="max-w-7xl mx-auto px-4">
+      <div class="text-center mb-8">
+        <h1 class="text-3xl md:text-4xl font-bold mb-3">개발 TODO 가이드</h1>
+        <p class="text-gray-400">초보 개발자도 이해할 수 있는 상세 구현 가이드</p>
+      </div>
+
+      <!-- Team Cards -->
+      <div class="grid md:grid-cols-3 gap-4 mt-8">
+        <div class="gradient-a rounded-xl p-5 text-center">
+          <div class="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
+            <span class="text-2xl">👨‍🎨</span>
+          </div>
+          <h3 class="font-bold text-lg">Dev A</h3>
+          <p class="text-sm text-blue-100">프론트엔드 (UI/UX)</p>
+          <p class="text-xs text-blue-200 mt-2">components/, app/plan/, app/my/</p>
+        </div>
+        <div class="gradient-b rounded-xl p-5 text-center">
+          <div class="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
+            <span class="text-2xl">👨‍💻</span>
+          </div>
+          <h3 class="font-bold text-lg">Dev B</h3>
+          <p class="text-sm text-green-100">백엔드 (API/DB)</p>
+          <p class="text-xs text-green-200 mt-2">actions/, lib/optimize/, supabase/</p>
+        </div>
+        <div class="gradient-c rounded-xl p-5 text-center">
+          <div class="w-14 h-14 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
+            <span class="text-2xl">👨‍🔧</span>
+          </div>
+          <h3 class="font-bold text-lg">Dev C</h3>
+          <p class="text-sm text-amber-100">지도/API + 마케팅</p>
+          <p class="text-xs text-amber-200 mt-2">lib/kakao/, components/map/, marketing/</p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-4 py-8">
+
+    <!-- Git 워크플로우 -->
+    <section class="mb-12 bg-white rounded-2xl p-6 card-shadow">
+      <h2 class="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+        <span class="text-2xl">🔀</span> Git 워크플로우 (필독!)
+      </h2>
+
+      <div class="beginner-tip rounded-lg p-4 mb-6">
+        <h4 class="font-bold text-amber-800 mb-2">💡 초보자를 위한 Git 설명</h4>
+        <p class="text-sm text-amber-900">
+          Git은 코드 버전 관리 도구입니다. 여러 명이 동시에 작업할 때 서로의 코드가 섞이지 않도록
+          <strong>"브랜치"</strong>라는 독립적인 작업 공간을 만들어 사용합니다.
+        </p>
+      </div>
+
+      <div class="mermaid mb-6">
+gitGraph
+  commit id: "초기 설정"
+  branch develop
+  checkout develop
+  commit id: "개발 시작"
+  branch feat/ui-landing
+  checkout feat/ui-landing
+  commit id: "Dev A 작업"
+  checkout develop
+  branch feat/api-trips
+  checkout feat/api-trips
+  commit id: "Dev B 작업"
+  checkout develop
+  branch feat/map-kakao
+  checkout feat/map-kakao
+  commit id: "Dev C 작업"
+  checkout develop
+  merge feat/ui-landing
+  merge feat/api-trips
+  merge feat/map-kakao
+  checkout main
+  merge develop id: "배포"
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-4">
+        <div class="bg-gray-50 rounded-lg p-4">
+          <h4 class="font-semibold text-gray-800 mb-3">📌 브랜치 명명 규칙</h4>
+          <div class="space-y-2 text-sm">
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-devA"></span>
+              <code class="bg-blue-50 px-2 py-0.5 rounded text-devA">feat/ui-*</code>
+              <span class="text-gray-500">→ Dev A (UI 작업)</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-devB"></span>
+              <code class="bg-green-50 px-2 py-0.5 rounded text-devB">feat/api-*</code>
+              <span class="text-gray-500">→ Dev B (API 작업)</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <span class="w-3 h-3 rounded-full bg-devC"></span>
+              <code class="bg-amber-50 px-2 py-0.5 rounded text-devC">feat/map-*</code>
+              <span class="text-gray-500">→ Dev C (지도 작업)</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-gray-50 rounded-lg p-4">
+          <h4 class="font-semibold text-gray-800 mb-3">⚠️ 필수 규칙</h4>
+          <ul class="space-y-2 text-sm text-gray-600">
+            <li class="flex items-start gap-2">
+              <span class="text-red-500">❌</span>
+              <span><code>main</code>, <code>develop</code>에 직접 푸시 금지</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✅</span>
+              <span>반드시 PR(Pull Request) 생성 후 머지</span>
+            </li>
+            <li class="flex items-start gap-2">
+              <span class="text-green-500">✅</span>
+              <span>매일 <code>develop</code>에서 rebase하기</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Git 명령어 -->
+      <details class="mt-4">
+        <summary class="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+          자주 쓰는 Git 명령어 보기
+        </summary>
+        <div class="code-hint mt-3">
+          <pre class="text-sm"><code class="language-bash"># 1. 새 브랜치 만들고 이동하기
+git checkout -b feat/ui-landing-page
+
+# 2. 변경사항 저장하기
+git add .
+git commit -m "feat: 랜딩 페이지 UI 구현"
+
+# 3. 원격 저장소에 푸시하기
+git push origin feat/ui-landing-page
+
+# 4. develop 브랜치의 최신 변경사항 가져오기 (매일!)
+git checkout develop
+git pull origin develop
+git checkout feat/ui-landing-page
+git rebase develop
+
+# 5. 충돌 해결 후
+git add .
+git rebase --continue</code></pre>
+        </div>
+      </details>
+    </section>
+
+    <!-- ==================== Dev A Section ==================== -->
+    <section id="section-devA" class="dev-section mb-12">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-12 h-12 gradient-a rounded-xl flex items-center justify-center">
+          <span class="text-white text-xl">A</span>
+        </div>
+        <div>
+          <h2 class="text-2xl font-bold text-gray-800">Dev A: 프론트엔드 (UI/UX)</h2>
+          <p class="text-gray-500 text-sm">사용자가 보는 화면과 상호작용을 담당합니다</p>
+        </div>
+      </div>
+
+      <!-- Phase 1: 기본 UI -->
+      <div class="bg-white rounded-2xl p-6 card-shadow mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-bold text-lg text-devA flex items-center gap-2">
+            <span class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-sm">1</span>
+            Phase 1: 기본 UI 구조
+          </h3>
+          <span class="text-xs px-3 py-1 bg-blue-50 text-devA rounded-full">feat/ui-base-components</span>
+        </div>
+
+        <!-- shadcn 설치 -->
+        <div class="task-card bg-gray-50 rounded-xl p-5 mb-4">
+          <div class="flex items-start gap-3">
+            <input type="checkbox" class="mt-1 w-5 h-5 rounded border-gray-300">
+            <div class="flex-1">
+              <h4 class="font-semibold text-gray-800">shadcn/ui 컴포넌트 설치</h4>
+              <p class="text-sm text-gray-500 mt-1">UI 라이브러리의 필요한 컴포넌트들을 설치합니다</p>
+
+              <div class="beginner-tip rounded-lg p-3 mt-3">
+                <p class="text-xs text-amber-800">
+                  <strong>💡 shadcn/ui란?</strong>
+                  미리 만들어진 예쁜 UI 컴포넌트 모음입니다. 버튼, 입력창, 달력 등을 직접 만들 필요 없이
+                  명령어 하나로 설치해서 바로 사용할 수 있어요!
+                </p>
+              </div>
+
+              <div class="code-hint">
+                <pre class="text-sm"><code class="language-bash"># 터미널에서 프로젝트 폴더로 이동 후 실행
+# 각 컴포넌트를 하나씩 설치합니다
+
+pnpx shadcn@latest add calendar    # 📅 달력 (여행 기간 선택용)
+pnpx shadcn@latest add popover     # 💬 팝오버 (툴팁, 드롭다운용)
+pnpx shadcn@latest add command     # 🔍 커맨드 (검색 자동완성용)
+pnpx shadcn@latest add card        # 🃏 카드 (장소, 일정 카드용)
+pnpx shadcn@latest add tabs        # 📑 탭 (페이지 내 탭 전환용)
+pnpx shadcn@latest add badge       # 🏷️ 뱃지 (카테고리 태그용)
+pnpx shadcn@latest add skeleton    # 💀 스켈레톤 (로딩 상태용)
+pnpx shadcn@latest add select      # ▼ 셀렉트 (드롭다운 선택용)
+pnpx shadcn@latest add toast       # 🔔 토스트 (알림 메시지용)</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- date-range-picker -->
+        <div class="task-card bg-gray-50 rounded-xl p-5 mb-4">
+          <div class="flex items-start gap-3">
+            <input type="checkbox" class="mt-1 w-5 h-5 rounded border-gray-300">
+            <div class="flex-1">
+              <h4 class="font-semibold text-gray-800">components/trip/date-range-picker.tsx</h4>
+              <p class="text-sm text-gray-500 mt-1">여행 시작일과 종료일을 선택하는 달력 컴포넌트</p>
+
+              <div class="flex flex-wrap gap-2 mt-3">
+                <span class="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded">사용: Calendar</span>
+                <span class="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded">사용: Popover</span>
+                <span class="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">라이브러리: date-fns</span>
+              </div>
+
+              <details class="mt-3">
+                <summary class="text-sm text-devA font-medium cursor-pointer">📝 구현 가이드 보기</summary>
+                <div class="code-hint mt-2">
+                  <pre class="text-sm"><code class="language-typescript">// components/trip/date-range-picker.tsx
+"use client";
+
+import { useState } from "react";
+import { format } from "date-fns";
+import { ko } from "date-fns/locale";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { CalendarIcon } from "lucide-react";
+import { DateRange } from "react-day-picker";
+
+// Props 타입 정의 - 부모 컴포넌트에서 전달받을 값들
+interface DateRangePickerProps {
+  value?: DateRange;           // 현재 선택된 날짜 범위
+  onChange: (range: DateRange | undefined) => void;  // 날짜 변경 시 호출될 함수
+}
+
+export function DateRangePicker({ value, onChange }: DateRangePickerProps) {
+  // Popover 열림/닫힘 상태 관리
+  const [open, setOpen] = useState(false);
+
+  return (
+    &lt;Popover open={open} onOpenChange={setOpen}&gt;
+      {/* 버튼 클릭 시 달력 팝업 열림 */}
+      &lt;PopoverTrigger asChild&gt;
+        &lt;Button variant="outline" className="w-full justify-start text-left"&gt;
+          &lt;CalendarIcon className="mr-2 h-4 w-4" /&gt;
+          {value?.from ? (
+            value.to ? (
+              // 시작일과 종료일 모두 선택된 경우
+              &lt;&gt;
+                {format(value.from, "PPP", { locale: ko })} -{" "}
+                {format(value.to, "PPP", { locale: ko })}
+              &lt;/&gt;
+            ) : (
+              // 시작일만 선택된 경우
+              format(value.from, "PPP", { locale: ko })
+            )
+          ) : (
+            // 아무것도 선택 안 된 경우
+            "여행 기간을 선택하세요"
+          )}
+        &lt;/Button&gt;
+      &lt;/PopoverTrigger&gt;
+
+      {/* 팝업 내용 - 달력 */}
+      &lt;PopoverContent className="w-auto p-0" align="start"&gt;
+        &lt;Calendar
+          mode="range"              {/* 범위 선택 모드 */}
+          selected={value}          {/* 현재 선택된 값 */}
+          onSelect={onChange}       {/* 선택 변경 시 콜백 */}
+          numberOfMonths={2}        {/* 2개월 표시 */}
+          locale={ko}               {/* 한국어 */}
+          disabled={{ before: new Date() }}  {/* 오늘 이전 날짜 비활성화 */}
+        /&gt;
+      &lt;/PopoverContent&gt;
+    &lt;/Popover&gt;
+  );
+}</code></pre>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+
+        <!-- location-input -->
+        <div class="task-card bg-gray-50 rounded-xl p-5 mb-4">
+          <div class="flex items-start gap-3">
+            <input type="checkbox" class="mt-1 w-5 h-5 rounded border-gray-300">
+            <div class="flex-1">
+              <h4 class="font-semibold text-gray-800">components/trip/location-input.tsx</h4>
+              <p class="text-sm text-gray-500 mt-1">출발지/도착지를 검색하고 선택하는 자동완성 입력창</p>
+
+              <div class="beginner-tip rounded-lg p-3 mt-3">
+                <p class="text-xs text-amber-800">
+                  <strong>💡 자동완성(Autocomplete)이란?</strong>
+                  사용자가 "서울"이라고 타이핑하면 "서울역", "서울시청" 등 관련 장소를
+                  실시간으로 보여주는 기능입니다. Dev C가 만든 Kakao 검색 API를 사용합니다.
+                </p>
+              </div>
+
+              <details class="mt-3">
+                <summary class="text-sm text-devA font-medium cursor-pointer">📝 구현 가이드 보기</summary>
+                <div class="code-hint mt-2">
+                  <pre class="text-sm"><code class="language-typescript">// components/trip/location-input.tsx
+"use client";
+
+import { useState, useEffect } from "react";
+import { Command, CommandInput, CommandList, CommandItem } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Button } from "@/components/ui/button";
+import { MapPin, Loader2 } from "lucide-react";
+import { searchPlaces } from "@/actions/places/search-places"; // Dev C가 만들 액션
+
+// 장소 데이터 타입
+interface Place {
+  id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+}
+
+interface LocationInputProps {
+  label: string;           // "출발지" 또는 "도착지"
+  value?: Place;           // 선택된 장소
+  onChange: (place: Place) => void;
+}
+
+export function LocationInput({ label, value, onChange }: LocationInputProps) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");           // 검색어
+  const [results, setResults] = useState&lt;Place[]&gt;([]);  // 검색 결과
+  const [loading, setLoading] = useState(false);    // 로딩 상태
+
+  // 🔍 검색어가 바뀔 때마다 API 호출 (debounce 적용)
+  useEffect(() => {
+    // 검색어가 2글자 미만이면 검색 안 함
+    if (query.length < 2) {
+      setResults([]);
+      return;
+    }
+
+    // 300ms 후에 검색 실행 (타이핑 중에는 기다림)
+    const timer = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const data = await searchPlaces(query);
+        setResults(data);
+      } catch (error) {
+        console.error("검색 실패:", error);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);  // 💡 debounce: 300ms
+
+    // cleanup: 새 검색어 입력 시 이전 타이머 취소
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  return (
+    &lt;div className="space-y-2"&gt;
+      &lt;label className="text-sm font-medium text-gray-700"&gt;{label}&lt;/label&gt;
+      &lt;Popover open={open} onOpenChange={setOpen}&gt;
+        &lt;PopoverTrigger asChild&gt;
+          &lt;Button variant="outline" className="w-full justify-start"&gt;
+            &lt;MapPin className="mr-2 h-4 w-4 text-gray-400" /&gt;
+            {value ? value.name : `${label}을(를) 검색하세요`}
+          &lt;/Button&gt;
+        &lt;/PopoverTrigger&gt;
+        &lt;PopoverContent className="w-80 p-0"&gt;
+          &lt;Command&gt;
+            &lt;CommandInput
+              placeholder="장소명 또는 주소 검색..."
+              value={query}
+              onValueChange={setQuery}
+            /&gt;
+            &lt;CommandList&gt;
+              {loading && (
+                &lt;div className="p-4 text-center text-gray-500"&gt;
+                  &lt;Loader2 className="h-4 w-4 animate-spin mx-auto" /&gt;
+                &lt;/div&gt;
+              )}
+              {results.map((place) => (
+                &lt;CommandItem
+                  key={place.id}
+                  onSelect={() => {
+                    onChange(place);
+                    setOpen(false);
+                  }}
+                &gt;
+                  &lt;MapPin className="mr-2 h-4 w-4" /&gt;
+                  &lt;div&gt;
+                    &lt;p className="font-medium"&gt;{place.name}&lt;/p&gt;
+                    &lt;p className="text-xs text-gray-500"&gt;{place.address}&lt;/p&gt;
+                  &lt;/div&gt;
+                &lt;/CommandItem&gt;
+              ))}
+            &lt;/CommandList&gt;
+          &lt;/Command&gt;
+        &lt;/PopoverContent&gt;
+      &lt;/Popover&gt;
+    &lt;/div&gt;
+  );
+}</code></pre>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+
+        <!-- transport-selector -->
+        <div class="task-card bg-gray-50 rounded-xl p-5">
+          <div class="flex items-start gap-3">
+            <input type="checkbox" class="mt-1 w-5 h-5 rounded border-gray-300">
+            <div class="flex-1">
+              <h4 class="font-semibold text-gray-800">components/trip/transport-selector.tsx</h4>
+              <p class="text-sm text-gray-500 mt-1">이동수단(대중교통/차량)을 선택하는 체크박스 그룹</p>
+
+              <details class="mt-3">
+                <summary class="text-sm text-devA font-medium cursor-pointer">📝 구현 가이드 보기</summary>
+                <div class="code-hint mt-2">
+                  <pre class="text-sm"><code class="language-typescript">// components/trip/transport-selector.tsx
+"use client";
+
+import { Train, Car } from "lucide-react";
+
+// 이동수단 타입
+type TransportMode = "public" | "car";
+
+interface TransportSelectorProps {
+  value: TransportMode[];                    // 선택된 이동수단들
+  onChange: (modes: TransportMode[]) => void;
+}
+
+export function TransportSelector({ value, onChange }: TransportSelectorProps) {
+  // 체크박스 토글 함수
+  const toggleMode = (mode: TransportMode) => {
+    if (value.includes(mode)) {
+      // 이미 선택되어 있으면 제거 (단, 최소 1개는 유지)
+      if (value.length > 1) {
+        onChange(value.filter((m) => m !== mode));
+      }
+    } else {
+      // 선택 안 되어 있으면 추가
+      onChange([...value, mode]);
+    }
+  };
+
+  return (
+    &lt;div className="space-y-2"&gt;
+      &lt;label className="text-sm font-medium text-gray-700"&gt;이동수단&lt;/label&gt;
+      &lt;div className="flex gap-3"&gt;
+        {/* 대중교통 옵션 */}
+        &lt;button
+          type="button"
+          onClick={() => toggleMode("public")}
+          className={`flex-1 p-4 rounded-xl border-2 transition-all ${
+            value.includes("public")
+              ? "border-blue-500 bg-blue-50"
+              : "border-gray-200 hover:border-gray-300"
+          }`}
+        &gt;
+          &lt;Train className={`h-6 w-6 mx-auto mb-2 ${
+            value.includes("public") ? "text-blue-500" : "text-gray-400"
+          }`} /&gt;
+          &lt;p className="text-sm font-medium"&gt;도보 + 대중교통&lt;/p&gt;
+        &lt;/button&gt;
+
+        {/* 차량 옵션 */}
+        &lt;button
+          type="button"
+          onClick={() => toggleMode("car")}
+          className={`flex-1 p-4 rounded-xl border-2 transition-all ${
+            value.includes("car")
+              ? "border-blue-500 bg-blue-50"
+              : "border-gray-200 hover:border-gray-300"
+          }`}
+        &gt;
+          &lt;Car className={`h-6 w-6 mx-auto mb-2 ${
+            value.includes("car") ? "text-blue-500" : "text-gray-400"
+          }`} /&gt;
+          &lt;p className="text-sm font-medium"&gt;자동차&lt;/p&gt;
+        &lt;/button&gt;
+      &lt;/div&gt;
+      &lt;p className="text-xs text-gray-500"&gt;
+        * 복수 선택 시 구간별로 최적 수단을 자동 추천합니다
+      &lt;/p&gt;
+    &lt;/div&gt;
+  );
+}</code></pre>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 2: 장소 UI -->
+      <div class="bg-white rounded-2xl p-6 card-shadow mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-bold text-lg text-devA flex items-center gap-2">
+            <span class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center text-sm">2</span>
+            Phase 2: 장소 관련 UI
+          </h3>
+          <span class="text-xs px-3 py-1 bg-blue-50 text-devA rounded-full">feat/ui-places</span>
+        </div>
+
+        <div class="task-card bg-gray-50 rounded-xl p-5 mb-4">
+          <div class="flex items-start gap-3">
+            <input type="checkbox" class="mt-1 w-5 h-5 rounded border-gray-300">
+            <div class="flex-1">
+              <h4 class="font-semibold text-gray-800">components/places/place-card.tsx</h4>
+              <p class="text-sm text-gray-500 mt-1">장소 정보를 보여주는 카드 컴포넌트</p>
+
+              <details class="mt-3">
+                <summary class="text-sm text-devA font-medium cursor-pointer">📝 구현 가이드 보기</summary>
+                <div class="code-hint mt-2">
+                  <pre class="text-sm"><code class="language-typescript">// components/places/place-card.tsx
+"use client";
+
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { MapPin, Clock, X, GripVertical } from "lucide-react";
+
+interface PlaceCardProps {
+  place: {
+    id: string;
+    name: string;
+    address: string;
+    category?: string;
+    estimatedDuration: number;  // 체류시간 (분)
+  };
+  order: number;                // 방문 순서
+  onRemove: () => void;         // 삭제 버튼 클릭 시
+  onDurationChange: (minutes: number) => void;  // 체류시간 변경 시
+  isDragging?: boolean;         // 드래그 중인지 (드래그앤드롭용)
+}
+
+export function PlaceCard({
+  place,
+  order,
+  onRemove,
+  onDurationChange,
+  isDragging
+}: PlaceCardProps) {
+  return (
+    &lt;Card className={`p-4 ${isDragging ? "shadow-lg ring-2 ring-blue-500" : ""}`}&gt;
+      &lt;div className="flex items-start gap-3"&gt;
+        {/* 드래그 핸들 - 순서 변경용 */}
+        &lt;div className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"&gt;
+          &lt;GripVertical className="h-5 w-5" /&gt;
+        &lt;/div&gt;
+
+        {/* 순서 번호 */}
+        &lt;div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-bold"&gt;
+          {order}
+        &lt;/div&gt;
+
+        {/* 장소 정보 */}
+        &lt;div className="flex-1 min-w-0"&gt;
+          &lt;div className="flex items-start justify-between gap-2"&gt;
+            &lt;div&gt;
+              &lt;h4 className="font-semibold text-gray-900 truncate"&gt;{place.name}&lt;/h4&gt;
+              &lt;p className="text-sm text-gray-500 flex items-center gap-1 mt-0.5"&gt;
+                &lt;MapPin className="h-3 w-3" /&gt;
+                &lt;span className="truncate"&gt;{place.address}&lt;/span&gt;
+              &lt;/p&gt;
+            &lt;/div&gt;
+
+            {/* 삭제 버튼 */}
+            &lt;Button
+              variant="ghost"
+              size="sm"
+              onClick={onRemove}
+              className="text-gray-400 hover:text-red-500"
+            &gt;
+              &lt;X className="h-4 w-4" /&gt;
+            &lt;/Button&gt;
+          &lt;/div&gt;
+
+          &lt;div className="flex items-center gap-3 mt-3"&gt;
+            {/* 카테고리 뱃지 */}
+            {place.category && (
+              &lt;Badge variant="secondary"&gt;{place.category}&lt;/Badge&gt;
+            )}
+
+            {/* 체류시간 입력 */}
+            &lt;div className="flex items-center gap-2 text-sm text-gray-600"&gt;
+              &lt;Clock className="h-4 w-4" /&gt;
+              &lt;select
+                value={place.estimatedDuration}
+                onChange={(e) => onDurationChange(Number(e.target.value))}
+                className="bg-transparent border-none text-sm font-medium focus:outline-none"
+              &gt;
+                &lt;option value={30}&gt;30분&lt;/option&gt;
+                &lt;option value={60}&gt;1시간&lt;/option&gt;
+                &lt;option value={90}&gt;1시간 30분&lt;/option&gt;
+                &lt;option value={120}&gt;2시간&lt;/option&gt;
+                &lt;option value={180}&gt;3시간&lt;/option&gt;
+                &lt;option value={240}&gt;4시간&lt;/option&gt;
+              &lt;/select&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/Card&gt;
+  );
+}</code></pre>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+
+        <div class="task-card bg-gray-50 rounded-xl p-5">
+          <div class="flex items-start gap-3">
+            <input type="checkbox" class="mt-1 w-5 h-5 rounded border-gray-300">
+            <div class="flex-1">
+              <h4 class="font-semibold text-gray-800">components/places/place-list.tsx</h4>
+              <p class="text-sm text-gray-500 mt-1">장소 카드 목록 + 드래그앤드롭 순서 변경</p>
+
+              <div class="beginner-tip rounded-lg p-3 mt-3">
+                <p class="text-xs text-amber-800">
+                  <strong>💡 드래그앤드롭이란?</strong>
+                  마우스로 항목을 끌어다가 원하는 위치에 놓는 것입니다.
+                  <code>@dnd-kit/core</code> 라이브러리를 사용하면 쉽게 구현할 수 있어요!
+                </p>
+              </div>
+
+              <div class="code-hint mt-2">
+                <pre class="text-sm"><code class="language-bash"># 드래그앤드롭 라이브러리 설치
+pnpm add @dnd-kit/core @dnd-kit/sortable @dnd-kit/utilities</code></pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== Dev B Section ==================== -->
+    <section id="section-devB" class="dev-section mb-12">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-12 h-12 gradient-b rounded-xl flex items-center justify-center">
+          <span class="text-white text-xl">B</span>
+        </div>
+        <div>
+          <h2 class="text-2xl font-bold text-gray-800">Dev B: 백엔드 (API/DB/최적화)</h2>
+          <p class="text-gray-500 text-sm">데이터 저장, 조회, 경로 최적화를 담당합니다</p>
+        </div>
+      </div>
+
+      <!-- Phase 1: 데이터베이스 -->
+      <div class="bg-white rounded-2xl p-6 card-shadow mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-bold text-lg text-devB flex items-center gap-2">
+            <span class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-sm">1</span>
+            Phase 1: 데이터베이스 설정
+          </h3>
+          <span class="text-xs px-3 py-1 bg-green-50 text-devB rounded-full">feat/api-database</span>
+        </div>
+
+        <div class="beginner-tip rounded-lg p-4 mb-4">
+          <h4 class="font-bold text-amber-800 mb-2">💡 Supabase 마이그레이션이란?</h4>
+          <p class="text-sm text-amber-900">
+            마이그레이션은 데이터베이스의 구조(테이블, 컬럼 등)를 코드로 관리하는 방법입니다.
+            SQL 파일을 만들어두면 <code>supabase db push</code> 명령으로 DB에 적용할 수 있어요.
+            팀원들도 같은 파일로 동일한 DB 구조를 만들 수 있습니다.
+          </p>
+        </div>
+
+        <div class="task-card bg-gray-50 rounded-xl p-5 mb-4">
+          <div class="flex items-start gap-3">
+            <input type="checkbox" class="mt-1 w-5 h-5 rounded border-gray-300">
+            <div class="flex-1">
+              <h4 class="font-semibold text-gray-800">trips 테이블 생성</h4>
+              <p class="text-sm text-gray-500 mt-1">여행 계획의 기본 정보를 저장하는 테이블</p>
+
+              <details class="mt-3">
+                <summary class="text-sm text-devB font-medium cursor-pointer">📝 SQL 코드 보기</summary>
+                <div class="code-hint mt-2">
+                  <pre class="text-sm"><code class="language-sql">-- supabase/migrations/20250101000001_create_trips.sql
+-- 💡 파일명의 숫자는 날짜+시간 형식 (예: 20250101000001)
+--    마이그레이션 실행 순서를 정하기 위함입니다.
+
+-- 여행 테이블 생성
+CREATE TABLE trips (
+  -- 🔑 id: 각 여행의 고유 식별자 (UUID 자동 생성)
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  -- 👤 user_id: 이 여행을 만든 사용자 (Clerk ID)
+  --    users 테이블의 clerk_id를 참조합니다
+  user_id TEXT NOT NULL REFERENCES users(clerk_id),
+
+  -- 📝 title: 여행 제목 (예: "제주도 3박4일")
+  title TEXT NOT NULL,
+
+  -- 📅 start_date, end_date: 여행 시작일과 종료일
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+
+  -- 📍 origin: 출발지 정보 (JSON 형태)
+  --    예: {"name": "서울역", "address": "서울시 중구...", "lat": 37.5, "lng": 127.0}
+  origin JSONB NOT NULL,
+
+  -- 📍 destination: 도착지 정보 (같은 형태)
+  destination JSONB NOT NULL,
+
+  -- 🚗 transport_mode: 이동수단 (배열)
+  --    예: ['public'] 또는 ['car'] 또는 ['public', 'car']
+  transport_mode TEXT[] NOT NULL,
+
+  -- 📊 status: 여행 상태
+  --    'draft': 작성 중
+  --    'optimized': 최적화 완료
+  --    'completed': 여행 완료
+  status TEXT DEFAULT 'draft',
+
+  -- 🕐 생성/수정 시간 자동 기록
+  created_at TIMESTAMPTZ DEFAULT now(),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 🔒 RLS (Row Level Security) 활성화
+-- 사용자가 자신의 데이터만 볼 수 있도록 보안 설정
+ALTER TABLE trips ENABLE ROW LEVEL SECURITY;
+
+-- 📖 SELECT 정책: 자신의 여행만 조회 가능
+CREATE POLICY "Users can view own trips"
+  ON trips FOR SELECT
+  -- auth.jwt()->>'sub'는 현재 로그인한 사용자의 Clerk ID
+  USING (auth.jwt()->>'sub' = user_id);
+
+-- ➕ INSERT 정책: 자신의 여행만 생성 가능
+CREATE POLICY "Users can create own trips"
+  ON trips FOR INSERT
+  WITH CHECK (auth.jwt()->>'sub' = user_id);
+
+-- ✏️ UPDATE 정책: 자신의 여행만 수정 가능
+CREATE POLICY "Users can update own trips"
+  ON trips FOR UPDATE
+  USING (auth.jwt()->>'sub' = user_id);
+
+-- 🗑️ DELETE 정책: 자신의 여행만 삭제 가능
+CREATE POLICY "Users can delete own trips"
+  ON trips FOR DELETE
+  USING (auth.jwt()->>'sub' = user_id);</code></pre>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+
+        <div class="task-card bg-gray-50 rounded-xl p-5">
+          <div class="flex items-start gap-3">
+            <input type="checkbox" class="mt-1 w-5 h-5 rounded border-gray-300">
+            <div class="flex-1">
+              <h4 class="font-semibold text-gray-800">trip_places 테이블 생성</h4>
+              <p class="text-sm text-gray-500 mt-1">여행에 추가된 방문 장소들을 저장하는 테이블</p>
+
+              <details class="mt-3">
+                <summary class="text-sm text-devB font-medium cursor-pointer">📝 SQL 코드 보기</summary>
+                <div class="code-hint mt-2">
+                  <pre class="text-sm"><code class="language-sql">-- supabase/migrations/20250101000002_create_trip_places.sql
+
+CREATE TABLE trip_places (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  -- 🔗 어떤 여행에 속한 장소인지
+  --    trips 테이블 삭제 시 함께 삭제됨 (CASCADE)
+  trip_id UUID NOT NULL REFERENCES trips(id) ON DELETE CASCADE,
+
+  -- 장소 기본 정보
+  name TEXT NOT NULL,           -- 장소명 (예: "경복궁")
+  address TEXT NOT NULL,        -- 주소
+  lat DOUBLE PRECISION NOT NULL,  -- 위도 (예: 37.579617)
+  lng DOUBLE PRECISION NOT NULL,  -- 경도 (예: 126.977041)
+
+  -- 부가 정보
+  category TEXT,                -- 카테고리 (예: "관광명소")
+  kakao_place_id TEXT,          -- Kakao API에서 받은 장소 ID
+  priority INT,                 -- 사용자 지정 우선순위
+  estimated_duration INT DEFAULT 60,  -- 예상 체류시간 (분)
+
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- RLS 설정 (trips와 연결하여 권한 확인)
+ALTER TABLE trip_places ENABLE ROW LEVEL SECURITY;
+
+-- 💡 서브쿼리로 trips 테이블의 user_id 확인
+CREATE POLICY "Users can manage trip places"
+  ON trip_places FOR ALL
+  USING (
+    EXISTS (
+      SELECT 1 FROM trips
+      WHERE trips.id = trip_places.trip_id
+      AND auth.jwt()->>'sub' = trips.user_id
+    )
+  );</code></pre>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 2: Server Actions -->
+      <div class="bg-white rounded-2xl p-6 card-shadow mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-bold text-lg text-devB flex items-center gap-2">
+            <span class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-sm">2</span>
+            Phase 2: 여행 CRUD Server Actions
+          </h3>
+          <span class="text-xs px-3 py-1 bg-green-50 text-devB rounded-full">feat/api-trips-crud</span>
+        </div>
+
+        <div class="beginner-tip rounded-lg p-4 mb-4">
+          <h4 class="font-bold text-amber-800 mb-2">💡 Server Action이란?</h4>
+          <p class="text-sm text-amber-900">
+            Next.js 13+에서 제공하는 기능으로, 서버에서 실행되는 함수입니다.
+            API 라우트를 따로 만들지 않고도 서버 로직을 작성할 수 있어요.
+            파일 맨 위에 <code>"use server";</code>를 써주면 됩니다!
+          </p>
+        </div>
+
+        <div class="task-card bg-gray-50 rounded-xl p-5 mb-4">
+          <div class="flex items-start gap-3">
+            <input type="checkbox" class="mt-1 w-5 h-5 rounded border-gray-300">
+            <div class="flex-1">
+              <h4 class="font-semibold text-gray-800">actions/trips/create-trip.ts</h4>
+              <p class="text-sm text-gray-500 mt-1">새 여행 계획을 생성하는 액션</p>
+
+              <details class="mt-3">
+                <summary class="text-sm text-devB font-medium cursor-pointer">📝 구현 가이드 보기</summary>
+                <div class="code-hint mt-2">
+                  <pre class="text-sm"><code class="language-typescript">// actions/trips/create-trip.ts
+"use server";  // ⚠️ 이 줄이 있어야 Server Action으로 동작!
+
+import { auth } from "@clerk/nextjs/server";
+import { createClerkSupabaseClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
+
+// 📌 입력 타입 정의
+interface CreateTripInput {
+  title: string;
+  startDate: string;    // ISO 형식 (예: "2025-01-15")
+  endDate: string;
+  origin: {
+    name: string;
+    address: string;
+    lat: number;
+    lng: number;
+  };
+  destination: {
+    name: string;
+    address: string;
+    lat: number;
+    lng: number;
+  };
+  transportMode: ("public" | "car")[];
+}
+
+// 📌 응답 타입 정의
+interface CreateTripResult {
+  success: boolean;
+  data?: { id: string };       // 성공 시 생성된 여행 ID
+  error?: { code: string; message: string };  // 실패 시 에러 정보
+}
+
+export async function createTrip(input: CreateTripInput): Promise&lt;CreateTripResult&gt; {
+  try {
+    // 1️⃣ 현재 로그인한 사용자 확인
+    const { userId } = await auth();
+    if (!userId) {
+      return {
+        success: false,
+        error: { code: "UNAUTHORIZED", message: "로그인이 필요합니다" }
+      };
+    }
+
+    // 2️⃣ Supabase 클라이언트 생성 (현재 사용자 권한으로)
+    const supabase = await createClerkSupabaseClient();
+
+    // 3️⃣ 데이터베이스에 여행 추가
+    const { data, error } = await supabase
+      .from("trips")
+      .insert({
+        user_id: userId,
+        title: input.title,
+        start_date: input.startDate,
+        end_date: input.endDate,
+        origin: input.origin,           // JSONB 컬럼에 객체 저장
+        destination: input.destination,
+        transport_mode: input.transportMode,
+        status: "draft"
+      })
+      .select("id")    // 생성된 ID만 반환
+      .single();       // 단일 결과 반환
+
+    // 4️⃣ 에러 처리
+    if (error) {
+      console.error("여행 생성 실패:", error);
+      return {
+        success: false,
+        error: { code: "DB_ERROR", message: error.message }
+      };
+    }
+
+    // 5️⃣ 캐시 갱신 (마이페이지 목록 새로고침)
+    revalidatePath("/my");
+
+    // 6️⃣ 성공 응답
+    return {
+      success: true,
+      data: { id: data.id }
+    };
+
+  } catch (error) {
+    console.error("예상치 못한 에러:", error);
+    return {
+      success: false,
+      error: { code: "UNKNOWN", message: "알 수 없는 오류가 발생했습니다" }
+    };
+  }
+}</code></pre>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phase 5: 최적화 엔진 -->
+      <div class="bg-white rounded-2xl p-6 card-shadow">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-bold text-lg text-devB flex items-center gap-2">
+            <span class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center text-sm">5</span>
+            Phase 5: 최적화 엔진
+          </h3>
+          <span class="text-xs px-3 py-1 bg-green-50 text-devB rounded-full">feat/api-optimize</span>
+        </div>
+
+        <div class="beginner-tip rounded-lg p-4 mb-4">
+          <h4 class="font-bold text-amber-800 mb-2">💡 TSP 알고리즘이란?</h4>
+          <p class="text-sm text-amber-900 mb-2">
+            <strong>TSP (Traveling Salesman Problem)</strong>: 여러 도시를 한 번씩 방문하고
+            출발점으로 돌아오는 가장 짧은 경로를 찾는 문제입니다.
+          </p>
+          <p class="text-sm text-amber-900">
+            완벽한 최적해를 찾으려면 시간이 너무 오래 걸려서,
+            <strong>근사(approximation)</strong> 알고리즘을 사용합니다:
+          </p>
+          <ul class="text-sm text-amber-900 mt-2 space-y-1 list-disc list-inside">
+            <li><strong>Nearest Neighbor</strong>: 현재 위치에서 가장 가까운 곳 선택 (빠르지만 정확도 낮음)</li>
+            <li><strong>2-opt</strong>: 경로의 일부를 뒤집어서 더 짧아지면 적용 (개선 알고리즘)</li>
+          </ul>
+        </div>
+
+        <div class="task-card bg-gray-50 rounded-xl p-5 mb-4">
+          <div class="flex items-start gap-3">
+            <input type="checkbox" class="mt-1 w-5 h-5 rounded border-gray-300">
+            <div class="flex-1">
+              <h4 class="font-semibold text-gray-800">lib/optimize/distance-matrix.ts</h4>
+              <p class="text-sm text-gray-500 mt-1">모든 장소 쌍 사이의 거리를 계산하는 함수</p>
+
+              <details class="mt-3">
+                <summary class="text-sm text-devB font-medium cursor-pointer">📝 구현 가이드 보기</summary>
+                <div class="code-hint mt-2">
+                  <pre class="text-sm"><code class="language-typescript">// lib/optimize/distance-matrix.ts
+
+interface Location {
+  lat: number;  // 위도
+  lng: number;  // 경도
+}
+
+/**
+ * 🌍 Haversine 공식: 지구 표면의 두 점 사이 거리 계산
+ *
+ * 왜 필요한가?
+ * - 지구는 둥글기 때문에 일반 피타고라스 정리로 거리를 구하면 오차가 큽니다
+ * - Haversine 공식은 지구의 곡률을 고려해서 정확한 거리를 계산합니다
+ *
+ * @param loc1 - 첫 번째 위치 (위도, 경도)
+ * @param loc2 - 두 번째 위치 (위도, 경도)
+ * @returns 두 점 사이의 거리 (미터)
+ */
+export function calculateHaversineDistance(loc1: Location, loc2: Location): number {
+  // 지구 반지름 (미터)
+  const R = 6371000;
+
+  // 위도를 라디안으로 변환 (삼각함수는 라디안을 사용)
+  const lat1Rad = (loc1.lat * Math.PI) / 180;
+  const lat2Rad = (loc2.lat * Math.PI) / 180;
+
+  // 위도/경도 차이
+  const deltaLat = ((loc2.lat - loc1.lat) * Math.PI) / 180;
+  const deltaLng = ((loc2.lng - loc1.lng) * Math.PI) / 180;
+
+  // Haversine 공식 적용
+  const a =
+    Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
+    Math.cos(lat1Rad) * Math.cos(lat2Rad) *
+    Math.sin(deltaLng / 2) * Math.sin(deltaLng / 2);
+
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  // 거리 반환 (미터)
+  return R * c;
+}
+
+/**
+ * 📊 거리 행렬 생성
+ *
+ * 모든 장소 쌍 사이의 거리를 미리 계산해두는 함수
+ *
+ * 예: 3개 장소 A, B, C가 있으면
+ * [
+ *   [0, 1000, 2000],   // A→A, A→B, A→C
+ *   [1000, 0, 1500],   // B→A, B→B, B→C
+ *   [2000, 1500, 0]    // C→A, C→B, C→C
+ * ]
+ *
+ * @param locations - 장소 좌표 배열
+ * @returns 거리 행렬 (2차원 배열)
+ */
+export function createDistanceMatrix(locations: Location[]): number[][] {
+  const n = locations.length;
+
+  // n x n 크기의 2차원 배열 생성
+  const matrix: number[][] = Array(n)
+    .fill(null)
+    .map(() => Array(n).fill(0));
+
+  // 모든 쌍에 대해 거리 계산
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const distance = calculateHaversineDistance(locations[i], locations[j]);
+      // 대칭 행렬 (A→B 거리 = B→A 거리)
+      matrix[i][j] = distance;
+      matrix[j][i] = distance;
+    }
+  }
+
+  return matrix;
+}</code></pre>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+
+        <div class="task-card bg-gray-50 rounded-xl p-5">
+          <div class="flex items-start gap-3">
+            <input type="checkbox" class="mt-1 w-5 h-5 rounded border-gray-300">
+            <div class="flex-1">
+              <h4 class="font-semibold text-gray-800">lib/optimize/nearest-neighbor.ts</h4>
+              <p class="text-sm text-gray-500 mt-1">가장 가까운 장소부터 방문하는 알고리즘</p>
+
+              <details class="mt-3">
+                <summary class="text-sm text-devB font-medium cursor-pointer">📝 구현 가이드 보기</summary>
+                <div class="code-hint mt-2">
+                  <pre class="text-sm"><code class="language-typescript">// lib/optimize/nearest-neighbor.ts
+
+/**
+ * 🏃 Nearest Neighbor 알고리즘
+ *
+ * 작동 방식:
+ * 1. 출발점에서 시작
+ * 2. 아직 방문하지 않은 장소 중 가장 가까운 곳으로 이동
+ * 3. 모든 장소를 방문할 때까지 반복
+ *
+ * 장점: 빠르다! O(n²)
+ * 단점: 최적해가 아닐 수 있음 (2-opt로 개선 가능)
+ *
+ * @param distanceMatrix - 거리 행렬
+ * @param startIndex - 시작 위치 인덱스 (보통 0 = 출발지)
+ * @returns 방문 순서 배열 (인덱스)
+ */
+export function nearestNeighbor(
+  distanceMatrix: number[][],
+  startIndex: number = 0
+): number[] {
+  const n = distanceMatrix.length;
+
+  // 방문 여부 추적
+  const visited: boolean[] = Array(n).fill(false);
+
+  // 결과: 방문 순서
+  const route: number[] = [startIndex];
+  visited[startIndex] = true;
+
+  // 현재 위치
+  let current = startIndex;
+
+  // n-1번 반복 (시작점 제외한 나머지 장소들)
+  for (let i = 1; i < n; i++) {
+    let nearestIndex = -1;
+    let nearestDistance = Infinity;
+
+    // 아직 방문하지 않은 장소 중 가장 가까운 곳 찾기
+    for (let j = 0; j < n; j++) {
+      if (!visited[j] && distanceMatrix[current][j] < nearestDistance) {
+        nearestDistance = distanceMatrix[current][j];
+        nearestIndex = j;
+      }
+    }
+
+    // 가장 가까운 장소로 이동
+    if (nearestIndex !== -1) {
+      route.push(nearestIndex);
+      visited[nearestIndex] = true;
+      current = nearestIndex;
+    }
+  }
+
+  return route;
+}
+
+/**
+ * 📏 경로의 총 거리 계산
+ */
+export function calculateRouteDistance(
+  route: number[],
+  distanceMatrix: number[][]
+): number {
+  let total = 0;
+  for (let i = 0; i < route.length - 1; i++) {
+    total += distanceMatrix[route[i]][route[i + 1]];
+  }
+  return total;
+}</code></pre>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ==================== Dev C Section ==================== -->
+    <section id="section-devC" class="dev-section mb-12">
+      <div class="flex items-center gap-3 mb-6">
+        <div class="w-12 h-12 gradient-c rounded-xl flex items-center justify-center">
+          <span class="text-white text-xl">C</span>
+        </div>
+        <div>
+          <h2 class="text-2xl font-bold text-gray-800">Dev C: 지도/외부API + 마케팅</h2>
+          <p class="text-gray-500 text-sm">지도 표시, 장소 검색, 경로 조회 및 마케팅을 담당합니다</p>
+        </div>
+      </div>
+
+      <!-- Phase 1: Kakao Maps -->
+      <div class="bg-white rounded-2xl p-6 card-shadow mb-6">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-bold text-lg text-devC flex items-center gap-2">
+            <span class="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center text-sm">1</span>
+            Phase 1: Kakao Maps 설정
+          </h3>
+          <span class="text-xs px-3 py-1 bg-amber-50 text-devC rounded-full">feat/map-kakao-setup</span>
+        </div>
+
+        <div class="beginner-tip rounded-lg p-4 mb-4">
+          <h4 class="font-bold text-amber-800 mb-2">💡 Kakao API 키 발급 방법</h4>
+          <ol class="text-sm text-amber-900 space-y-1 list-decimal list-inside">
+            <li><a href="https://developers.kakao.com" class="underline">developers.kakao.com</a> 접속</li>
+            <li>카카오 계정으로 로그인</li>
+            <li>"내 애플리케이션" → "애플리케이션 추가"</li>
+            <li>앱 이름 입력 후 생성</li>
+            <li>"앱 키" 메뉴에서 "JavaScript 키" 복사</li>
+            <li><code>.env.local</code> 파일에 추가</li>
+          </ol>
+        </div>
+
+        <div class="task-card bg-gray-50 rounded-xl p-5 mb-4">
+          <div class="flex items-start gap-3">
+            <input type="checkbox" class="mt-1 w-5 h-5 rounded border-gray-300">
+            <div class="flex-1">
+              <h4 class="font-semibold text-gray-800">lib/kakao/loader.ts</h4>
+              <p class="text-sm text-gray-500 mt-1">Kakao Maps SDK를 동적으로 로드하는 유틸리티</p>
+
+              <div class="beginner-tip rounded-lg p-3 mt-3">
+                <p class="text-xs text-amber-800">
+                  <strong>💡 동적 로드란?</strong>
+                  웹페이지가 열릴 때 모든 스크립트를 다 불러오면 느려집니다.
+                  지도가 필요한 순간에만 SDK를 불러오는 것이 "동적 로드"입니다.
+                </p>
+              </div>
+
+              <details class="mt-3">
+                <summary class="text-sm text-devC font-medium cursor-pointer">📝 구현 가이드 보기</summary>
+                <div class="code-hint mt-2">
+                  <pre class="text-sm"><code class="language-typescript">// lib/kakao/loader.ts
+
+// 🌐 전역 타입 선언 (TypeScript용)
+declare global {
+  interface Window {
+    kakao: any;
+  }
+}
+
+// SDK 로드 상태를 추적하는 Promise
+let kakaoMapLoaded: Promise&lt;void&gt; | null = null;
+
+/**
+ * 📦 Kakao Maps SDK 로드 함수
+ *
+ * 여러 번 호출해도 한 번만 로드됩니다 (싱글톤 패턴)
+ *
+ * @returns SDK 로드 완료 Promise
+ */
+export function loadKakaoMap(): Promise&lt;void&gt; {
+  // 이미 로드 중이거나 완료된 경우, 기존 Promise 반환
+  if (kakaoMapLoaded) {
+    return kakaoMapLoaded;
+  }
+
+  kakaoMapLoaded = new Promise((resolve, reject) => {
+    // 이미 로드된 경우 바로 완료
+    if (window.kakao && window.kakao.maps) {
+      resolve();
+      return;
+    }
+
+    // 스크립트 태그 생성
+    const script = document.createElement("script");
+    script.src = `//dapi.kakao.com/v2/maps/sdk.js?appkey=${process.env.NEXT_PUBLIC_KAKAO_MAP_KEY}&autoload=false&libraries=services`;
+    script.async = true;
+
+    // 로드 성공
+    script.onload = () => {
+      // Kakao SDK는 autoload=false일 때 수동으로 load() 호출 필요
+      window.kakao.maps.load(() => {
+        console.log("✅ Kakao Maps SDK 로드 완료");
+        resolve();
+      });
+    };
+
+    // 로드 실패
+    script.onerror = () => {
+      kakaoMapLoaded = null;  // 재시도 가능하도록 초기화
+      reject(new Error("Kakao Maps SDK 로드 실패"));
+    };
+
+    // 스크립트를 문서에 추가
+    document.head.appendChild(script);
+  });
+
+  return kakaoMapLoaded;
+}</code></pre>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+
+        <div class="task-card bg-gray-50 rounded-xl p-5">
+          <div class="flex items-start gap-3">
+            <input type="checkbox" class="mt-1 w-5 h-5 rounded border-gray-300">
+            <div class="flex-1">
+              <h4 class="font-semibold text-gray-800">components/map/kakao-map.tsx</h4>
+              <p class="text-sm text-gray-500 mt-1">기본 지도 컴포넌트</p>
+
+              <details class="mt-3">
+                <summary class="text-sm text-devC font-medium cursor-pointer">📝 구현 가이드 보기</summary>
+                <div class="code-hint mt-2">
+                  <pre class="text-sm"><code class="language-typescript">// components/map/kakao-map.tsx
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { loadKakaoMap } from "@/lib/kakao/loader";
+
+interface KakaoMapProps {
+  center?: { lat: number; lng: number };  // 지도 중심 좌표
+  level?: number;                          // 확대 레벨 (1~14, 낮을수록 확대)
+  className?: string;
+  onMapLoad?: (map: any) => void;          // 지도 로드 완료 콜백
+}
+
+export function KakaoMap({
+  center = { lat: 37.5665, lng: 126.978 },  // 기본: 서울시청
+  level = 5,
+  className = "w-full h-96",
+  onMapLoad
+}: KakaoMapProps) {
+  // 🎯 지도를 그릴 div의 참조
+  const mapRef = useRef&lt;HTMLDivElement&gt;(null);
+
+  // 지도 인스턴스 저장
+  const [map, setMap] = useState&lt;any&gt;(null);
+
+  // 로딩 상태
+  const [loading, setLoading] = useState(true);
+
+  // 📍 지도 초기화
+  useEffect(() => {
+    async function initMap() {
+      try {
+        // 1. SDK 로드
+        await loadKakaoMap();
+
+        // 2. mapRef가 연결된 DOM이 있는지 확인
+        if (!mapRef.current) return;
+
+        // 3. 지도 옵션 설정
+        const options = {
+          center: new window.kakao.maps.LatLng(center.lat, center.lng),
+          level: level,
+        };
+
+        // 4. 지도 생성
+        const kakaoMap = new window.kakao.maps.Map(mapRef.current, options);
+
+        setMap(kakaoMap);
+        setLoading(false);
+
+        // 5. 콜백 호출 (부모 컴포넌트에서 지도 조작 가능)
+        onMapLoad?.(kakaoMap);
+
+      } catch (error) {
+        console.error("지도 초기화 실패:", error);
+        setLoading(false);
+      }
+    }
+
+    initMap();
+  }, []);  // 최초 1회만 실행
+
+  // 🔄 중심 좌표 변경 시 지도 이동
+  useEffect(() => {
+    if (map && center) {
+      const newCenter = new window.kakao.maps.LatLng(center.lat, center.lng);
+      map.setCenter(newCenter);
+    }
+  }, [map, center.lat, center.lng]);
+
+  return (
+    &lt;div className="relative"&gt;
+      {/* 지도 컨테이너 */}
+      &lt;div ref={mapRef} className={className} /&gt;
+
+      {/* 로딩 오버레이 */}
+      {loading && (
+        &lt;div className="absolute inset-0 bg-gray-100 flex items-center justify-center"&gt;
+          &lt;div className="text-gray-500"&gt;지도 로딩 중...&lt;/div&gt;
+        &lt;/div&gt;
+      )}
+    &lt;/div&gt;
+  );
+}</code></pre>
+                </div>
+              </details>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 마케팅 섹션 -->
+      <div class="bg-white rounded-2xl p-6 card-shadow">
+        <div class="flex items-center justify-between mb-4">
+          <h3 class="font-bold text-lg text-devC flex items-center gap-2">
+            <span class="w-8 h-8 bg-amber-100 rounded-lg flex items-center justify-center text-sm">6</span>
+            Phase 6: SNS 마케팅
+          </h3>
+          <span class="text-xs px-3 py-1 bg-amber-50 text-devC rounded-full">feat/marketing-*</span>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-4">
+          <div class="task-card bg-gradient-to-br from-pink-50 to-purple-50 rounded-xl p-5">
+            <div class="flex items-center gap-3 mb-3">
+              <span class="text-2xl">📸</span>
+              <h4 class="font-semibold text-gray-800">Instagram</h4>
+            </div>
+            <ul class="text-sm text-gray-600 space-y-2">
+              <li>• 비즈니스 계정 생성</li>
+              <li>• 피드/스토리/릴스 템플릿</li>
+              <li>• 4주 콘텐츠 캘린더</li>
+              <li>• 해시태그 전략</li>
+            </ul>
+          </div>
+
+          <div class="task-card bg-gradient-to-br from-blue-50 to-cyan-50 rounded-xl p-5">
+            <div class="flex items-center gap-3 mb-3">
+              <span class="text-2xl">🐦</span>
+              <h4 class="font-semibold text-gray-800">Twitter/X</h4>
+            </div>
+            <ul class="text-sm text-gray-600 space-y-2">
+              <li>• 계정 설정</li>
+              <li>• 런칭 스레드 기획</li>
+              <li>• 팁 시리즈 템플릿</li>
+              <li>• 2주 캘린더</li>
+            </ul>
+          </div>
+
+          <div class="task-card bg-gradient-to-br from-red-50 to-orange-50 rounded-xl p-5">
+            <div class="flex items-center gap-3 mb-3">
+              <span class="text-2xl">📺</span>
+              <h4 class="font-semibold text-gray-800">YouTube</h4>
+            </div>
+            <ul class="text-sm text-gray-600 space-y-2">
+              <li>• 채널 생성 및 아트</li>
+              <li>• 서비스 소개 영상 (2분)</li>
+              <li>• 튜토리얼 시리즈</li>
+              <li>• Shorts 콘텐츠</li>
+            </ul>
+          </div>
+
+          <div class="task-card bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-5">
+            <div class="flex items-center gap-3 mb-3">
+              <span class="text-2xl">📝</span>
+              <h4 class="font-semibold text-gray-800">블로그/SEO</h4>
+            </div>
+            <ul class="text-sm text-gray-600 space-y-2">
+              <li>• 키워드 리서치</li>
+              <li>• 메타 태그 최적화</li>
+              <li>• 런칭 전/후 포스트</li>
+              <li>• 지역별 가이드 시리즈</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 마일스톤 -->
+    <section class="mb-12">
+      <h2 class="text-xl font-bold text-gray-800 mb-6 flex items-center gap-2">
+        <span class="text-2xl">🎯</span> 마일스톤
+      </h2>
+
+      <div class="bg-white rounded-2xl p-6 card-shadow overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="border-b-2 border-gray-200">
+              <th class="text-left py-3 px-4">마일스톤</th>
+              <th class="text-left py-3 px-4">목표</th>
+              <th class="text-left py-3 px-4">담당</th>
+              <th class="text-left py-3 px-4">주요 완료 항목</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr class="border-b border-gray-100">
+              <td class="py-3 px-4 font-bold">M1</td>
+              <td class="py-3 px-4">MVP 입력 기능</td>
+              <td class="py-3 px-4">
+                <span class="text-devA">A</span> + <span class="text-devB">B</span> + <span class="text-devC">C</span>
+              </td>
+              <td class="py-3 px-4 text-gray-600">여행 생성, 장소 추가, 지도 표시</td>
+            </tr>
+            <tr class="border-b border-gray-100">
+              <td class="py-3 px-4 font-bold">M2</td>
+              <td class="py-3 px-4">최적화 엔진</td>
+              <td class="py-3 px-4">
+                <span class="text-devB">B</span> + <span class="text-devC">C</span>
+              </td>
+              <td class="py-3 px-4 text-gray-600">TSP 알고리즘, 일자 분배, 경로 조회</td>
+            </tr>
+            <tr class="border-b border-gray-100">
+              <td class="py-3 px-4 font-bold">M3</td>
+              <td class="py-3 px-4">결과 & 저장</td>
+              <td class="py-3 px-4">
+                <span class="text-devA">A</span> + <span class="text-devB">B</span>
+              </td>
+              <td class="py-3 px-4 text-gray-600">일정표 UI, 마이페이지, 저장 기능</td>
+            </tr>
+            <tr class="border-b border-gray-100">
+              <td class="py-3 px-4 font-bold">M4</td>
+              <td class="py-3 px-4">네비게이션</td>
+              <td class="py-3 px-4">
+                <span class="text-devC">C</span>
+              </td>
+              <td class="py-3 px-4 text-gray-600">현재 위치, 경로 안내, 앱 연동</td>
+            </tr>
+            <tr class="border-b border-gray-100">
+              <td class="py-3 px-4 font-bold">M5</td>
+              <td class="py-3 px-4">마케팅 준비</td>
+              <td class="py-3 px-4">
+                <span class="text-devC">C</span>
+              </td>
+              <td class="py-3 px-4 text-gray-600">브랜드 에셋, SNS 계정, 콘텐츠 제작</td>
+            </tr>
+            <tr>
+              <td class="py-3 px-4 font-bold">M6</td>
+              <td class="py-3 px-4">런칭</td>
+              <td class="py-3 px-4">
+                <span class="text-devA">A</span> + <span class="text-devB">B</span> + <span class="text-devC">C</span>
+              </td>
+              <td class="py-3 px-4 text-gray-600">서비스 오픈, 런칭 캠페인, 모니터링</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-gray-900 text-white py-8">
+    <div class="max-w-7xl mx-auto px-4 text-center">
+      <p class="text-gray-400 text-sm">OurRoad 개발 TODO 가이드</p>
+      <div class="flex justify-center gap-4 mt-4 text-xs text-gray-500">
+        <a href="./index.html" class="hover:text-gray-300">PRD 시각화</a>
+        <span>•</span>
+        <a href="../PRD.md" class="hover:text-gray-300">PRD.md</a>
+        <span>•</span>
+        <a href="../TODO.md" class="hover:text-gray-300">TODO.md</a>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    // Mermaid 초기화
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'neutral',
+      gitGraph: {
+        showCommitLabel: true,
+        mainBranchName: 'main'
+      }
+    });
+
+    // 섹션 필터링
+    function showSection(section) {
+      const allSections = document.querySelectorAll('.dev-section');
+      const tabs = document.querySelectorAll('.nav-tab');
+
+      // 탭 스타일 업데이트
+      tabs.forEach(tab => {
+        tab.classList.remove('active', 'bg-blue-500', 'text-white');
+        if (tab.id === `tab-${section}`) {
+          tab.classList.add('active');
+        }
+      });
+
+      // 섹션 표시/숨김
+      if (section === 'all') {
+        allSections.forEach(s => s.style.display = 'block');
+      } else {
+        allSections.forEach(s => {
+          if (s.id === `section-${section}`) {
+            s.style.display = 'block';
+          } else {
+            s.style.display = 'none';
+          }
+        });
+      }
+    }
+
+    // 체크박스 상태 저장 (localStorage)
+    document.querySelectorAll('input[type="checkbox"]').forEach((checkbox, index) => {
+      const key = `todo-${index}`;
+      checkbox.checked = localStorage.getItem(key) === 'true';
+      checkbox.addEventListener('change', () => {
+        localStorage.setItem(key, checkbox.checked);
+      });
+    });
+  </script>
+</body>
+</html>
