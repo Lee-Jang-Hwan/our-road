@@ -7,6 +7,7 @@ import { LuChevronLeft, LuMapPin, LuCalendarClock, LuSparkles, LuSettings } from
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import type { TripStatus } from "@/types/trip";
 
 interface TripEditPageProps {
   params: Promise<{ tripId: string }>;
@@ -16,12 +17,20 @@ export default function TripEditPage({ params }: TripEditPageProps) {
   const { tripId } = use(params);
 
   // TODO: 실제 여행 데이터 로드
-  const trip = {
+  const trip: {
+    id: string;
+    title: string;
+    startDate: string;
+    endDate: string;
+    status: TripStatus;
+    placeCount: number;
+    fixedScheduleCount: number;
+  } = {
     id: tripId,
     title: "제주도 여행",
     startDate: "2025-01-15",
     endDate: "2025-01-18",
-    status: "draft" as const,
+    status: "draft",
     placeCount: 0,
     fixedScheduleCount: 0,
   };

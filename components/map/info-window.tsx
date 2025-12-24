@@ -6,7 +6,7 @@ import { X, Clock, MapPin, Navigation } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useKakaoMap, kakao } from "./kakao-map";
+import { useKakaoMap } from "./kakao-map";
 import type { Coordinate } from "@/types/place";
 
 interface InfoWindowProps {
@@ -39,7 +39,8 @@ export function InfoWindow({
   zIndex = 10,
 }: InfoWindowProps) {
   const { map, isReady } = useKakaoMap();
-  const overlayRef = React.useRef<kakao.maps.CustomOverlay | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const overlayRef = React.useRef<any>(null);
   const containerRef = React.useRef<HTMLDivElement | null>(null);
 
   // 컨테이너 생성
@@ -54,13 +55,13 @@ export function InfoWindow({
     if (!map || !isReady || !containerRef.current) return;
 
     if (isOpen) {
-      const position = new kakao.maps.LatLng(coordinate.lat, coordinate.lng);
+      const position = new window.kakao.maps.LatLng(coordinate.lat, coordinate.lng);
 
       if (overlayRef.current) {
         overlayRef.current.setPosition(position);
         overlayRef.current.setMap(map);
       } else {
-        overlayRef.current = new kakao.maps.CustomOverlay({
+        overlayRef.current = new window.kakao.maps.CustomOverlay({
           map,
           position,
           content: containerRef.current,

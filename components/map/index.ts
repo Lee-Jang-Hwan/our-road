@@ -8,7 +8,6 @@ export {
   useKakaoMap,
   useMapResize,
   useMapBounds,
-  kakao,
 } from "./kakao-map";
 export type { KakaoMapProps } from "./kakao-map";
 

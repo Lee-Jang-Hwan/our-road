@@ -610,10 +610,10 @@
 
 #### 관리자 페이지
 
-- [ ] `app/admin/page.tsx` - 관리자 대시보드
-- [ ] `app/admin/error-logs/page.tsx` - 에러 로그 관리
-  - [ ] 필터링, 페이지네이션
-  - [ ] 해결 처리, 삭제 기능
+- [x] `app/admin/page.tsx` - 관리자 대시보드
+- [x] `app/admin/error-logs/page.tsx` - 에러 로그 관리
+  - [x] 필터링, 페이지네이션
+  - [x] 해결 처리, 삭제 기능
 
 ### Phase 11: UX 완성도
 

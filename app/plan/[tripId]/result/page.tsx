@@ -6,7 +6,7 @@ import {
   LuChevronLeft,
   LuShare2,
   LuSave,
-  LuLoader2,
+  LuLoader,
   LuSparkles,
 } from "react-icons/lu";
 
@@ -37,20 +37,20 @@ export default function ResultPage({ params }: ResultPageProps) {
         startTime: "10:00",
         endTime: "20:30",
         placeCount: 4,
-        totalDuration: 630,
+        totalDuration: 90,
         totalDistance: 45000,
+        totalStayDuration: 390,
         schedule: [
           {
             placeId: "1",
             placeName: "성산일출봉",
-            address: "제주특별자치도 서귀포시 성산읍",
             order: 1,
-            startTime: "10:00",
-            endTime: "12:00",
+            arrivalTime: "10:00",
+            departureTime: "12:00",
             duration: 120,
             isFixed: false,
             transportToNext: {
-              mode: "public",
+              mode: "public" as const,
               duration: 30,
               distance: 15000,
               description: "버스 201번",
@@ -59,14 +59,13 @@ export default function ResultPage({ params }: ResultPageProps) {
           {
             placeId: "2",
             placeName: "섭지코지",
-            address: "제주특별자치도 서귀포시 성산읍",
             order: 2,
-            startTime: "12:30",
-            endTime: "14:00",
+            arrivalTime: "12:30",
+            departureTime: "14:00",
             duration: 90,
             isFixed: false,
             transportToNext: {
-              mode: "public",
+              mode: "public" as const,
               duration: 20,
               distance: 8000,
               description: "버스 201번",
@@ -75,14 +74,13 @@ export default function ResultPage({ params }: ResultPageProps) {
           {
             placeId: "3",
             placeName: "카페 델문도",
-            address: "제주특별자치도 서귀포시",
             order: 3,
-            startTime: "14:20",
-            endTime: "15:20",
+            arrivalTime: "14:20",
+            departureTime: "15:20",
             duration: 60,
             isFixed: true,
             transportToNext: {
-              mode: "public",
+              mode: "public" as const,
               duration: 40,
               distance: 22000,
               description: "버스 780번 환승",
@@ -91,10 +89,9 @@ export default function ResultPage({ params }: ResultPageProps) {
           {
             placeId: "4",
             placeName: "중문 색달해변",
-            address: "제주특별자치도 서귀포시 중문동",
             order: 4,
-            startTime: "16:00",
-            endTime: "18:00",
+            arrivalTime: "16:00",
+            departureTime: "18:00",
             duration: 120,
             isFixed: false,
           },
@@ -106,20 +103,20 @@ export default function ResultPage({ params }: ResultPageProps) {
         startTime: "10:00",
         endTime: "19:00",
         placeCount: 3,
-        totalDuration: 540,
+        totalDuration: 50,
         totalDistance: 32000,
+        totalStayDuration: 450,
         schedule: [
           {
             placeId: "5",
             placeName: "한라산 영실코스",
-            address: "제주특별자치도 서귀포시",
             order: 1,
-            startTime: "10:00",
-            endTime: "14:00",
+            arrivalTime: "10:00",
+            departureTime: "14:00",
             duration: 240,
             isFixed: false,
             transportToNext: {
-              mode: "car",
+              mode: "car" as const,
               duration: 30,
               distance: 20000,
               description: "자가용",
@@ -128,14 +125,13 @@ export default function ResultPage({ params }: ResultPageProps) {
           {
             placeId: "6",
             placeName: "오설록 티뮤지엄",
-            address: "제주특별자치도 서귀포시 안덕면",
             order: 2,
-            startTime: "14:30",
-            endTime: "16:00",
+            arrivalTime: "14:30",
+            departureTime: "16:00",
             duration: 90,
             isFixed: false,
             transportToNext: {
-              mode: "car",
+              mode: "car" as const,
               duration: 20,
               distance: 12000,
               description: "자가용",
@@ -144,10 +140,9 @@ export default function ResultPage({ params }: ResultPageProps) {
           {
             placeId: "7",
             placeName: "새별오름",
-            address: "제주특별자치도 제주시 애월읍",
             order: 3,
-            startTime: "16:20",
-            endTime: "18:20",
+            arrivalTime: "16:20",
+            departureTime: "18:20",
             duration: 120,
             isFixed: false,
           },
@@ -158,9 +153,10 @@ export default function ResultPage({ params }: ResultPageProps) {
         date: "2025-01-17",
         startTime: "10:00",
         endTime: "18:00",
-        placeCount: 2,
-        totalDuration: 480,
-        totalDistance: 15000,
+        placeCount: 0,
+        totalDuration: 0,
+        totalDistance: 0,
+        totalStayDuration: 0,
         schedule: [],
       },
     ],
@@ -249,7 +245,7 @@ export default function ResultPage({ params }: ResultPageProps) {
         <div className="px-4 py-4" {...swipeHandlers}>
           {isOptimizing ? (
             <div className="flex flex-col items-center justify-center py-12">
-              <LuLoader2 className="w-8 h-8 animate-spin text-primary mb-4" />
+              <LuLoader className="w-8 h-8 animate-spin text-primary mb-4" />
               <p className="text-muted-foreground">일정 최적화 중...</p>
             </div>
           ) : (
@@ -257,11 +253,7 @@ export default function ResultPage({ params }: ResultPageProps) {
               {/* 일일 요약 */}
               {currentItinerary && (
                 <DaySummary
-                  dayNumber={currentItinerary.dayNumber}
-                  date={currentItinerary.date}
-                  placeCount={currentItinerary.placeCount}
-                  totalDuration={currentItinerary.totalDuration}
-                  totalDistance={currentItinerary.totalDistance}
+                  itinerary={currentItinerary}
                   className="mb-4"
                 />
               )}
@@ -288,7 +280,7 @@ export default function ResultPage({ params }: ResultPageProps) {
             disabled={isOptimizing || isSaving}
           >
             {isOptimizing ? (
-              <LuLoader2 className="w-4 h-4 mr-2 animate-spin" />
+              <LuLoader className="w-4 h-4 mr-2 animate-spin" />
             ) : (
               <LuSparkles className="w-4 h-4 mr-2" />
             )}
@@ -300,7 +292,7 @@ export default function ResultPage({ params }: ResultPageProps) {
             disabled={isOptimizing || isSaving}
           >
             {isSaving ? (
-              <LuLoader2 className="w-4 h-4 mr-2 animate-spin" />
+              <LuLoader className="w-4 h-4 mr-2 animate-spin" />
             ) : (
               <LuSave className="w-4 h-4 mr-2" />
             )}

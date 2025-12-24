@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useKakaoMap, kakao } from "./kakao-map";
+import { useKakaoMap } from "./kakao-map";
 import type { Coordinate } from "@/types/place";
 import type { TransportMode } from "@/types/route";
 
@@ -42,13 +42,14 @@ export function RoutePolyline({
   zIndex = 1,
 }: RoutePolylineProps) {
   const { map, isReady } = useKakaoMap();
-  const polylineRef = React.useRef<kakao.maps.Polyline | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const polylineRef = React.useRef<any>(null);
 
   React.useEffect(() => {
     if (!map || !isReady || path.length < 2) return;
 
     const linePath = path.map(
-      (coord) => new kakao.maps.LatLng(coord.lat, coord.lng)
+      (coord) => new window.kakao.maps.LatLng(coord.lat, coord.lng)
     );
 
     const color = strokeColor || TRANSPORT_COLORS[transportMode];
@@ -65,7 +66,7 @@ export function RoutePolyline({
       });
     } else {
       // 새 폴리라인 생성
-      polylineRef.current = new kakao.maps.Polyline({
+      polylineRef.current = new window.kakao.maps.Polyline({
         map,
         path: linePath,
         strokeWeight,
@@ -116,7 +117,8 @@ export function MultiRoutePolyline({
   selectedSegmentId,
 }: MultiRoutePolylineProps) {
   const { map, isReady } = useKakaoMap();
-  const polylinesRef = React.useRef<Map<string, kakao.maps.Polyline>>(new Map());
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const polylinesRef = React.useRef<Map<string, any>>(new Map());
 
   React.useEffect(() => {
     if (!map || !isReady) return;
@@ -139,7 +141,7 @@ export function MultiRoutePolyline({
       if (path.length < 2) return;
 
       const linePath = path.map(
-        (coord) => new kakao.maps.LatLng(coord.lat, coord.lng)
+        (coord) => new window.kakao.maps.LatLng(coord.lat, coord.lng)
       );
 
       const isSelected = id === selectedSegmentId;
@@ -157,7 +159,7 @@ export function MultiRoutePolyline({
           zIndex: isSelected ? 10 : index,
         });
       } else {
-        polyline = new kakao.maps.Polyline({
+        polyline = new window.kakao.maps.Polyline({
           map,
           path: linePath,
           strokeWeight: weight,

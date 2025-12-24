@@ -77,14 +77,11 @@ export default function SchedulePage({ params }: SchedulePageProps) {
         // 추가
         const newSchedule: FixedSchedule = {
           id: crypto.randomUUID(),
-          tripId: data.tripId,
           placeId: data.placeId,
           date: data.date,
           startTime: data.startTime,
           endTime: data.endTime,
           note: data.note || undefined,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
         };
         setSchedules((prev) => [...prev, newSchedule]);
       }

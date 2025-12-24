@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useKakaoMap, kakao } from "./kakao-map";
+import { useKakaoMap } from "./kakao-map";
 import type { Coordinate } from "@/types/place";
 
 interface CurrentLocationMarkerProps {
@@ -45,25 +45,27 @@ export function CurrentLocationMarker({
   pulse = true,
 }: CurrentLocationMarkerProps) {
   const { map, isReady } = useKakaoMap();
-  const markerRef = React.useRef<kakao.maps.Marker | null>(null);
-  const circleRef = React.useRef<kakao.maps.Circle | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const markerRef = React.useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const circleRef = React.useRef<any>(null);
 
   React.useEffect(() => {
     if (!map || !isReady) return;
 
-    const position = new kakao.maps.LatLng(coordinate.lat, coordinate.lng);
+    const position = new window.kakao.maps.LatLng(coordinate.lat, coordinate.lng);
 
     // 마커 이미지 생성
     const imageSrc = createCurrentLocationMarkerSvg(pulse);
-    const imageSize = new kakao.maps.Size(40, 40);
-    const imageOption = { offset: new kakao.maps.Point(20, 20) };
-    const markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
+    const imageSize = new window.kakao.maps.Size(40, 40);
+    const imageOption = { offset: new window.kakao.maps.Point(20, 20) };
+    const markerImage = new window.kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
 
     if (markerRef.current) {
       markerRef.current.setPosition(position);
       markerRef.current.setImage(markerImage);
     } else {
-      markerRef.current = new kakao.maps.Marker({
+      markerRef.current = new window.kakao.maps.Marker({
         map,
         position,
         image: markerImage,
@@ -72,7 +74,7 @@ export function CurrentLocationMarker({
       });
 
       if (onClick) {
-        kakao.maps.event.addListener(markerRef.current, "click", onClick);
+        window.kakao.maps.event.addListener(markerRef.current, "click", onClick);
       }
     }
 
@@ -82,7 +84,7 @@ export function CurrentLocationMarker({
         circleRef.current.setMap(null);
       }
 
-      circleRef.current = new kakao.maps.Circle({
+      circleRef.current = new window.kakao.maps.Circle({
         map,
         center: position,
         radius: accuracy,
@@ -303,7 +305,7 @@ export function CurrentLocationTracker({
     enabled,
     onLocationChange: (coord) => {
       if (followLocation && map && isReady) {
-        map.panTo(new kakao.maps.LatLng(coord.lat, coord.lng));
+        map.panTo(new window.kakao.maps.LatLng(coord.lat, coord.lng));
       }
     },
   });

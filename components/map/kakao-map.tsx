@@ -487,4 +487,3 @@ export function useMapBounds() {
 
 // 타입 export
 export type { KakaoMapProps };
-export { kakao };

@@ -13,7 +13,7 @@ import {
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useKakaoMap, kakao } from "./kakao-map";
+import { useKakaoMap } from "./kakao-map";
 import { useCurrentLocation } from "./current-location";
 import type { Coordinate } from "@/types/place";
 
@@ -165,7 +165,7 @@ export function CurrentLocationControl({
           lng: position.coords.longitude,
         };
 
-        map.panTo(new kakao.maps.LatLng(coordinate.lat, coordinate.lng));
+        map.panTo(new window.kakao.maps.LatLng(coordinate.lat, coordinate.lng));
         onLocationFound?.(coordinate);
         setIsLocating(false);
       },
@@ -210,8 +210,8 @@ export function MapTypeControl({ className }: { className?: string }) {
     if (!map || !isReady) return;
 
     const newType = isSatellite
-      ? kakao.maps.MapTypeId.ROADMAP
-      : kakao.maps.MapTypeId.HYBRID;
+      ? window.kakao.maps.MapTypeId.ROADMAP
+      : window.kakao.maps.MapTypeId.HYBRID;
 
     map.setMapTypeId(newType);
     setIsSatellite(!isSatellite);

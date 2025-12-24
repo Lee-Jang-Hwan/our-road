@@ -21,7 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
-import { KakaoMap, useKakaoMap, useMapBounds, kakao } from "@/components/map/kakao-map";
+import { KakaoMap, useKakaoMap, useMapBounds } from "@/components/map/kakao-map";
 import { PlaceMarkers } from "@/components/map/place-markers";
 import { DirectRoutePolyline } from "@/components/map/route-polyline";
 import { CurrentLocationTracker, useCurrentLocation } from "@/components/map/current-location";
@@ -364,7 +364,7 @@ function NavigationMapContent({
   useEffect(() => {
     if (!map || !isReady || !currentDestination) return;
 
-    const position = new kakao.maps.LatLng(currentDestination.lat, currentDestination.lng);
+    const position = new window.kakao.maps.LatLng(currentDestination.lat, currentDestination.lng);
     map.panTo(position);
   }, [map, isReady, currentDestination]);
 

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useKakaoMap, kakao } from "./kakao-map";
+import { useKakaoMap } from "./kakao-map";
 import type { Coordinate, Place } from "@/types/place";
 
 interface MarkerData {
@@ -85,7 +85,8 @@ export function PlaceMarkers({
   size = "md",
 }: PlaceMarkersProps) {
   const { map, isReady } = useKakaoMap();
-  const kakaoMarkersRef = React.useRef<Map<string, kakao.maps.Marker>>(new Map());
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const kakaoMarkersRef = React.useRef<Map<string, any>>(new Map());
 
   // 마커 생성 및 업데이트
   React.useEffect(() => {
@@ -106,14 +107,14 @@ export function PlaceMarkers({
     markers.forEach((markerData) => {
       const { id, coordinate, order = 1, isFixed = false, clickable = true } = markerData;
       const isSelected = id === selectedId;
-      const position = new kakao.maps.LatLng(coordinate.lat, coordinate.lng);
+      const position = new window.kakao.maps.LatLng(coordinate.lat, coordinate.lng);
 
       // 마커 이미지 생성
       const { width, height } = MARKER_SIZES[size];
       const imageSrc = createNumberedMarkerSvg(order, isFixed, isSelected, size);
-      const imageSize = new kakao.maps.Size(width, height);
-      const imageOption = { offset: new kakao.maps.Point(width / 2, height) };
-      const markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
+      const imageSize = new window.kakao.maps.Size(width, height);
+      const imageOption = { offset: new window.kakao.maps.Point(width / 2, height) };
+      const markerImage = new window.kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
 
       let kakaoMarker = currentMarkers.get(id);
 
@@ -124,7 +125,7 @@ export function PlaceMarkers({
         kakaoMarker.setZIndex(isSelected ? 100 : order);
       } else {
         // 새 마커 생성
-        kakaoMarker = new kakao.maps.Marker({
+        kakaoMarker = new window.kakao.maps.Marker({
           map,
           position,
           image: markerImage,
@@ -134,7 +135,7 @@ export function PlaceMarkers({
 
         // 클릭 이벤트
         if (clickable && onMarkerClick) {
-          kakao.maps.event.addListener(kakaoMarker, "click", () => {
+          window.kakao.maps.event.addListener(kakaoMarker, "click", () => {
             onMarkerClick(id);
           });
         }
@@ -181,24 +182,25 @@ export function SingleMarker({
   onClick,
 }: SingleMarkerProps) {
   const { map, isReady } = useKakaoMap();
-  const markerRef = React.useRef<kakao.maps.Marker | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const markerRef = React.useRef<any>(null);
 
   React.useEffect(() => {
     if (!map || !isReady) return;
 
-    const position = new kakao.maps.LatLng(coordinate.lat, coordinate.lng);
+    const position = new window.kakao.maps.LatLng(coordinate.lat, coordinate.lng);
 
     // 타입별 마커 이미지
     const imageSrc = createSpecialMarkerSvg(type);
-    const imageSize = new kakao.maps.Size(32, 38);
-    const imageOption = { offset: new kakao.maps.Point(16, 38) };
-    const markerImage = new kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
+    const imageSize = new window.kakao.maps.Size(32, 38);
+    const imageOption = { offset: new window.kakao.maps.Point(16, 38) };
+    const markerImage = new window.kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
 
     if (markerRef.current) {
       markerRef.current.setPosition(position);
       markerRef.current.setImage(markerImage);
     } else {
-      const marker = new kakao.maps.Marker({
+      const marker = new window.kakao.maps.Marker({
         map,
         position,
         image: markerImage,
@@ -207,7 +209,7 @@ export function SingleMarker({
       });
 
       if (onClick) {
-        kakao.maps.event.addListener(marker, "click", onClick);
+        window.kakao.maps.event.addListener(marker, "click", onClick);
       }
 
       markerRef.current = marker;
