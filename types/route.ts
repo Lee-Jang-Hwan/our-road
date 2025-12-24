@@ -1,0 +1,133 @@
+// ============================================
+// Route Types (이동 관련 타입)
+// ============================================
+
+/**
+ * 이동 수단
+ */
+export type TransportMode = "walking" | "public" | "car";
+
+/**
+ * 대중교통 상세 모드
+ */
+export type PublicTransportMode =
+  | "subway" // 지하철
+  | "bus" // 버스
+  | "train" // 기차
+  | "express_bus" // 고속버스
+  | "intercity_bus" // 시외버스
+  | "ferry"; // 페리
+
+/**
+ * 구간 이동 정보
+ */
+export interface RouteSegment {
+  /** 이동 수단 */
+  mode: TransportMode;
+  /** 거리 (미터) */
+  distance: number;
+  /** 소요 시간 (분) */
+  duration: number;
+  /** 설명 (예: "3호선 안국역 → 을지로3가역") */
+  description?: string;
+  /** 경로 폴리라인 (지도 표시용) */
+  polyline?: string;
+  /** 요금 (원) */
+  fare?: number;
+}
+
+/**
+ * 대중교통 상세 구간 정보
+ */
+export interface TransitSegment {
+  /** 대중교통 상세 모드 */
+  mode: PublicTransportMode;
+  /** 노선명 (예: "3호선", "272번 버스") */
+  lineName?: string;
+  /** 출발 정류장/역 */
+  startStation: string;
+  /** 도착 정류장/역 */
+  endStation: string;
+  /** 정류장/역 수 */
+  stationCount?: number;
+  /** 소요 시간 (분) */
+  duration: number;
+  /** 거리 (미터) */
+  distance?: number;
+}
+
+/**
+ * 대중교통 환승 정보 포함 경로
+ */
+export interface TransitRoute {
+  /** 총 소요 시간 (분) */
+  totalDuration: number;
+  /** 총 거리 (미터) */
+  totalDistance: number;
+  /** 총 요금 (원) */
+  totalFare: number;
+  /** 환승 횟수 */
+  transferCount: number;
+  /** 상세 구간 정보 */
+  segments: (RouteSegment | TransitSegment)[];
+  /** 도보 시간 (분) */
+  walkingTime: number;
+  /** 도보 거리 (미터) */
+  walkingDistance: number;
+}
+
+/**
+ * 자동차 경로 정보
+ */
+export interface CarRoute {
+  /** 총 소요 시간 (분) */
+  totalDuration: number;
+  /** 총 거리 (미터) */
+  totalDistance: number;
+  /** 예상 톨비 (원) */
+  tollFare?: number;
+  /** 예상 유류비 (원) */
+  fuelCost?: number;
+  /** 경로 폴리라인 */
+  polyline?: string;
+  /** 경로 요약 */
+  summary?: string;
+}
+
+/**
+ * 도보 경로 정보
+ */
+export interface WalkingRoute {
+  /** 총 소요 시간 (분) */
+  totalDuration: number;
+  /** 총 거리 (미터) */
+  totalDistance: number;
+  /** 경로 폴리라인 */
+  polyline?: string;
+}
+
+/**
+ * 경로 조회 결과 통합 타입
+ */
+export type RouteResult = TransitRoute | CarRoute | WalkingRoute;
+
+/**
+ * 경로 조회 옵션
+ */
+export interface RouteOptions {
+  /** 선호 이동 수단 */
+  preferredMode: TransportMode;
+  /** 출발 시간 (HH:mm) - 대중교통 시간표 조회용 */
+  departureTime?: string;
+  /** 우선 기준: 시간 우선 / 거리 우선 / 요금 우선 */
+  priority?: "time" | "distance" | "fare";
+}
+
+/**
+ * 경로 조회 실패 시 에러
+ */
+export interface RouteError {
+  code: "ROUTE_NOT_FOUND" | "API_ERROR" | "INVALID_COORDINATES" | "TIMEOUT";
+  message: string;
+  details?: Record<string, unknown>;
+}

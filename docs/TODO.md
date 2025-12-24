@@ -57,15 +57,15 @@
 
 > 파일: `types/`
 
-- [ ] `types/index.ts` - 공용 export
-- [ ] `types/trip.ts` - Trip, TripStatus 타입
-- [ ] `types/place.ts` - Place, Coordinate, PlaceCategory 타입
-- [ ] `types/route.ts` - RouteSegment, TransportMode 타입
-- [ ] `types/schedule.ts` - FixedSchedule, ScheduleItem, DailyItinerary 타입
-- [ ] `types/optimize.ts` - OptimizeRequest, OptimizeResult, OptimizeOptions 타입
-- [ ] `types/admin.ts` - ErrorLog, ErrorSeverity, AdminUser, AdminRole 타입
-- [ ] `types/kakao.ts` - Kakao API 응답 타입
-- [ ] `types/odsay.ts` - ODsay API 응답 타입
+- [x] `types/index.ts` - 공용 export
+- [x] `types/trip.ts` - Trip, TripStatus 타입
+- [x] `types/place.ts` - Place, Coordinate, PlaceCategory 타입
+- [x] `types/route.ts` - RouteSegment, TransportMode 타입
+- [x] `types/schedule.ts` - FixedSchedule, ScheduleItem, DailyItinerary 타입
+- [x] `types/optimize.ts` - OptimizeRequest, OptimizeResult, OptimizeOptions 타입
+- [x] `types/admin.ts` - ErrorLog, ErrorSeverity, AdminUser, AdminRole 타입
+- [x] `types/kakao.ts` - Kakao API 응답 타입
+- [x] `types/odsay.ts` - ODsay API 응답 타입
 
 ---
 
