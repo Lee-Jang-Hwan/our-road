@@ -598,15 +598,15 @@
 
 #### 마이페이지
 
-- [x] `app/my/page.tsx` - 저장된 여행 목록
-- [x] `app/my/trips/[tripId]/page.tsx` - 저장된 여행 상세
+- [ ] `app/my/page.tsx` - 저장된 여행 목록
+- [ ] `app/my/trips/[tripId]/page.tsx` - 저장된 여행 상세
 
 #### 네비게이션 페이지
 
-- [ ] `app/navigate/[tripId]/page.tsx` - 실시간 네비게이션
-  - [ ] 현재 위치 표시
-  - [ ] 다음 목적지 경로 하이라이트
-  - [ ] Kakao 앱 연동 버튼
+- [x] `app/navigate/[tripId]/page.tsx` - 실시간 네비게이션
+  - [x] 현재 위치 표시
+  - [x] 다음 목적지 경로 하이라이트
+  - [x] Kakao 앱 연동 버튼
 
 #### 관리자 페이지
 
