@@ -1,41 +1,120 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { RiSupabaseFill } from "react-icons/ri";
+import { SignedIn, SignedOut } from "@clerk/nextjs";
+import {
+  LuMapPin,
+  LuRoute,
+  LuClock,
+  LuSparkles,
+  LuChevronRight,
+} from "react-icons/lu";
 
 export default function Home() {
   return (
-    <main className="min-h-[calc(100vh-80px)] flex items-center px-8 py-16 lg:py-24">
-      <section className="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-16 lg:gap-24 items-start lg:items-center">
-        {/* 좌측: 환영 메시지 */}
-        <div className="flex flex-col gap-8">
-          <h1 className="text-5xl lg:text-7xl font-bold leading-tight">
-            SaaS 앱 템플릿에 오신 것을 환영합니다
-          </h1>
-          <p className="text-xl lg:text-2xl text-gray-600 dark:text-gray-400 leading-relaxed">
-            Next.js, Shadcn, Clerk, Supabase, TailwindCSS로 구동되는 완전한
-            기능의 템플릿으로 다음 프로젝트를 시작하세요.
-          </p>
-        </div>
+    <main className="flex flex-col min-h-[calc(100dvh-64px)] px-4 pb-8">
+      {/* Hero Section */}
+      <section className="flex-1 flex flex-col justify-center py-8">
+        <div className="space-y-6">
+          {/* 메인 타이틀 */}
+          <div className="space-y-3">
+            <h1 className="text-3xl font-bold leading-tight">
+              여행 동선,
+              <br />
+              <span className="text-primary">AI가 최적화</span>해드려요
+            </h1>
+            <p className="text-muted-foreground text-base leading-relaxed">
+              가고 싶은 장소만 선택하면
+              <br />
+              가장 효율적인 여행 일정을 만들어드립니다
+            </p>
+          </div>
 
-        {/* 우측: 버튼 두 개 세로 정렬 */}
-        <div className="flex flex-col gap-6">
-          <Link href="/storage-test" className="w-full">
-            <Button className="w-full h-28 flex items-center justify-center gap-4 text-xl shadow-lg hover:shadow-xl transition-shadow">
-              <RiSupabaseFill className="w-8 h-8" />
-              <span>Storage 파일 업로드 테스트</span>
-            </Button>
-          </Link>
-          <Link href="/auth-test" className="w-full">
-            <Button
-              className="w-full h-28 flex items-center justify-center gap-4 text-xl shadow-lg hover:shadow-xl transition-shadow"
-              variant="outline"
-            >
-              <RiSupabaseFill className="w-8 h-8" />
-              <span>Clerk + Supabase 인증 연동</span>
-            </Button>
-          </Link>
+          {/* 주요 기능 */}
+          <div className="grid grid-cols-2 gap-3 py-4">
+            <FeatureCard
+              icon={<LuMapPin className="w-5 h-5" />}
+              title="장소 선택"
+              description="가고 싶은 곳만 고르세요"
+            />
+            <FeatureCard
+              icon={<LuRoute className="w-5 h-5" />}
+              title="동선 최적화"
+              description="이동 시간을 최소화"
+            />
+            <FeatureCard
+              icon={<LuClock className="w-5 h-5" />}
+              title="일정 조율"
+              description="영업시간 자동 반영"
+            />
+            <FeatureCard
+              icon={<LuSparkles className="w-5 h-5" />}
+              title="AI 추천"
+              description="주변 맛집/명소 추천"
+            />
+          </div>
         </div>
       </section>
+
+      {/* CTA Section */}
+      <section className="space-y-3 pt-4">
+        <SignedOut>
+          <Link href="/sign-in" className="block">
+            <Button className="w-full h-14 text-lg font-semibold">
+              시작하기
+              <LuChevronRight className="w-5 h-5 ml-1" />
+            </Button>
+          </Link>
+          <p className="text-center text-sm text-muted-foreground">
+            이미 계정이 있으신가요?{" "}
+            <Link href="/sign-in" className="text-primary underline">
+              로그인
+            </Link>
+          </p>
+        </SignedOut>
+
+        <SignedIn>
+          <Link href="/plan" className="block">
+            <Button className="w-full h-14 text-lg font-semibold">
+              새 여행 계획하기
+              <LuChevronRight className="w-5 h-5 ml-1" />
+            </Button>
+          </Link>
+          <Link href="/my" className="block">
+            <Button variant="outline" className="w-full h-12">
+              내 여행 보기
+            </Button>
+          </Link>
+        </SignedIn>
+      </section>
+
+      {/* Footer */}
+      <footer className="pt-8 pb-4">
+        <p className="text-center text-xs text-muted-foreground">
+          OurRoad - AI 기반 여행 동선 최적화 서비스
+        </p>
+      </footer>
     </main>
+  );
+}
+
+function FeatureCard({
+  icon,
+  title,
+  description,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex flex-col gap-2 p-4 rounded-xl bg-muted/50 border">
+      <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+        {icon}
+      </div>
+      <div>
+        <h3 className="font-semibold text-sm">{title}</h3>
+        <p className="text-xs text-muted-foreground">{description}</p>
+      </div>
+    </div>
   );
 }

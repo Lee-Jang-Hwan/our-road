@@ -579,27 +579,27 @@
 
 #### 메인/인증 페이지
 
-- [ ] `app/page.tsx` - 랜딩 페이지 (리뉴얼)
-  - [ ] 모바일 고정형 레이아웃 적용
-- [ ] `app/(auth)/sign-in/[[...sign-in]]/page.tsx` - 로그인
-- [ ] `app/(auth)/sign-up/[[...sign-up]]/page.tsx` - 회원가입
+- [x] `app/page.tsx` - 랜딩 페이지 (리뉴얼)
+  - [x] 모바일 고정형 레이아웃 적용
+- [x] `app/(auth)/sign-in/[[...sign-in]]/page.tsx` - 로그인
+- [x] `app/(auth)/sign-up/[[...sign-up]]/page.tsx` - 회원가입
 
 #### 여행 계획 페이지
 
-- [ ] `app/plan/page.tsx` - 새 여행 시작
-- [ ] `app/plan/[tripId]/page.tsx` - 여행 편집 메인
-- [ ] `app/plan/[tripId]/places/page.tsx` - 장소 관리
-  - [ ] 장소 검색 및 추가
-  - [ ] 체류 시간 선택 (30분~12시간)
-- [ ] `app/plan/[tripId]/schedule/page.tsx` - 고정 일정 설정
-- [ ] `app/plan/[tripId]/result/page.tsx` - 최적화 결과
-  - [ ] **일자별 탭 네비게이션**
-  - [ ] 스와이프로 일자 전환
+- [x] `app/plan/page.tsx` - 새 여행 시작
+- [x] `app/plan/[tripId]/page.tsx` - 여행 편집 메인
+- [x] `app/plan/[tripId]/places/page.tsx` - 장소 관리
+  - [x] 장소 검색 및 추가
+  - [x] 체류 시간 선택 (30분~12시간)
+- [x] `app/plan/[tripId]/schedule/page.tsx` - 고정 일정 설정
+- [x] `app/plan/[tripId]/result/page.tsx` - 최적화 결과
+  - [x] **일자별 탭 네비게이션**
+  - [x] 스와이프로 일자 전환
 
 #### 마이페이지
 
-- [ ] `app/my/page.tsx` - 저장된 여행 목록
-- [ ] `app/my/trips/[tripId]/page.tsx` - 저장된 여행 상세
+- [x] `app/my/page.tsx` - 저장된 여행 목록
+- [x] `app/my/trips/[tripId]/page.tsx` - 저장된 여행 상세
 
 #### 네비게이션 페이지
 
