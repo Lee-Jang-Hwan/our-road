@@ -525,16 +525,28 @@
 
 > 파일: `components/admin/`
 
-- [ ] `error-log-table.tsx` - 에러 로그 테이블
-  - [ ] 컬럼: 발생 시간, 에러 코드, 메시지, 심각도, 상태
-  - [ ] 페이지네이션
-- [ ] `error-log-filter.tsx` - 에러 로그 필터
-  - [ ] 해결 상태, 심각도, 에러 코드, 기간
-- [ ] `error-log-detail.tsx` - 에러 로그 상세 모달
-  - [ ] 스택 트레이스, 컨텍스트 표시
-- [ ] `resolve-dialog.tsx` - 해결 처리 다이얼로그
-  - [ ] 해결 메모 입력
-- [ ] `admin-sidebar.tsx` - 관리자 사이드바
+- [x] `error-log-table.tsx` - 에러 로그 테이블
+  - [x] 컬럼: 발생 시간, 에러 코드, 메시지, 심각도, 상태
+  - [x] 페이지네이션
+  - [x] ErrorLogTable, ErrorLogTableCompact 컴포넌트
+  - [x] SeverityBadge, StatusBadge 헬퍼 컴포넌트
+- [x] `error-log-filter.tsx` - 에러 로그 필터
+  - [x] 해결 상태, 심각도, 에러 코드, 기간
+  - [x] 데스크톱 인라인 필터, 모바일 Sheet 필터
+  - [x] DateRangeFilter, FilterChip 헬퍼 컴포넌트
+- [x] `error-log-detail.tsx` - 에러 로그 상세 모달
+  - [x] 스택 트레이스, 컨텍스트 표시
+  - [x] 데스크톱 Dialog, 모바일 Sheet 반응형
+  - [x] CodeBlock, ContextDisplay 헬퍼 컴포넌트
+- [x] `resolve-dialog.tsx` - 해결 처리 다이얼로그
+  - [x] 해결 메모 입력
+  - [x] ResolveDialog, BulkResolveDialog 컴포넌트
+  - [x] DeleteConfirmDialog, BulkDeleteConfirmDialog 컴포넌트
+- [x] `admin-sidebar.tsx` - 관리자 사이드바
+  - [x] AdminSidebar (데스크톱 고정, 모바일 햄버거)
+  - [x] AdminSidebarMinimal (아이콘만)
+  - [x] AdminHeader, AdminLayout 컴포넌트
+- [x] `index.ts` - 통합 export
 
 ### Phase 9: 커스텀 훅
 
@@ -545,6 +557,7 @@
 - [x] `use-geolocation.ts` - 현재 위치 추적 (components/map/current-location.tsx에 포함)
 - [ ] `use-debounce.ts` - 디바운스 훅
 - [x] `use-swipe.ts` - 스와이프 제스처 훅
+- [x] `use-media-query.ts` - 미디어 쿼리 훅 (useMediaQuery, useIsMobile, useIsDesktop)
 
 ### Phase 10: 페이지 구현
 
