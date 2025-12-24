@@ -174,10 +174,20 @@
 
 > 파일: `actions/schedules/`
 
-- [ ] `add-fixed-schedule.ts` - 고정 일정 추가
-- [ ] `update-fixed-schedule.ts` - 고정 일정 수정
-- [ ] `delete-fixed-schedule.ts` - 고정 일정 삭제
-- [ ] `get-fixed-schedules.ts` - 여행별 고정 일정 목록
+- [x] `add-fixed-schedule.ts` - 고정 일정 추가
+  - [x] 여행 기간 내 날짜 검증
+  - [x] 시간 충돌 감지
+  - [x] 여행당 최대 20개 제한
+- [x] `update-fixed-schedule.ts` - 고정 일정 수정
+  - [x] 부분 업데이트 지원
+  - [x] 충돌 검사 (자기 자신 제외)
+- [x] `delete-fixed-schedule.ts` - 고정 일정 삭제
+  - [x] 단일/일괄 삭제
+  - [x] 날짜별 삭제 (deleteFixedSchedulesByDate)
+- [x] `get-fixed-schedules.ts` - 여행별 고정 일정 목록
+  - [x] 전체/단일/날짜별 조회
+  - [x] 날짜별 그룹화 (getFixedSchedulesGroupedByDate)
+  - [x] 개수 조회 (getFixedScheduleCount)
 
 ### Phase 6: 외부 API 클라이언트
 
