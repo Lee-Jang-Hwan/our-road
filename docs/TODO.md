@@ -498,14 +498,28 @@
 
 > 파일: `components/map/`
 
-- [ ] `kakao-map.tsx` - 카카오 맵 래퍼
-  - [ ] SDK 동적 로드
-- [ ] `place-markers.tsx` - 장소 마커 표시
-  - [ ] 번호 표시
-- [ ] `route-polyline.tsx` - 경로 폴리라인
-- [ ] `info-window.tsx` - 마커 클릭 정보창
-- [ ] `current-location.tsx` - 현재 위치 표시
-- [ ] `map-controls.tsx` - 줌/현재위치 컨트롤
+- [x] `kakao-map.tsx` - 카카오 맵 래퍼
+  - [x] SDK 동적 로드
+  - [x] useKakaoMap, useMapResize, useMapBounds 훅
+- [x] `place-markers.tsx` - 장소 마커 표시
+  - [x] 번호 표시 (SVG 마커)
+  - [x] 고정 일정 구분 색상
+  - [x] SingleMarker (출발지/도착지/현재위치)
+- [x] `route-polyline.tsx` - 경로 폴리라인
+  - [x] 이동수단별 색상
+  - [x] MultiRoutePolyline (다중 구간)
+- [x] `info-window.tsx` - 마커 클릭 정보창
+  - [x] PlaceInfoWindow, SimpleInfoWindow
+  - [x] NavigationInfoWindow (네비앱 연결)
+- [x] `current-location.tsx` - 현재 위치 표시
+  - [x] useCurrentLocation 훅
+  - [x] 정확도 원 표시
+  - [x] 펄스 애니메이션
+- [x] `map-controls.tsx` - 줌/현재위치 컨트롤
+  - [x] ZoomControl, CurrentLocationControl
+  - [x] MapTypeControl (로드맵/위성)
+  - [x] FitBoundsControl
+- [x] `index.ts` - 통합 export
 
 ### Phase 8: 관리자 UI 컴포넌트
 
@@ -527,8 +541,8 @@
 > 파일: `hooks/`
 
 - [x] `use-sync-user.ts` - Clerk→Supabase 사용자 동기화
-- [ ] `use-kakao-map.ts` - 맵 인스턴스 관리
-- [ ] `use-geolocation.ts` - 현재 위치 추적
+- [x] `use-kakao-map.ts` - 맵 인스턴스 관리 (components/map/kakao-map.tsx에 포함)
+- [x] `use-geolocation.ts` - 현재 위치 추적 (components/map/current-location.tsx에 포함)
 - [ ] `use-debounce.ts` - 디바운스 훅
 - [x] `use-swipe.ts` - 스와이프 제스처 훅
 
