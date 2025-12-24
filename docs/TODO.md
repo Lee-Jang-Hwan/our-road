@@ -359,17 +359,20 @@
 - [x] `app/layout.tsx` - RootLayout 설정
   - [x] ClerkProvider 적용
   - [x] SyncUserProvider 적용
-- [ ] 전역 컨테이너 CSS 설정
-  ```css
-  .app-container {
-    width: 100%;
-    max-width: 430px;
-    margin: 0 auto;
-    min-height: 100vh;
-  }
-  ```
-- [ ] 데스크톱 배경색 구분 (회색)
-- [ ] 모바일 Safe Area 대응 (env())
+  - [x] app-container-safe 클래스 적용
+  - [x] Viewport export (viewportFit: "cover")
+- [x] 전역 컨테이너 CSS 설정 (`app/globals.css`)
+  - [x] `.app-container` - 기본 컨테이너 (max-width: 430px)
+  - [x] `.app-container-safe` - Safe Area 포함 컨테이너
+  - [x] `.fixed-bottom-safe` - 하단 고정 요소용
+  - [x] `.fixed-top-safe` - 상단 고정 요소용
+  - [x] `.touch-target` / `.touch-target-lg` - 터치 타겟 유틸리티
+- [x] 데스크톱 배경색 구분 (회색)
+  - [x] `.desktop-background` - 라이트 모드 (bg-gray-100)
+  - [x] `.dark .desktop-background` - 다크 모드 (bg-gray-900)
+- [x] 모바일 Safe Area 대응 (env())
+  - [x] `.safe-area-top` / `.safe-area-bottom` / `.safe-area-x` / `.safe-area-all`
+  - [x] 100dvh (Dynamic Viewport Height) 적용
 
 ### Phase 2: shadcn 컴포넌트 설치
 
