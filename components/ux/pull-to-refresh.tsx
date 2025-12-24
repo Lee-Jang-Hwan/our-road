@@ -8,7 +8,7 @@ import {
   ReactNode,
 } from "react";
 import { cn } from "@/lib/utils";
-import { LuArrowDown, LuLoader2 } from "react-icons/lu";
+import { ArrowDown, LoaderCircle } from "lucide-react";
 
 interface PullToRefreshProps {
   /** 새로고침 핸들러 (비동기 함수) */
@@ -171,9 +171,9 @@ export function PullToRefresh({
       >
         <div className="flex flex-col items-center gap-1.5">
           {state === "refreshing" ? (
-            <LuLoader2 className="w-5 h-5 text-primary animate-spin" />
+            <LoaderCircle className="w-5 h-5 text-primary animate-spin" />
           ) : (
-            <LuArrowDown
+            <ArrowDown
               className={cn(
                 "w-5 h-5 transition-transform duration-200",
                 state === "ready" && "text-primary"

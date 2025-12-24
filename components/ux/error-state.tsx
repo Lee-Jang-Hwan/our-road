@@ -185,7 +185,7 @@ export function ErrorState({
         {/* 보조 액션 버튼들 */}
         {onBack && type !== "permission" && (
           <Button variant="outline" onClick={onBack} className="w-full touch-target">
-            <LuChevronLeft className="w-4 h-4 mr-2" />
+            <ChevronLeft className="w-4 h-4 mr-2" />
             돌아가기
           </Button>
         )}
@@ -213,7 +213,7 @@ export function ErrorAlert({
 }) {
   return (
     <Alert variant="destructive" className={cn("relative", className)}>
-      <LuAlertCircle className="h-4 w-4" />
+      <CircleAlert className="h-4 w-4" />
       {title && <AlertTitle>{title}</AlertTitle>}
       <AlertDescription className="flex items-start justify-between gap-2">
         <span>{description}</span>
@@ -224,7 +224,7 @@ export function ErrorAlert({
             onClick={onRetry}
             className="shrink-0 -mr-2 -my-1"
           >
-            <LuRefreshCw className="w-3 h-3 mr-1" />
+            <RefreshCw className="w-3 h-3 mr-1" />
             재시도
           </Button>
         )}
@@ -259,7 +259,7 @@ export function ErrorMessage({
         className
       )}
     >
-      <LuAlertCircle className="w-4 h-4 shrink-0" />
+      <CircleAlert className="w-4 h-4 shrink-0" />
       <span>{message}</span>
     </div>
   );

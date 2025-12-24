@@ -179,7 +179,7 @@ export function showToast(
  * 커스텀 토스트 (JSX 지원)
  */
 export function showCustomToast(
-  content: React.ReactNode,
+  content: React.ReactElement,
   options?: ToastOptions
 ) {
   return sonnerToast.custom(() => content, options);
