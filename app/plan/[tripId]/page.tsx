@@ -2,7 +2,9 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
+import { format } from "date-fns";
 import { LuChevronLeft, LuMapPin, LuCalendarClock, LuSparkles, LuSettings } from "react-icons/lu";
+import { Clock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +12,8 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTripDraft } from "@/hooks/use-trip-draft";
 import type { TripStatus } from "@/types/trip";
+import type { FixedSchedule } from "@/types/schedule";
+import type { Place } from "@/types/place";
 
 interface TripEditPageProps {
   params: Promise<{ tripId: string }>;
@@ -26,6 +30,8 @@ export default function TripEditPage({ params }: TripEditPageProps) {
     status: TripStatus;
     placeCount: number;
     fixedScheduleCount: number;
+    fixedSchedules: FixedSchedule[];
+    places: Place[];
   } | null>(null);
 
   // sessionStorage에서 여행 데이터 로드
@@ -41,7 +47,9 @@ export default function TripEditPage({ params }: TripEditPageProps) {
         endDate: draft.tripInfo.endDate,
         status: "draft",
         placeCount: draft.places.length,
-        fixedScheduleCount: 0,
+        fixedScheduleCount: draft.fixedSchedules?.length || 0,
+        fixedSchedules: draft.fixedSchedules || [],
+        places: draft.places || [],
       });
     } else {
       // draft가 없으면 기본값 (직접 URL 접근 시)
@@ -53,6 +61,8 @@ export default function TripEditPage({ params }: TripEditPageProps) {
         status: "draft",
         placeCount: 0,
         fixedScheduleCount: 0,
+        fixedSchedules: [],
+        places: [],
       });
     }
   }, [tripId, getDraftByTripId, isLoaded]);
@@ -102,14 +112,6 @@ export default function TripEditPage({ params }: TripEditPageProps) {
       isComplete: false,
       isOptional: true,
     },
-    {
-      icon: LuSparkles,
-      title: "일정 최적화",
-      description: "AI가 최적의 동선을 계획해드려요",
-      href: `/plan/${tripId}/result`,
-      isComplete: trip.status === "optimized",
-      disabled: trip.placeCount === 0,
-    },
   ];
 
   return (
@@ -142,23 +144,23 @@ export default function TripEditPage({ params }: TripEditPageProps) {
 
         {steps.map((step, index) => {
           const Icon = step.icon;
+          const isPlaceStep = step.title === "장소 추가";
+          const isFixedScheduleStep = step.title === "고정 일정 설정";
+          const hasPlaces = isPlaceStep && trip.places.length > 0;
+          const hasFixedSchedules = isFixedScheduleStep && trip.fixedSchedules.length > 0;
+
           return (
             <Link
               key={step.title}
-              href={step.disabled ? "#" : step.href}
-              className={step.disabled ? "pointer-events-none" : ""}
+              href={step.href}
             >
               <Card
-                className={`transition-all ${
-                  step.disabled
-                    ? "opacity-50"
-                    : "hover:border-primary hover:shadow-sm"
-                }`}
+                className="transition-all hover:border-primary hover:shadow-sm"
               >
                 <CardHeader className="flex flex-row items-start gap-4 pb-2">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                      step.isComplete
+                      step.isComplete || hasFixedSchedules
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted text-muted-foreground"
                     }`}
@@ -178,12 +180,72 @@ export default function TripEditPage({ params }: TripEditPageProps) {
                   </div>
                   <Icon className="w-5 h-5 text-muted-foreground shrink-0" />
                 </CardHeader>
-                {step.count !== undefined && step.count > 0 && (
+
+                {/* 장소 미리보기 */}
+                {hasPlaces && (
                   <CardContent className="pt-0 pb-3">
-                    <p className="text-sm text-primary font-medium">
-                      {step.count}
-                      {step.countLabel}
-                    </p>
+                    <div className="space-y-2">
+                      {trip.places.slice(0, 3).map((place, placeIndex) => (
+                        <div
+                          key={place.id}
+                          className="flex items-center gap-3 p-3 rounded-lg bg-zinc-900 text-white"
+                        >
+                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white text-zinc-900 text-sm font-bold shrink-0">
+                            {placeIndex + 1}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm truncate">
+                              {place.name}
+                            </p>
+                            <p className="text-xs text-zinc-400 truncate">
+                              {place.address}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                      {trip.places.length > 3 && (
+                        <p className="text-xs text-muted-foreground text-center pt-1">
+                          외 {trip.places.length - 3}개 장소
+                        </p>
+                      )}
+                    </div>
+                  </CardContent>
+                )}
+
+                {/* 고정 일정 미리보기 */}
+                {hasFixedSchedules && (
+                  <CardContent className="pt-0 pb-3">
+                    <div className="space-y-2">
+                      {trip.fixedSchedules.slice(0, 3).map((schedule) => {
+                        const place = trip.places.find((p) => p.id === schedule.placeId);
+                        return (
+                          <div
+                            key={schedule.id}
+                            className="flex items-center gap-3 p-3 rounded-lg bg-zinc-900 text-white"
+                          >
+                            <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white/10 shrink-0">
+                              <Clock className="h-4 w-4 text-white" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">
+                                {place?.name || "알 수 없는 장소"}
+                              </p>
+                              <p className="text-xs text-zinc-400">
+                                {format(new Date(schedule.date), "M월 d일")} {schedule.startTime}
+                              </p>
+                            </div>
+                            <Badge className="bg-white/10 text-white text-xs border-0 shrink-0">
+                              고정
+                            </Badge>
+                          </div>
+                        );
+                      })}
+                      {trip.fixedSchedules.length > 3 && (
+                        <p className="text-xs text-muted-foreground text-center pt-1">
+                          외 {trip.fixedSchedules.length - 3}개 일정
+                        </p>
+                      )}
+                    </div>
                   </CardContent>
                 )}
               </Card>

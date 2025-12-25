@@ -15,7 +15,6 @@ import {
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -44,7 +43,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import {
   Sheet,
@@ -52,7 +50,6 @@ import {
   SheetHeader,
   SheetTitle,
   SheetDescription,
-  SheetFooter,
 } from "@/components/ui/sheet";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
@@ -63,8 +60,20 @@ import {
 import type { Place } from "@/types/place";
 import type { FixedSchedule } from "@/types/schedule";
 
-// 시간 옵션 (00:00 ~ 23:30, 30분 단위)
-const timeOptions = generateTimeOptions(0, 24);
+// 시간 옵션 (06:00 ~ 23:30, 30분 단위)
+const timeOptions = generateTimeOptions(6, 24);
+
+// 체류 시간을 포맷팅
+function formatDuration(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours > 0 && mins > 0) {
+    return `${hours}시간 ${mins}분`;
+  } else if (hours > 0) {
+    return `${hours}시간`;
+  }
+  return `${mins}분`;
+}
 
 interface FixedScheduleFormProps {
   /** 여행 ID */
@@ -110,7 +119,6 @@ export function FixedScheduleForm({
       placeId: existingSchedule?.placeId || "",
       date: existingSchedule?.date || "",
       startTime: existingSchedule?.startTime || "10:00",
-      endTime: existingSchedule?.endTime || "12:00",
       note: existingSchedule?.note || "",
     },
   });
@@ -135,10 +143,9 @@ export function FixedScheduleForm({
     return new Date(dateStr);
   };
 
-  // 시작 시간이 종료 시간보다 늦은지 확인
-  const startTime = form.watch("startTime");
-  const endTime = form.watch("endTime");
-  const isTimeInvalid = startTime >= endTime;
+  // 선택된 장소의 체류 시간 가져오기
+  const selectedPlaceId = form.watch("placeId");
+  const selectedPlace = places.find((p) => p.id === selectedPlaceId);
 
   return (
     <Form {...form}>
@@ -171,12 +178,22 @@ export function FixedScheduleForm({
                 <SelectContent>
                   {places.map((place) => (
                     <SelectItem key={place.id} value={place.id}>
-                      {place.name}
+                      <div className="flex items-center justify-between w-full">
+                        <span>{place.name}</span>
+                        <span className="text-xs text-muted-foreground ml-2">
+                          ({formatDuration(place.estimatedDuration)})
+                        </span>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <FormMessage />
+              {selectedPlace && (
+                <p className="text-xs text-muted-foreground">
+                  체류 시간: {formatDuration(selectedPlace.estimatedDuration)}
+                </p>
+              )}
             </FormItem>
           )}
         />
@@ -227,77 +244,35 @@ export function FixedScheduleForm({
           )}
         />
 
-        {/* 시간 선택 */}
-        <div className="grid grid-cols-2 gap-3">
-          <FormField
-            control={form.control}
-            name="startTime"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>시작 시간</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger className="touch-target">
-                      <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {timeOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="endTime"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>종료 시간</FormLabel>
-                <Select
-                  onValueChange={field.onChange}
-                  defaultValue={field.value}
-                >
-                  <FormControl>
-                    <SelectTrigger
-                      className={cn(
-                        "touch-target",
-                        isTimeInvalid && "border-destructive"
-                      )}
-                    >
-                      <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
-                      <SelectValue />
-                    </SelectTrigger>
-                  </FormControl>
-                  <SelectContent>
-                    {timeOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        </div>
-
-        {isTimeInvalid && (
-          <p className="text-sm text-destructive">
-            종료 시간은 시작 시간보다 늦어야 합니다
-          </p>
-        )}
+        {/* 시작 시간 선택 */}
+        <FormField
+          control={form.control}
+          name="startTime"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>시작 시간</FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                defaultValue={field.value}
+              >
+                <FormControl>
+                  <SelectTrigger className="touch-target">
+                    <Clock className="mr-2 h-4 w-4 text-muted-foreground" />
+                    <SelectValue />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  {timeOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
 
         {/* 메모 */}
         <FormField
@@ -344,7 +319,7 @@ export function FixedScheduleForm({
           </Button>
           <Button
             type="submit"
-            disabled={isLoading || isTimeInvalid}
+            disabled={isLoading}
             className="touch-target"
           >
             {isLoading ? (
@@ -431,6 +406,8 @@ interface FixedScheduleCardProps {
   schedule: FixedSchedule;
   /** 장소명 */
   placeName: string;
+  /** 체류 시간 (분) */
+  duration?: number;
   /** 클릭 핸들러 */
   onClick?: () => void;
   /** 추가 클래스 */
@@ -440,6 +417,7 @@ interface FixedScheduleCardProps {
 export function FixedScheduleCard({
   schedule,
   placeName,
+  duration,
   onClick,
   className,
 }: FixedScheduleCardProps) {
@@ -461,8 +439,8 @@ export function FixedScheduleCard({
           <span className="text-xs text-primary font-medium">고정</span>
         </div>
         <div className="text-xs text-muted-foreground">
-          {format(new Date(schedule.date), "M월 d일")} {schedule.startTime} -{" "}
-          {schedule.endTime}
+          {format(new Date(schedule.date), "M월 d일")} {schedule.startTime}
+          {duration && ` (${formatDuration(duration)})`}
         </div>
         {schedule.note && (
           <p className="text-xs text-muted-foreground mt-1 truncate">

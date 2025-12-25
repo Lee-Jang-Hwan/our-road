@@ -36,6 +36,8 @@ export interface DailyDistributorOptions {
   maxDailyMinutes?: number;
   /** 고정 일정 목록 */
   fixedSchedules?: FixedSchedule[];
+  /** 장소별 체류시간 맵 (placeId -> minutes) */
+  placeDurations?: Map<string, number>;
   /** 진행 콜백 */
   onProgress?: (day: number, totalDays: number) => void;
 }
@@ -61,6 +63,13 @@ interface DailyAvailability {
 // ============================================
 
 /**
+ * 시작 시간과 체류 시간으로 종료 시간(분) 계산
+ */
+function calculateEndMinutes(startTime: string, durationMinutes: number): number {
+  return timeToMinutes(startTime) + durationMinutes;
+}
+
+/**
  * 일자별 가용 시간 계산
  *
  * @param options - 분배 옵션
@@ -76,13 +85,14 @@ function calculateDailyAvailability(
     dailyEndTime = "22:00",
     maxDailyMinutes = 480,
     fixedSchedules = [],
+    placeDurations,
   } = options;
 
   const totalDays = getDaysBetween(startDate, endDate);
   const dates = generateDateRange(startDate, totalDays);
 
-  const dailyStartMinute = timeToMinutes(dailyStartTime);
   const dailyEndMinute = timeToMinutes(dailyEndTime);
+  const dailyStartMinute = timeToMinutes(dailyStartTime);
   const defaultAvailable = Math.min(
     dailyEndMinute - dailyStartMinute,
     maxDailyMinutes
@@ -92,12 +102,15 @@ function calculateDailyAvailability(
     // 해당 날짜의 고정 일정 필터링
     const daySchedules = fixedSchedules.filter((s) => s.date === date);
 
-    // 예약된 시간 슬롯 생성
-    const reservedSlots = daySchedules.map((s) => ({
-      start: timeToMinutes(s.startTime),
-      end: timeToMinutes(s.endTime),
-      placeId: s.placeId,
-    }));
+    // 예약된 시간 슬롯 생성 (장소 체류시간으로 종료 시간 계산)
+    const reservedSlots = daySchedules.map((s) => {
+      const duration = placeDurations?.get(s.placeId) ?? 60;
+      return {
+        start: timeToMinutes(s.startTime),
+        end: calculateEndMinutes(s.startTime, duration),
+        placeId: s.placeId,
+      };
+    });
 
     // 고정 일정이 차지하는 총 시간
     const reservedMinutes = reservedSlots.reduce(

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, useRef } from "react";
 import type { CreateTripInput } from "@/lib/schemas";
 import type { Place } from "@/types/place";
+import type { FixedSchedule } from "@/types/schedule";
 
 /**
  * 여행 임시 저장 데이터 타입
@@ -12,6 +13,8 @@ export interface TripDraft {
   tripInfo: CreateTripInput;
   /** 추가된 장소 목록 */
   places: Place[];
+  /** 고정 일정 목록 */
+  fixedSchedules: FixedSchedule[];
   /** 임시 ID */
   tempId: string;
   /** 생성 시간 */
@@ -51,6 +54,7 @@ export function useTripDraft() {
     const newDraft: TripDraft = {
       tripInfo,
       places: draftRef.current?.places || [],
+      fixedSchedules: draftRef.current?.fixedSchedules || [],
       tempId,
       createdAt: new Date().toISOString(),
     };
@@ -83,6 +87,24 @@ export function useTripDraft() {
     }
   }, []);
 
+  // 고정 일정 목록 저장
+  const saveFixedSchedules = useCallback((fixedSchedules: FixedSchedule[]) => {
+    const currentDraft = draftRef.current;
+    if (!currentDraft) return;
+
+    const newDraft: TripDraft = {
+      ...currentDraft,
+      fixedSchedules,
+    };
+
+    try {
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(newDraft));
+      setDraft(newDraft);
+    } catch (error) {
+      console.error("고정 일정 저장 실패:", error);
+    }
+  }, []);
+
   // 특정 tripId에 해당하는 draft 가져오기
   const getDraftByTripId = useCallback((tripId: string): TripDraft | null => {
     const currentDraft = draftRef.current;
@@ -107,6 +129,7 @@ export function useTripDraft() {
     isLoaded,
     saveTripInfo,
     savePlaces,
+    saveFixedSchedules,
     getDraftByTripId,
     clearDraft,
   };

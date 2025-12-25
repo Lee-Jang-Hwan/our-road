@@ -3,73 +3,58 @@
 // ============================================
 
 import { z } from "zod";
-import { dateSchema, timeSchema, uuidSchema } from "./common";
+import { dateSchema, timeSchema } from "./common";
+
+/**
+ * 장소 ID 스키마 (카카오 장소 ID는 숫자 문자열)
+ */
+const placeIdSchema = z.string().min(1, "장소를 선택해주세요");
+
+/**
+ * 여행/일정 ID 스키마 (UUID 또는 일반 문자열)
+ */
+const idSchema = z.string().min(1, "ID가 필요합니다");
 
 /**
  * 고정 일정 스키마
+ * - 체류 시간은 장소에서 이미 설정되므로 시작 시간만 필요
  */
-export const fixedScheduleSchema = z
-  .object({
-    id: uuidSchema,
-    placeId: uuidSchema,
-    date: dateSchema,
-    startTime: timeSchema,
-    endTime: timeSchema,
-    note: z.string().max(200, "메모는 200자 이하여야 합니다").optional(),
-  })
-  .refine((data) => data.startTime < data.endTime, {
-    message: "종료 시간은 시작 시간 이후여야 합니다",
-    path: ["endTime"],
-  });
+export const fixedScheduleSchema = z.object({
+  id: idSchema,
+  placeId: placeIdSchema,
+  date: dateSchema,
+  startTime: timeSchema,
+  note: z.string().max(200, "메모는 200자 이하여야 합니다").optional(),
+});
 
 /**
  * 고정 일정 생성 스키마 (id 없이)
+ * - 날짜와 시작 시간만 설정 (종료 시간은 장소의 체류 시간으로 자동 계산)
  */
-export const createFixedScheduleSchema = z
-  .object({
-    tripId: uuidSchema,
-    placeId: uuidSchema,
-    date: dateSchema,
-    startTime: timeSchema,
-    endTime: timeSchema,
-    note: z.string().max(200, "메모는 200자 이하여야 합니다").optional(),
-  })
-  .refine((data) => data.startTime < data.endTime, {
-    message: "종료 시간은 시작 시간 이후여야 합니다",
-    path: ["endTime"],
-  });
+export const createFixedScheduleSchema = z.object({
+  tripId: idSchema,
+  placeId: placeIdSchema,
+  date: dateSchema,
+  startTime: timeSchema,
+  note: z.string().max(200, "메모는 200자 이하여야 합니다").optional(),
+});
 
 /**
  * 고정 일정 수정 스키마
  */
-export const updateFixedScheduleSchema = z
-  .object({
-    placeId: uuidSchema.optional(),
-    date: dateSchema.optional(),
-    startTime: timeSchema.optional(),
-    endTime: timeSchema.optional(),
-    note: z.string().max(200, "메모는 200자 이하여야 합니다").optional(),
-  })
-  .refine(
-    (data) => {
-      // startTime과 endTime이 모두 있을 때만 검증
-      if (data.startTime && data.endTime) {
-        return data.startTime < data.endTime;
-      }
-      return true;
-    },
-    {
-      message: "종료 시간은 시작 시간 이후여야 합니다",
-      path: ["endTime"],
-    }
-  );
+export const updateFixedScheduleSchema = z.object({
+  placeId: placeIdSchema.optional(),
+  date: dateSchema.optional(),
+  startTime: timeSchema.optional(),
+  note: z.string().max(200, "메모는 200자 이하여야 합니다").optional(),
+});
 
 /**
  * 일정 항목 스키마 (최적화 결과)
  */
 export const scheduleItemSchema = z.object({
   order: z.number().int().min(1),
-  placeId: uuidSchema,
+  placeId: placeIdSchema,
   placeName: z.string().min(1).max(100),
   arrivalTime: timeSchema,
   departureTime: timeSchema,

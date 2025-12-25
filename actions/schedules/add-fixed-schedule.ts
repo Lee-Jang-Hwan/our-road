@@ -20,6 +20,7 @@ export interface AddFixedScheduleResult {
 
 /**
  * TripFixedScheduleRow를 FixedSchedule로 변환
+ * (endTime은 장소의 체류시간으로 계산되므로 FixedSchedule에는 포함하지 않음)
  */
 function convertRowToFixedSchedule(row: TripFixedScheduleRow): FixedSchedule {
   return {
@@ -27,7 +28,6 @@ function convertRowToFixedSchedule(row: TripFixedScheduleRow): FixedSchedule {
     placeId: row.place_id ?? "",
     date: row.date,
     startTime: row.start_time,
-    endTime: row.end_time,
     note: row.note ?? undefined,
   };
 }
@@ -102,10 +102,10 @@ export async function addFixedSchedule(
       };
     }
 
-    // 6. 장소가 해당 여행에 속하는지 확인
+    // 6. 장소가 해당 여행에 속하는지 확인 및 체류시간 조회
     const { data: place, error: placeError } = await supabase
       .from("trip_places")
-      .select("id")
+      .select("id, estimated_duration")
       .eq("id", validatedData.placeId)
       .eq("trip_id", validatedData.tripId)
       .single();
@@ -116,6 +116,15 @@ export async function addFixedSchedule(
         error: "장소를 찾을 수 없거나 해당 여행에 속하지 않습니다.",
       };
     }
+
+    // 시작 시간과 체류 시간을 기반으로 종료 시간 계산
+    const estimatedDuration = place.estimated_duration || 60; // 기본 1시간
+    const [startHour, startMin] = validatedData.startTime.split(":").map(Number);
+    const startMinutes = startHour * 60 + startMin;
+    const endMinutes = startMinutes + estimatedDuration;
+    const endHour = Math.floor(endMinutes / 60);
+    const endMin = endMinutes % 60;
+    const calculatedEndTime = `${String(endHour).padStart(2, "0")}:${String(endMin).padStart(2, "0")}`;
 
     // 7. 같은 날짜/시간에 충돌하는 고정 일정이 있는지 확인
     const { data: conflictingSchedules } = await supabase
@@ -130,7 +139,7 @@ export async function addFixedSchedule(
         // 새 일정의 종료시간이 기존 시작시간 후이면 겹침
         return (
           validatedData.startTime < schedule.end_time &&
-          validatedData.endTime > schedule.start_time
+          calculatedEndTime > schedule.start_time
         );
       });
 
@@ -171,7 +180,7 @@ export async function addFixedSchedule(
         place_id: validatedData.placeId,
         date: validatedData.date,
         start_time: validatedData.startTime,
-        end_time: validatedData.endTime,
+        end_time: calculatedEndTime,
         note: validatedData.note ?? null,
       })
       .select()

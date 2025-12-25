@@ -6,18 +6,17 @@ import type { RouteSegment } from "./route";
 
 /**
  * 고정 일정
+ * - 종료 시간은 장소의 체류 시간으로 자동 계산됨
  */
 export interface FixedSchedule {
-  /** UUID */
+  /** ID */
   id: string;
-  /** 연결된 장소 ID */
+  /** 연결된 장소 ID (카카오 장소 ID) */
   placeId: string;
   /** 날짜 (YYYY-MM-DD) */
   date: string;
   /** 시작 시간 (HH:mm) */
   startTime: string;
-  /** 종료 시간 (HH:mm) */
-  endTime: string;
   /** 메모 */
   note?: string;
 }
@@ -30,7 +29,6 @@ export interface CreateFixedScheduleData {
   placeId: string;
   date: string;
   startTime: string;
-  endTime: string;
   note?: string;
 }
 
@@ -41,7 +39,6 @@ export interface UpdateFixedScheduleData {
   placeId?: string;
   date?: string;
   startTime?: string;
-  endTime?: string;
   note?: string;
 }
 

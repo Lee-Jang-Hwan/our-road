@@ -19,7 +19,6 @@ import {
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -33,7 +32,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
 import { generateDurationOptions } from "@/lib/schemas";
 import type { Place, PlaceCategory } from "@/types/place";
 
@@ -118,121 +116,121 @@ export function PlaceCard({
   };
 
   return (
-    <Card
+    <div
       className={cn(
-        "relative transition-all",
+        "relative rounded-xl bg-zinc-900 text-white p-4 transition-all active:scale-[0.98]",
         selected && "ring-2 ring-primary",
-        onClick && "cursor-pointer hover:bg-accent/50",
+        onClick && "cursor-pointer",
         className
       )}
       onClick={onClick}
     >
-      <CardContent className="p-3">
-        <div className="flex items-start gap-3">
-          {/* 드래그 핸들 */}
-          {draggable && (
-            <div
-              {...dragHandleProps}
-              className="flex items-center justify-center w-6 h-full cursor-grab active:cursor-grabbing touch-target"
-            >
-              <GripVertical className="h-5 w-5 text-muted-foreground" />
+      <div className="flex items-start gap-3">
+        {/* 드래그 핸들 */}
+        {draggable && (
+          <div
+            {...dragHandleProps}
+            className="flex items-center justify-center w-6 h-full cursor-grab active:cursor-grabbing touch-target"
+          >
+            <GripVertical className="h-5 w-5 text-zinc-400" />
+          </div>
+        )}
+
+        {/* 순서 번호 */}
+        {index !== undefined && (
+          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-white text-zinc-900 text-sm font-bold shrink-0">
+            {index}
+          </div>
+        )}
+
+        {/* 장소 정보 */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <h4 className="font-semibold text-base leading-tight line-clamp-2">
+                {place.name}
+              </h4>
+              <p className="text-sm text-zinc-400 line-clamp-1 mt-1">
+                {place.address}
+              </p>
             </div>
-          )}
 
-          {/* 순서 번호 */}
-          {index !== undefined && (
-            <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary text-primary-foreground text-sm font-bold shrink-0">
-              {index}
-            </div>
-          )}
+            {/* 삭제/더보기 메뉴 */}
+            {onDelete && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 shrink-0 text-zinc-400 hover:text-white hover:bg-zinc-800"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <MoreVertical className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDelete();
+                    }}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    삭제
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
 
-          {/* 장소 정보 */}
-          <div className="flex-1 min-w-0">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <h4 className="font-medium truncate">{place.name}</h4>
-                <p className="text-xs text-muted-foreground truncate mt-0.5">
-                  {place.address}
-                </p>
-              </div>
+          {/* 카테고리 및 체류시간 */}
+          <div className="flex items-center gap-2 mt-3 flex-wrap">
+            {place.category && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-zinc-800 text-zinc-300 text-xs font-medium">
+                {categoryIcon}
+                {categoryLabel}
+              </span>
+            )}
 
-              {/* 삭제/더보기 메뉴 */}
-              {onDelete && (
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0"
+            {!compact && (
+              <div className="flex items-center gap-1.5">
+                <Clock className="h-4 w-4 text-zinc-400" />
+                {onDurationChange ? (
+                  <Select
+                    value={place.estimatedDuration.toString()}
+                    onValueChange={(value) =>
+                      onDurationChange(parseInt(value))
+                    }
+                  >
+                    <SelectTrigger
+                      className="h-8 w-auto text-xs border-zinc-700 bg-zinc-800 text-zinc-300 hover:bg-zinc-700"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete();
-                      }}
-                      className="text-destructive focus:text-destructive"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      삭제
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
-            </div>
-
-            {/* 카테고리 및 체류시간 */}
-            <div className="flex items-center gap-2 mt-2 flex-wrap">
-              {place.category && (
-                <Badge variant="secondary" className="gap-1 text-xs">
-                  {categoryIcon}
-                  {categoryLabel}
-                </Badge>
-              )}
-
-              {!compact && (
-                <div className="flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                  {onDurationChange ? (
-                    <Select
-                      value={place.estimatedDuration.toString()}
-                      onValueChange={(value) =>
-                        onDurationChange(parseInt(value))
-                      }
-                    >
-                      <SelectTrigger
-                        className="h-7 w-auto text-xs border-dashed"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {durationOptions.map((option) => (
-                          <SelectItem
-                            key={option.value}
-                            value={option.value.toString()}
-                          >
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <span className="text-xs text-muted-foreground">
-                      {formatDuration(place.estimatedDuration)}
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {durationOptions.map((option) => (
+                        <SelectItem
+                          key={option.value}
+                          value={option.value.toString()}
+                        >
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <span className="text-xs text-zinc-400 font-medium">
+                    {formatDuration(place.estimatedDuration)}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -303,20 +301,23 @@ interface PlaceCardSkeletonProps {
 
 export function PlaceCardSkeleton({ className }: PlaceCardSkeletonProps) {
   return (
-    <Card className={cn("animate-pulse", className)}>
-      <CardContent className="p-3">
-        <div className="flex items-start gap-3">
-          <div className="w-7 h-7 rounded-full bg-muted shrink-0" />
-          <div className="flex-1 space-y-2">
-            <div className="h-4 bg-muted rounded w-3/4" />
-            <div className="h-3 bg-muted rounded w-1/2" />
-            <div className="flex gap-2">
-              <div className="h-5 bg-muted rounded w-16" />
-              <div className="h-5 bg-muted rounded w-20" />
-            </div>
+    <div
+      className={cn(
+        "animate-pulse rounded-xl bg-zinc-900 p-4",
+        className
+      )}
+    >
+      <div className="flex items-start gap-3">
+        <div className="w-8 h-8 rounded-full bg-zinc-700 shrink-0" />
+        <div className="flex-1 space-y-3">
+          <div className="h-5 bg-zinc-700 rounded w-3/4" />
+          <div className="h-4 bg-zinc-800 rounded w-1/2" />
+          <div className="flex gap-2">
+            <div className="h-6 bg-zinc-800 rounded-full w-16" />
+            <div className="h-6 bg-zinc-800 rounded w-20" />
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

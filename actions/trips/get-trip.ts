@@ -74,6 +74,7 @@ function convertRowToPlace(row: TripPlaceRow): Place {
 
 /**
  * TripFixedScheduleRow를 FixedSchedule로 변환
+ * (endTime은 장소의 체류시간으로 계산되므로 FixedSchedule에는 포함하지 않음)
  */
 function convertRowToFixedSchedule(row: TripFixedScheduleRow): FixedSchedule {
   return {
@@ -81,7 +82,6 @@ function convertRowToFixedSchedule(row: TripFixedScheduleRow): FixedSchedule {
     placeId: row.place_id ?? "",
     date: row.date,
     startTime: row.start_time,
-    endTime: row.end_time,
     note: row.note ?? undefined,
   };
 }

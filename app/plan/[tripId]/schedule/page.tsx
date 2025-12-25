@@ -23,7 +23,7 @@ interface SchedulePageProps {
 
 export default function SchedulePage({ params }: SchedulePageProps) {
   const { tripId } = use(params);
-  const { getDraftByTripId, isLoaded } = useTripDraft();
+  const { getDraftByTripId, saveFixedSchedules, isLoaded } = useTripDraft();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<FixedSchedule | undefined>();
   const [schedules, setSchedules] = useState<FixedSchedule[]>([]);
@@ -33,10 +33,11 @@ export default function SchedulePage({ params }: SchedulePageProps) {
     startDate: "",
     endDate: "",
   });
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // sessionStorage에서 여행 데이터 로드
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isLoaded || isInitialized) return;
 
     const draft = getDraftByTripId(tripId);
     if (draft) {
@@ -47,8 +48,19 @@ export default function SchedulePage({ params }: SchedulePageProps) {
         startDate: draft.tripInfo.startDate,
         endDate: draft.tripInfo.endDate,
       });
+      // 고정 일정 로드
+      if (draft.fixedSchedules) {
+        setSchedules(draft.fixedSchedules);
+      }
     }
-  }, [tripId, getDraftByTripId, isLoaded]);
+    setIsInitialized(true);
+  }, [tripId, getDraftByTripId, isLoaded, isInitialized]);
+
+  // 고정 일정 변경 시 sessionStorage에 저장
+  useEffect(() => {
+    if (!isInitialized) return;
+    saveFixedSchedules(schedules);
+  }, [schedules, isInitialized, saveFixedSchedules]);
 
   // 로딩 상태
   if (!isLoaded) {
@@ -98,7 +110,6 @@ export default function SchedulePage({ params }: SchedulePageProps) {
           placeId: data.placeId,
           date: data.date,
           startTime: data.startTime,
-          endTime: data.endTime,
           note: data.note || undefined,
         };
         setSchedules((prev) => [...prev, newSchedule]);
@@ -118,11 +129,6 @@ export default function SchedulePage({ params }: SchedulePageProps) {
 
     setSchedules((prev) => prev.filter((s) => s.id !== editingSchedule.id));
     setIsDialogOpen(false);
-  };
-
-  // 장소명 찾기
-  const getPlaceName = (placeId: string) => {
-    return places.find((p) => p.id === placeId)?.name || "알 수 없는 장소";
   };
 
   // 장소가 없거나 날짜가 설정되지 않은 경우
@@ -205,14 +211,18 @@ export default function SchedulePage({ params }: SchedulePageProps) {
           </div>
         ) : (
           <div className="space-y-3">
-            {schedules.map((schedule) => (
-              <FixedScheduleCard
-                key={schedule.id}
-                schedule={schedule}
-                placeName={getPlaceName(schedule.placeId)}
-                onClick={() => handleEdit(schedule)}
-              />
-            ))}
+            {schedules.map((schedule) => {
+              const place = places.find((p) => p.id === schedule.placeId);
+              return (
+                <FixedScheduleCard
+                  key={schedule.id}
+                  schedule={schedule}
+                  placeName={place?.name || "알 수 없는 장소"}
+                  duration={place?.estimatedDuration}
+                  onClick={() => handleEdit(schedule)}
+                />
+              );
+            })}
           </div>
         )}
       </div>

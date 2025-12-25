@@ -14,6 +14,7 @@ import {
   validateDistribution,
   getDistributionStats,
   timeToMinutes,
+  minutesToTime,
 } from "@/lib/optimize";
 import type { DayAssignment } from "@/lib/optimize/types";
 
@@ -184,25 +185,28 @@ export async function distributeDays(
         (s) => s.placeId === place.id
       );
 
+      // 고정 일정의 경우에도 장소의 체류 시간(estimated_duration) 사용
+      const duration = place.estimated_duration;
       const node: OptimizeNode = fixedSchedule
         ? {
             id: place.id,
             name: place.name,
             coordinate: { lat: place.lat, lng: place.lng },
-            duration:
-              timeToMinutes(fixedSchedule.endTime) -
-              timeToMinutes(fixedSchedule.startTime),
+            duration,
             priority: 0,
             isFixed: true,
             fixedDate: fixedSchedule.date,
             fixedStartTime: fixedSchedule.startTime,
-            fixedEndTime: fixedSchedule.endTime,
+            // endTime은 startTime + duration으로 계산
+            fixedEndTime: minutesToTime(
+              timeToMinutes(fixedSchedule.startTime) + duration
+            ),
           }
         : {
             id: place.id,
             name: place.name,
             coordinate: { lat: place.lat, lng: place.lng },
-            duration: place.estimated_duration,
+            duration,
             priority: place.priority ?? i + 1,
             isFixed: false,
           };

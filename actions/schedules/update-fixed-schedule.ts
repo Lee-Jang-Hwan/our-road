@@ -20,6 +20,7 @@ export interface UpdateFixedScheduleResult {
 
 /**
  * TripFixedScheduleRow를 FixedSchedule로 변환
+ * (endTime은 장소의 체류시간으로 계산되므로 FixedSchedule에는 포함하지 않음)
  */
 function convertRowToFixedSchedule(row: TripFixedScheduleRow): FixedSchedule {
   return {
@@ -27,9 +28,20 @@ function convertRowToFixedSchedule(row: TripFixedScheduleRow): FixedSchedule {
     placeId: row.place_id ?? "",
     date: row.date,
     startTime: row.start_time,
-    endTime: row.end_time,
     note: row.note ?? undefined,
   };
+}
+
+/**
+ * 시작 시간과 체류 시간으로 종료 시간 계산
+ */
+function calculateEndTime(startTime: string, durationMinutes: number): string {
+  const [startHour, startMin] = startTime.split(":").map(Number);
+  const startMinutes = startHour * 60 + startMin;
+  const endMinutes = startMinutes + durationMinutes;
+  const endHour = Math.floor(endMinutes / 60);
+  const endMin = endMinutes % 60;
+  return `${String(endHour).padStart(2, "0")}:${String(endMin).padStart(2, "0")}`;
 }
 
 /**
@@ -130,35 +142,27 @@ export async function updateFixedSchedule(
       }
     }
 
-    // 7. 장소가 변경되는 경우 해당 여행에 속하는지 확인
-    if (validatedData.placeId) {
-      const { data: place, error: placeError } = await supabase
-        .from("trip_places")
-        .select("id")
-        .eq("id", validatedData.placeId)
-        .eq("trip_id", tripId)
-        .single();
+    // 7. 장소 정보 조회 (변경된 경우 새 장소, 아니면 기존 장소)
+    const targetPlaceId = validatedData.placeId ?? existingSchedule.place_id;
+    const { data: place, error: placeError } = await supabase
+      .from("trip_places")
+      .select("id, estimated_duration")
+      .eq("id", targetPlaceId)
+      .eq("trip_id", tripId)
+      .single();
 
-      if (placeError || !place) {
-        return {
-          success: false,
-          error: "장소를 찾을 수 없거나 해당 여행에 속하지 않습니다.",
-        };
-      }
+    if (placeError || !place) {
+      return {
+        success: false,
+        error: "장소를 찾을 수 없거나 해당 여행에 속하지 않습니다.",
+      };
     }
 
     // 8. 시간이 변경되는 경우 충돌 확인
     const newDate = validatedData.date ?? existingSchedule.date;
     const newStartTime = validatedData.startTime ?? existingSchedule.start_time;
-    const newEndTime = validatedData.endTime ?? existingSchedule.end_time;
-
-    // 시작/종료 시간 검증
-    if (newStartTime >= newEndTime) {
-      return {
-        success: false,
-        error: "종료 시간은 시작 시간 이후여야 합니다.",
-      };
-    }
+    const estimatedDuration = place.estimated_duration || 60; // 기본 1시간
+    const newEndTime = calculateEndTime(newStartTime, estimatedDuration);
 
     // 같은 날짜의 다른 고정 일정과 충돌 확인
     const { data: conflictingSchedules } = await supabase
@@ -185,8 +189,15 @@ export async function updateFixedSchedule(
     const updateData: Record<string, unknown> = {};
     if (validatedData.placeId !== undefined) updateData.place_id = validatedData.placeId;
     if (validatedData.date !== undefined) updateData.date = validatedData.date;
-    if (validatedData.startTime !== undefined) updateData.start_time = validatedData.startTime;
-    if (validatedData.endTime !== undefined) updateData.end_time = validatedData.endTime;
+    if (validatedData.startTime !== undefined) {
+      updateData.start_time = validatedData.startTime;
+      // 시작 시간이 변경되면 종료 시간도 재계산
+      updateData.end_time = newEndTime;
+    }
+    // 장소가 변경되면 종료 시간도 재계산 (체류 시간이 달라질 수 있음)
+    if (validatedData.placeId !== undefined) {
+      updateData.end_time = newEndTime;
+    }
     if (validatedData.note !== undefined) updateData.note = validatedData.note;
 
     // 10. 고정 일정 수정

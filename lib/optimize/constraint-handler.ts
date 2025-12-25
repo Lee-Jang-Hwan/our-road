@@ -4,14 +4,43 @@
 
 import type { ScheduleConflict } from "@/types/optimize";
 import type { FixedSchedule } from "@/types/schedule";
-import type { OptimizeNode, TimeWindow } from "./types";
+import type { OptimizeNode } from "./types";
 import {
   timeToMinutes,
   minutesToTime,
-  getMinutesBetween,
   getDaysBetween,
   generateDateRange,
 } from "./types";
+
+/**
+ * 시작 시간과 체류 시간으로 종료 시간 계산
+ */
+function calculateEndTime(startTime: string, durationMinutes: number): string {
+  const totalMinutes = timeToMinutes(startTime) + durationMinutes;
+  return minutesToTime(totalMinutes);
+}
+
+/**
+ * 고정 일정의 종료 시간 조회
+ * placeId가 있으면 해당 장소의 체류시간 사용, 없으면 기본값 60분
+ */
+function getScheduleEndTime(
+  schedule: FixedSchedule,
+  placeDurations?: Map<string, number>
+): string {
+  const duration = placeDurations?.get(schedule.placeId) ?? 60;
+  return calculateEndTime(schedule.startTime, duration);
+}
+
+/**
+ * 고정 일정의 체류 시간 계산 (분 단위)
+ */
+function getScheduleDuration(
+  schedule: FixedSchedule,
+  placeDurations?: Map<string, number>
+): number {
+  return placeDurations?.get(schedule.placeId) ?? 60;
+}
 
 // ============================================
 // Types
@@ -87,10 +116,12 @@ function slotsOverlap(slot1: TimeSlot, slot2: TimeSlot): boolean {
  * 고정 일정 간의 충돌 감지
  *
  * @param schedules - 고정 일정 배열
+ * @param placeDurations - 장소별 체류시간 맵 (placeId -> minutes)
  * @returns 충돌 목록
  */
 export function detectScheduleConflicts(
-  schedules: FixedSchedule[]
+  schedules: FixedSchedule[],
+  placeDurations?: Map<string, number>
 ): ScheduleConflict[] {
   const conflicts: ScheduleConflict[] = [];
 
@@ -114,7 +145,8 @@ export function detectScheduleConflicts(
       const current = sorted[i];
       const next = sorted[i + 1];
 
-      const currentEnd = timeToMinutes(current.endTime);
+      const currentEndTime = getScheduleEndTime(current, placeDurations);
+      const currentEnd = timeToMinutes(currentEndTime);
       const nextStart = timeToMinutes(next.startTime);
 
       if (currentEnd > nextStart) {
@@ -122,7 +154,7 @@ export function detectScheduleConflicts(
           type: "overlap",
           scheduleIds: [current.id, next.id],
           date,
-          message: `고정 일정 "${current.id}"와 "${next.id}"가 ${current.endTime}~${next.startTime} 시간대에 겹칩니다.`,
+          message: `고정 일정 "${current.id}"와 "${next.id}"가 ${currentEndTime}~${next.startTime} 시간대에 겹칩니다.`,
         });
       }
     }
@@ -137,12 +169,14 @@ export function detectScheduleConflicts(
  * @param schedules - 고정 일정 배열
  * @param dailyStartTime - 일일 시작 시간 (HH:mm)
  * @param dailyEndTime - 일일 종료 시간 (HH:mm)
+ * @param placeDurations - 장소별 체류시간 맵 (placeId -> minutes)
  * @returns 충돌 목록
  */
 export function detectOutOfHoursConflicts(
   schedules: FixedSchedule[],
   dailyStartTime: string,
-  dailyEndTime: string
+  dailyEndTime: string,
+  placeDurations?: Map<string, number>
 ): ScheduleConflict[] {
   const conflicts: ScheduleConflict[] = [];
   const dayStart = timeToMinutes(dailyStartTime);
@@ -150,14 +184,15 @@ export function detectOutOfHoursConflicts(
 
   for (const schedule of schedules) {
     const scheduleStart = timeToMinutes(schedule.startTime);
-    const scheduleEnd = timeToMinutes(schedule.endTime);
+    const scheduleEndTime = getScheduleEndTime(schedule, placeDurations);
+    const scheduleEnd = timeToMinutes(scheduleEndTime);
 
     if (scheduleStart < dayStart || scheduleEnd > dayEnd) {
       conflicts.push({
         type: "outside_hours",
         scheduleIds: [schedule.id],
         date: schedule.date,
-        message: `고정 일정 "${schedule.id}"(${schedule.startTime}~${schedule.endTime})가 일일 시간 범위(${dailyStartTime}~${dailyEndTime}) 밖입니다.`,
+        message: `고정 일정 "${schedule.id}"(${schedule.startTime}~${scheduleEndTime})가 일일 시간 범위(${dailyStartTime}~${dailyEndTime}) 밖입니다.`,
       });
     }
   }
@@ -169,14 +204,14 @@ export function detectOutOfHoursConflicts(
  * 일일 시간 제한 초과 감지
  *
  * @param schedules - 고정 일정 배열
- * @param nodes - 노드 맵 (체류 시간 조회용)
  * @param maxDailyMinutes - 일일 최대 시간 (분)
+ * @param placeDurations - 장소별 체류시간 맵 (placeId -> minutes)
  * @returns 충돌 목록
  */
 export function detectDailyLimitConflicts(
   schedules: FixedSchedule[],
-  nodes: Map<string, OptimizeNode>,
-  maxDailyMinutes: number
+  maxDailyMinutes: number,
+  placeDurations?: Map<string, number>
 ): ScheduleConflict[] {
   const conflicts: ScheduleConflict[] = [];
 
@@ -193,7 +228,7 @@ export function detectDailyLimitConflicts(
     let totalMinutes = 0;
 
     for (const schedule of daySchedules) {
-      const duration = getMinutesBetween(schedule.startTime, schedule.endTime);
+      const duration = getScheduleDuration(schedule, placeDurations);
       totalMinutes += duration;
     }
 
@@ -219,11 +254,13 @@ export function detectDailyLimitConflicts(
  *
  * @param schedules - 고정 일정 배열
  * @param options - 제약 옵션
+ * @param placeDurations - 장소별 체류시간 맵 (placeId -> minutes)
  * @returns 검증 결과
  */
 export function validateFixedSchedules(
   schedules: FixedSchedule[],
-  options: ConstraintOptions
+  options: ConstraintOptions,
+  placeDurations?: Map<string, number>
 ): ConstraintValidationResult {
   const conflicts: ScheduleConflict[] = [];
   const warnings: string[] = [];
@@ -245,30 +282,19 @@ export function validateFixedSchedules(
   }
 
   // 2. 일정 간 충돌 확인
-  conflicts.push(...detectScheduleConflicts(schedules));
+  conflicts.push(...detectScheduleConflicts(schedules, placeDurations));
 
   // 3. 일일 시간 범위 확인
   conflicts.push(
     ...detectOutOfHoursConflicts(
       schedules,
       options.dailyStartTime,
-      options.dailyEndTime
+      options.dailyEndTime,
+      placeDurations
     )
   );
 
-  // 4. 시간 역전 확인 (시작 > 종료)
-  for (const schedule of schedules) {
-    const start = timeToMinutes(schedule.startTime);
-    const end = timeToMinutes(schedule.endTime);
-    if (start >= end) {
-      conflicts.push({
-        type: "overlap",
-        scheduleIds: [schedule.id],
-        date: schedule.date,
-        message: `고정 일정 "${schedule.id}"의 시작 시간(${schedule.startTime})이 종료 시간(${schedule.endTime})보다 늦거나 같습니다.`,
-      });
-    }
-  }
+  // 참고: 시간 역전 확인은 더 이상 필요 없음 (endTime은 startTime + duration으로 항상 유효)
 
   return {
     isValid: conflicts.length === 0,
@@ -286,11 +312,13 @@ export function validateFixedSchedules(
  *
  * @param schedules - 고정 일정 배열
  * @param options - 제약 옵션
+ * @param placeDurations - 장소별 체류시간 맵 (placeId -> minutes)
  * @returns 일자별 제약 정보
  */
 export function calculateDailyConstraints(
   schedules: FixedSchedule[],
-  options: ConstraintOptions
+  options: ConstraintOptions,
+  placeDurations?: Map<string, number>
 ): Map<string, DailyConstraints> {
   const result = new Map<string, DailyConstraints>();
 
@@ -318,9 +346,10 @@ export function calculateDailyConstraints(
     const dayConstraints = result.get(schedule.date);
     if (!dayConstraints) continue;
 
+    const scheduleEndTime = getScheduleEndTime(schedule, placeDurations);
     const fixedSlot: TimeSlot = {
       start: timeToMinutes(schedule.startTime),
-      end: timeToMinutes(schedule.endTime),
+      end: timeToMinutes(scheduleEndTime),
       placeId: schedule.placeId,
       scheduleId: schedule.id,
     };
@@ -438,14 +467,15 @@ export function findAvailableSlot(
  * 고정 일정을 OptimizeNode로 변환
  *
  * @param schedule - 고정 일정
- * @param place - 장소 정보
+ * @param place - 장소 정보 (체류시간 포함)
  * @returns OptimizeNode
  */
 export function fixedScheduleToNode(
   schedule: FixedSchedule,
-  place: { id: string; name: string; coordinate: { lat: number; lng: number } }
+  place: { id: string; name: string; coordinate: { lat: number; lng: number }; estimatedDuration?: number }
 ): OptimizeNode {
-  const duration = getMinutesBetween(schedule.startTime, schedule.endTime);
+  const duration = place.estimatedDuration ?? 60;
+  const endTime = calculateEndTime(schedule.startTime, duration);
 
   return {
     id: place.id,
@@ -456,7 +486,7 @@ export function fixedScheduleToNode(
     isFixed: true,
     fixedDate: schedule.date,
     fixedStartTime: schedule.startTime,
-    fixedEndTime: schedule.endTime,
+    fixedEndTime: endTime,
   };
 }
 
@@ -465,15 +495,17 @@ export function fixedScheduleToNode(
  *
  * @param date - 날짜
  * @param schedules - 고정 일정 배열
+ * @param placeDurations - 장소별 체류시간 맵 (placeId -> minutes)
  * @returns 총 시간 (분)
  */
 export function getTotalFixedMinutes(
   date: string,
-  schedules: FixedSchedule[]
+  schedules: FixedSchedule[],
+  placeDurations?: Map<string, number>
 ): number {
   return schedules
     .filter((s) => s.date === date)
-    .reduce((sum, s) => sum + getMinutesBetween(s.startTime, s.endTime), 0);
+    .reduce((sum, s) => sum + getScheduleDuration(s, placeDurations), 0);
 }
 
 /**
@@ -483,15 +515,17 @@ export function getTotalFixedMinutes(
  * @param schedules - 고정 일정 배열
  * @param dailyStartTime - 일일 시작 시간
  * @param dailyEndTime - 일일 종료 시간
+ * @param placeDurations - 장소별 체류시간 맵 (placeId -> minutes)
  * @returns 가용 시간 (분)
  */
 export function getAvailableMinutes(
   date: string,
   schedules: FixedSchedule[],
   dailyStartTime: string,
-  dailyEndTime: string
+  dailyEndTime: string,
+  placeDurations?: Map<string, number>
 ): number {
-  const totalDayMinutes = getMinutesBetween(dailyStartTime, dailyEndTime);
-  const fixedMinutes = getTotalFixedMinutes(date, schedules);
+  const totalDayMinutes = timeToMinutes(dailyEndTime) - timeToMinutes(dailyStartTime);
+  const fixedMinutes = getTotalFixedMinutes(date, schedules, placeDurations);
   return Math.max(0, totalDayMinutes - fixedMinutes);
 }
