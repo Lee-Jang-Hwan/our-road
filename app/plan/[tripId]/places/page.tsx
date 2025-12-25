@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
+import { use, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { LuChevronLeft, LuPlus } from "react-icons/lu";
 
@@ -15,6 +15,8 @@ import {
 import { PlaceSearch } from "@/components/places/place-search";
 import { PlaceList, PlaceListHeader } from "@/components/places/place-list";
 import { useTripDraft } from "@/hooks/use-trip-draft";
+import { addPlace, removePlace, removePlaces, updatePlaceDuration, getPlaces, reorderPlaces } from "@/actions/places";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import type { Place, PlaceSearchResult } from "@/types/place";
 
 interface PlacesPageProps {
@@ -40,65 +42,160 @@ export default function PlacesPage({ params }: PlacesPageProps) {
   const [places, setPlaces] = useState<Place[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  // 저장된 장소 로드 (초기 1회만)
+  // DB에서 장소 로드
+  const loadPlacesFromDB = useCallback(async () => {
+    try {
+      const result = await getPlaces(tripId);
+      if (result.success && result.data) {
+        setPlaces(result.data);
+        savePlaces(result.data);
+      }
+    } catch (error) {
+      console.error("장소 로드 실패:", error);
+    }
+  }, [tripId, savePlaces]);
+
+  // 초기 로드: DB에서 장소 가져오기
   useEffect(() => {
     if (!isLoaded || isInitialized) return;
-    const draft = getDraftByTripId(tripId);
-    if (draft?.places) {
-      setPlaces(draft.places);
-    }
-    setIsInitialized(true);
-  }, [tripId, getDraftByTripId, isLoaded, isInitialized]);
 
-  // 장소 변경 시 sessionStorage에 저장 (초기화 후에만)
-  useEffect(() => {
-    if (!isInitialized) return;
-    savePlaces(places);
-  }, [places, isInitialized, savePlaces]);
-
-  // 장소 검색 결과 선택
-  const handlePlaceSelect = (result: PlaceSearchResult) => {
-    const newPlace: Place = {
-      id: result.id,
-      name: result.name,
-      address: result.roadAddress || result.address,
-      coordinate: result.coordinate,
-      category: undefined,
-      kakaoPlaceId: result.id,
-      estimatedDuration: 60, // 기본 1시간
+    const init = async () => {
+      // 먼저 DB에서 로드 시도
+      const result = await getPlaces(tripId);
+      if (result.success && result.data && result.data.length > 0) {
+        setPlaces(result.data);
+        savePlaces(result.data);
+      } else {
+        // DB에 없으면 sessionStorage에서 로드
+        const draft = getDraftByTripId(tripId);
+        if (draft?.places) {
+          setPlaces(draft.places);
+        }
+      }
+      setIsInitialized(true);
     };
 
-    setPlaces((prev) => [...prev, newPlace]);
-    setIsSearchOpen(false);
+    init();
+  }, [tripId, getDraftByTripId, isLoaded, isInitialized, savePlaces]);
+
+  // 장소 검색 결과 선택 → DB에 저장
+  const handlePlaceSelect = async (result: PlaceSearchResult) => {
+    setIsLoading(true);
+    try {
+      const addResult = await addPlace({
+        tripId,
+        name: result.name,
+        address: result.roadAddress || result.address,
+        lat: result.coordinate.lat,
+        lng: result.coordinate.lng,
+        kakaoPlaceId: result.id,
+        estimatedDuration: 60, // 기본 1시간
+      });
+
+      if (!addResult.success || !addResult.data) {
+        showErrorToast(addResult.error || "장소 추가에 실패했습니다.");
+        return;
+      }
+
+      // 성공 시 로컬 상태 업데이트
+      setPlaces((prev) => [...prev, addResult.data!]);
+      savePlaces([...places, addResult.data]);
+      setIsSearchOpen(false);
+      showSuccessToast(`${result.name}이(가) 추가되었습니다.`);
+    } catch (error) {
+      console.error("장소 추가 실패:", error);
+      showErrorToast("장소 추가에 실패했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  // 체류 시간 변경
-  const handleDurationChange = (placeId: string, duration: number) => {
+  // 체류 시간 변경 → DB에 저장
+  const handleDurationChange = async (placeId: string, duration: number) => {
+    // 즉시 UI 업데이트
     setPlaces((prev) =>
       prev.map((place) =>
         place.id === placeId ? { ...place, estimatedDuration: duration } : place
       )
     );
+
+    try {
+      const result = await updatePlaceDuration(placeId, tripId, duration);
+      if (!result.success) {
+        showErrorToast(result.error || "체류 시간 변경에 실패했습니다.");
+        // 실패 시 롤백 (DB에서 다시 로드)
+        await loadPlacesFromDB();
+      }
+    } catch (error) {
+      console.error("체류 시간 변경 실패:", error);
+    }
   };
 
-  // 장소 삭제
-  const handleDelete = (placeId: string) => {
+  // 장소 삭제 → DB에서 삭제
+  const handleDelete = async (placeId: string) => {
+    // 즉시 UI 업데이트
+    const prevPlaces = places;
     setPlaces((prev) => prev.filter((place) => place.id !== placeId));
+
+    try {
+      const result = await removePlace(placeId, tripId);
+      if (!result.success) {
+        showErrorToast(result.error || "장소 삭제에 실패했습니다.");
+        // 실패 시 롤백
+        setPlaces(prevPlaces);
+      }
+    } catch (error) {
+      console.error("장소 삭제 실패:", error);
+      setPlaces(prevPlaces);
+    }
   };
 
-  // 순서 변경
-  const handleReorder = (placeIds: string[]) => {
+  // 순서 변경 → DB에 저장
+  const handleReorder = async (placeIds: string[]) => {
     const reordered = placeIds
       .map((id) => places.find((p) => p.id === id))
       .filter((p): p is Place => p !== undefined);
+
+    // 즉시 UI 업데이트
+    const prevPlaces = places;
     setPlaces(reordered);
+
+    try {
+      const result = await reorderPlaces({ tripId, placeIds });
+      if (!result.success) {
+        showErrorToast(result.error || "순서 변경에 실패했습니다.");
+        // 실패 시 롤백
+        setPlaces(prevPlaces);
+      }
+    } catch (error) {
+      console.error("순서 변경 실패:", error);
+      setPlaces(prevPlaces);
+    }
   };
 
-  // 전체 삭제
-  const handleClearAll = () => {
-    if (confirm("모든 장소를 삭제하시겠습니까?")) {
-      setPlaces([]);
+  // 전체 삭제 → DB에서 삭제
+  const handleClearAll = async () => {
+    if (!confirm("모든 장소를 삭제하시겠습니까?")) return;
+
+    const prevPlaces = places;
+    const placeIds = places.map((p) => p.id);
+
+    // 즉시 UI 업데이트
+    setPlaces([]);
+
+    try {
+      const result = await removePlaces(placeIds, tripId);
+      if (!result.success) {
+        showErrorToast(result.error || "장소 삭제에 실패했습니다.");
+        setPlaces(prevPlaces);
+      } else {
+        showSuccessToast("모든 장소가 삭제되었습니다.");
+      }
+    } catch (error) {
+      console.error("전체 삭제 실패:", error);
+      setPlaces(prevPlaces);
     }
   };
 
@@ -115,6 +212,7 @@ export default function PlacesPage({ params }: PlacesPageProps) {
         <Button
           size="sm"
           onClick={() => setIsSearchOpen(true)}
+          disabled={isLoading}
         >
           <LuPlus className="w-4 h-4 mr-1" />
           추가
@@ -143,7 +241,7 @@ export default function PlacesPage({ params }: PlacesPageProps) {
         <div className="sticky bottom-0 p-4 bg-background border-t safe-area-bottom">
           <Link href={`/plan/${tripId}`}>
             <Button className="w-full h-12">
-              {places.length}개 장소 저장하기
+              {places.length}개 장소 저장 완료
             </Button>
           </Link>
         </div>

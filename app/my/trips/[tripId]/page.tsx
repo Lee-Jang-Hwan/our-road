@@ -32,11 +32,14 @@ import {
 import { DayTabsContainer } from "@/components/itinerary/day-tabs";
 import { DayContentPanel } from "@/components/itinerary/day-content";
 import { DaySummary } from "@/components/itinerary/day-summary";
+import { KakaoMap } from "@/components/map/kakao-map";
+import { PlaceMarkers } from "@/components/map/place-markers";
+import { OffScreenMarkers, FitBoundsButton } from "@/components/map/off-screen-markers";
 import { useSwipe } from "@/hooks/use-swipe";
 
 import { getTripWithDetails } from "@/actions/trips/get-trip";
 import { deleteTrip } from "@/actions/trips/delete-trip";
-import type { TripWithDetails, TripStatus } from "@/types";
+import type { TripWithDetails, TripStatus, Coordinate } from "@/types";
 import type { ScheduleItem } from "@/types/schedule";
 import { calculateTripDuration } from "@/types/trip";
 
@@ -175,6 +178,36 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
   const currentItinerary = useMemo(() => {
     return trip?.itinerary?.find((it) => it.dayNumber === selectedDay);
   }, [trip?.itinerary, selectedDay]);
+
+  // 현재 일자 마커 데이터 (일정 순서대로)
+  const currentDayMarkers = useMemo(() => {
+    if (!currentItinerary || !trip?.places) return [];
+
+    return currentItinerary.schedule.map((item) => {
+      const place = trip.places.find((p) => p.id === item.placeId);
+      return {
+        id: item.placeId,
+        coordinate: place?.coordinate || { lat: 37.5665, lng: 126.978 },
+        order: item.order,
+        name: item.placeName,
+        isFixed: item.isFixed,
+        clickable: true,
+      };
+    });
+  }, [currentItinerary, trip?.places]);
+
+  // 맵 중심점 계산 (현재 일자 장소들의 중심)
+  const mapCenter = useMemo<Coordinate>(() => {
+    if (currentDayMarkers.length === 0) {
+      return { lat: 37.5665, lng: 126.978 }; // 서울 시청
+    }
+    const sumLat = currentDayMarkers.reduce((sum, m) => sum + m.coordinate.lat, 0);
+    const sumLng = currentDayMarkers.reduce((sum, m) => sum + m.coordinate.lng, 0);
+    return {
+      lat: sumLat / currentDayMarkers.length,
+      lng: sumLng / currentDayMarkers.length,
+    };
+  }, [currentDayMarkers]);
 
   // 일정 항목 클릭
   const handleItemClick = (item: ScheduleItem) => {
@@ -355,6 +388,21 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
           )}
         </div>
       </section>
+
+      {/* 카카오 맵 */}
+      {hasItinerary && currentDayMarkers.length > 0 && (
+        <div className="w-full h-48 border-b">
+          <KakaoMap
+            center={mapCenter}
+            level={7}
+            className="w-full h-full"
+          >
+            <PlaceMarkers markers={currentDayMarkers} size="md" />
+            <OffScreenMarkers markers={currentDayMarkers} />
+            <FitBoundsButton markers={currentDayMarkers} />
+          </KakaoMap>
+        </div>
+      )}
 
       {/* 일정 표시 */}
       {hasItinerary ? (

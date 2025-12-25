@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
+import { use, useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { LuChevronLeft, LuPlus, LuCalendarClock } from "react-icons/lu";
 import { AlertCircle } from "lucide-react";
@@ -13,6 +13,15 @@ import {
   FixedScheduleCard,
 } from "@/components/schedule/fixed-schedule-form";
 import { useTripDraft } from "@/hooks/use-trip-draft";
+import { getPlaces } from "@/actions/places";
+import {
+  addFixedSchedule,
+  getFixedSchedules,
+  updateFixedSchedule,
+  deleteFixedSchedule
+} from "@/actions/schedules";
+import { getTrip } from "@/actions/trips";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import type { Place } from "@/types/place";
 import type { FixedSchedule } from "@/types/schedule";
 import type { CreateFixedScheduleInput } from "@/lib/schemas";
@@ -35,32 +44,93 @@ export default function SchedulePage({ params }: SchedulePageProps) {
   });
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // sessionStorage에서 여행 데이터 로드
+  // DB에서 데이터 로드
+  const loadDataFromDB = useCallback(async () => {
+    try {
+      // 병렬로 데이터 로드
+      const [tripResult, placesResult, schedulesResult] = await Promise.all([
+        getTrip(tripId),
+        getPlaces(tripId),
+        getFixedSchedules(tripId),
+      ]);
+
+      if (tripResult.success && tripResult.data) {
+        setTripDates({
+          startDate: tripResult.data.startDate,
+          endDate: tripResult.data.endDate,
+        });
+      }
+
+      if (placesResult.success && placesResult.data) {
+        setPlaces(placesResult.data);
+      }
+
+      if (schedulesResult.success && schedulesResult.data) {
+        setSchedules(schedulesResult.data);
+        saveFixedSchedules(schedulesResult.data);
+      }
+    } catch (error) {
+      console.error("데이터 로드 실패:", error);
+    }
+  }, [tripId, saveFixedSchedules]);
+
+  // 초기 로드
   useEffect(() => {
     if (!isLoaded || isInitialized) return;
 
-    const draft = getDraftByTripId(tripId);
-    if (draft) {
-      // 장소 목록 로드
-      setPlaces(draft.places);
-      // 여행 기간 로드
-      setTripDates({
-        startDate: draft.tripInfo.startDate,
-        endDate: draft.tripInfo.endDate,
-      });
-      // 고정 일정 로드
-      if (draft.fixedSchedules) {
-        setSchedules(draft.fixedSchedules);
-      }
-    }
-    setIsInitialized(true);
-  }, [tripId, getDraftByTripId, isLoaded, isInitialized]);
+    const init = async () => {
+      // 먼저 DB에서 데이터 로드 시도
+      const [tripResult, placesResult, schedulesResult] = await Promise.all([
+        getTrip(tripId),
+        getPlaces(tripId),
+        getFixedSchedules(tripId),
+      ]);
 
-  // 고정 일정 변경 시 sessionStorage에 저장
-  useEffect(() => {
-    if (!isInitialized) return;
-    saveFixedSchedules(schedules);
-  }, [schedules, isInitialized, saveFixedSchedules]);
+      let hasDBData = false;
+
+      if (tripResult.success && tripResult.data) {
+        setTripDates({
+          startDate: tripResult.data.startDate,
+          endDate: tripResult.data.endDate,
+        });
+        hasDBData = true;
+      }
+
+      if (placesResult.success && placesResult.data && placesResult.data.length > 0) {
+        setPlaces(placesResult.data);
+        hasDBData = true;
+      }
+
+      if (schedulesResult.success && schedulesResult.data && schedulesResult.data.length > 0) {
+        setSchedules(schedulesResult.data);
+        saveFixedSchedules(schedulesResult.data);
+        hasDBData = true;
+      }
+
+      // DB에 데이터가 없으면 sessionStorage에서 시도
+      if (!hasDBData) {
+        const draft = getDraftByTripId(tripId);
+        if (draft) {
+          if (draft.places?.length > 0) {
+            setPlaces(draft.places);
+          }
+          if (draft.tripInfo) {
+            setTripDates({
+              startDate: draft.tripInfo.startDate,
+              endDate: draft.tripInfo.endDate,
+            });
+          }
+          if (draft.fixedSchedules?.length > 0) {
+            setSchedules(draft.fixedSchedules);
+          }
+        }
+      }
+
+      setIsInitialized(true);
+    };
+
+    init();
+  }, [tripId, getDraftByTripId, isLoaded, isInitialized, saveFixedSchedules]);
 
   // 로딩 상태
   if (!isLoaded) {
@@ -90,45 +160,80 @@ export default function SchedulePage({ params }: SchedulePageProps) {
     setIsDialogOpen(true);
   };
 
-  // 폼 제출
+  // 폼 제출 → DB에 저장
   const handleSubmit = async (data: CreateFixedScheduleInput) => {
     setIsSubmitting(true);
     try {
       if (editingSchedule) {
         // 수정
-        setSchedules((prev) =>
-          prev.map((s) =>
-            s.id === editingSchedule.id
-              ? { ...s, ...data, updatedAt: new Date().toISOString() }
-              : s
-          )
-        );
-      } else {
-        // 추가
-        const newSchedule: FixedSchedule = {
-          id: crypto.randomUUID(),
+        const result = await updateFixedSchedule(editingSchedule.id, tripId, {
           placeId: data.placeId,
           date: data.date,
           startTime: data.startTime,
-          note: data.note || undefined,
-        };
-        setSchedules((prev) => [...prev, newSchedule]);
+          note: data.note,
+        });
+
+        if (!result.success) {
+          showErrorToast(result.error || "고정 일정 수정에 실패했습니다.");
+          return;
+        }
+
+        setSchedules((prev) =>
+          prev.map((s) =>
+            s.id === editingSchedule.id ? result.data! : s
+          )
+        );
+        showSuccessToast("고정 일정이 수정되었습니다.");
+      } else {
+        // 추가
+        const result = await addFixedSchedule({
+          tripId,
+          placeId: data.placeId,
+          date: data.date,
+          startTime: data.startTime,
+          note: data.note,
+        });
+
+        if (!result.success || !result.data) {
+          showErrorToast(result.error || "고정 일정 추가에 실패했습니다.");
+          return;
+        }
+
+        setSchedules((prev) => [...prev, result.data!]);
+        showSuccessToast("고정 일정이 추가되었습니다.");
       }
       setIsDialogOpen(false);
     } catch (error) {
       console.error("일정 저장 실패:", error);
+      showErrorToast("고정 일정 저장에 실패했습니다.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // 삭제
+  // 삭제 → DB에서 삭제
   const handleDelete = async () => {
     if (!editingSchedule) return;
     if (!confirm("이 고정 일정을 삭제하시겠습니까?")) return;
 
-    setSchedules((prev) => prev.filter((s) => s.id !== editingSchedule.id));
-    setIsDialogOpen(false);
+    setIsSubmitting(true);
+    try {
+      const result = await deleteFixedSchedule(editingSchedule.id, tripId);
+
+      if (!result.success) {
+        showErrorToast(result.error || "고정 일정 삭제에 실패했습니다.");
+        return;
+      }
+
+      setSchedules((prev) => prev.filter((s) => s.id !== editingSchedule.id));
+      setIsDialogOpen(false);
+      showSuccessToast("고정 일정이 삭제되었습니다.");
+    } catch (error) {
+      console.error("고정 일정 삭제 실패:", error);
+      showErrorToast("고정 일정 삭제에 실패했습니다.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // 장소가 없거나 날짜가 설정되지 않은 경우

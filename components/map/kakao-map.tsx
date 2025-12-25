@@ -217,9 +217,9 @@ function loadKakaoMapSdk(): Promise<void> {
     }
 
     // API 키 확인
-    const apiKey = process.env.NEXT_PUBLIC_KAKAO_MAP_API_KEY;
+    const apiKey = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY;
     if (!apiKey) {
-      reject(new Error("NEXT_PUBLIC_KAKAO_MAP_API_KEY가 설정되지 않았습니다."));
+      reject(new Error("NEXT_PUBLIC_KAKAO_MAP_KEY가 설정되지 않았습니다."));
       return;
     }
 

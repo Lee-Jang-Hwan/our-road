@@ -9,8 +9,9 @@ import { LuChevronLeft } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TripForm } from "@/components/trip/trip-form";
-import { showErrorToast } from "@/lib/toast";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { useTripDraft } from "@/hooks/use-trip-draft";
+import { createTrip } from "@/actions/trips";
 import type { CreateTripInput } from "@/lib/schemas";
 
 /**
@@ -66,14 +67,18 @@ export default function NewTripPage() {
 
     setIsSubmitting(true);
     try {
-      // TODO: Server Action으로 여행 생성 후 실제 ID 사용
-      // const trip = await createTrip(data);
-      // router.push(`/plan/${trip.id}`);
+      // Server Action으로 여행 생성
+      const result = await createTrip(data);
 
-      // 임시: 랜덤 ID 생성 후 sessionStorage에 데이터 저장
-      const tempId = crypto.randomUUID();
-      saveTripInfo(data, tempId);
-      router.push(`/plan/${tempId}`);
+      if (!result.success || !result.data) {
+        showErrorToast(result.error || "여행 생성에 실패했습니다.");
+        return;
+      }
+
+      // sessionStorage에도 저장 (장소 추가 시 사용)
+      saveTripInfo(data, result.data.id);
+      showSuccessToast("여행이 생성되었습니다!");
+      router.push(`/plan/${result.data.id}`);
     } catch (error) {
       console.error("여행 생성 실패:", error);
       showErrorToast("여행 생성에 실패했습니다. 다시 시도해주세요.");
