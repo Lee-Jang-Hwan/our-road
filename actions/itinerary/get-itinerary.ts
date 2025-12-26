@@ -55,6 +55,75 @@ export interface GetItineraryCountResult {
 // ============================================
 
 /**
+ * TransportInfoRow를 RouteSegment로 변환
+ */
+function convertTransportFromRow(transport: {
+  mode: string;
+  distance: number;
+  duration: number;
+  description?: string;
+  fare?: number;
+  polyline?: string;
+  transit_details?: {
+    total_fare: number;
+    transfer_count: number;
+    walking_time: number;
+    walking_distance: number;
+    sub_paths: Array<{
+      traffic_type: 1 | 2 | 3;
+      distance: number;
+      section_time: number;
+      station_count?: number;
+      start_name?: string;
+      end_name?: string;
+      lane?: {
+        name: string;
+        bus_no?: string;
+        bus_type?: string;
+        subway_code?: number;
+        line_color?: string;
+      };
+      way?: string;
+    }>;
+  };
+}) {
+  return {
+    mode: transport.mode as "walking" | "public" | "car",
+    distance: transport.distance,
+    duration: transport.duration,
+    description: transport.description,
+    fare: transport.fare,
+    polyline: transport.polyline,
+    transitDetails: transport.transit_details
+      ? {
+          totalFare: transport.transit_details.total_fare,
+          transferCount: transport.transit_details.transfer_count,
+          walkingTime: transport.transit_details.walking_time,
+          walkingDistance: transport.transit_details.walking_distance,
+          subPaths: transport.transit_details.sub_paths.map((sp) => ({
+            trafficType: sp.traffic_type,
+            distance: sp.distance,
+            sectionTime: sp.section_time,
+            stationCount: sp.station_count,
+            startName: sp.start_name,
+            endName: sp.end_name,
+            lane: sp.lane
+              ? {
+                  name: sp.lane.name,
+                  busNo: sp.lane.bus_no,
+                  busType: sp.lane.bus_type,
+                  subwayCode: sp.lane.subway_code,
+                  lineColor: sp.lane.line_color,
+                }
+              : undefined,
+            way: sp.way,
+          })),
+        }
+      : undefined,
+  };
+}
+
+/**
  * TripItineraryRow를 DailyItinerary로 변환
  */
 function convertRowToItinerary(row: TripItineraryRow): DailyItinerary {
@@ -67,13 +136,7 @@ function convertRowToItinerary(row: TripItineraryRow): DailyItinerary {
     duration: item.duration,
     isFixed: item.is_fixed,
     transportToNext: item.transport_to_next
-      ? {
-          mode: item.transport_to_next.mode as "walking" | "public" | "car",
-          distance: item.transport_to_next.distance,
-          duration: item.transport_to_next.duration,
-          description: item.transport_to_next.description,
-          fare: item.transport_to_next.fare,
-        }
+      ? convertTransportFromRow(item.transport_to_next)
       : undefined,
   }));
 

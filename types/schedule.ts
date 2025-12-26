@@ -96,10 +96,18 @@ export interface DailyItinerary {
   totalStayDuration: number;
   /** 장소 수 */
   placeCount: number;
-  /** 일과 시작 시간 (HH:mm) */
+  /** 일과 시작 시간 (HH:mm) - 실제 첫 장소 도착 시간 */
   startTime: string;
-  /** 일과 종료 시간 (HH:mm) */
+  /** 일과 종료 시간 (HH:mm) - 실제 마지막 장소 출발 시간 */
   endTime: string;
+  /** 출발지에서 첫 장소까지 이동 정보 */
+  transportFromOrigin?: RouteSegment;
+  /** 마지막 장소에서 도착지까지 이동 정보 */
+  transportToDestination?: RouteSegment;
+  /** 설정된 일과 시작 시간 (HH:mm) */
+  dailyStartTime?: string;
+  /** 설정된 일과 종료 시간 (HH:mm) */
+  dailyEndTime?: string;
 }
 
 /**
@@ -119,6 +127,40 @@ export interface TripItineraryRow {
 }
 
 /**
+ * JSONB에 저장되는 이동 정보 (snake_case)
+ */
+export interface TransportInfoRow {
+  mode: string;
+  distance: number;
+  duration: number;
+  description?: string;
+  fare?: number;
+  polyline?: string;
+  transit_details?: {
+    total_fare: number;
+    transfer_count: number;
+    walking_time: number;
+    walking_distance: number;
+    sub_paths: Array<{
+      traffic_type: 1 | 2 | 3;
+      distance: number;
+      section_time: number;
+      station_count?: number;
+      start_name?: string;
+      end_name?: string;
+      lane?: {
+        name: string;
+        bus_no?: string;
+        bus_type?: string;
+        subway_code?: number;
+        line_color?: string;
+      };
+      way?: string;
+    }>;
+  };
+}
+
+/**
  * JSONB에 저장되는 일정 항목 (snake_case)
  */
 export interface ScheduleItemRow {
@@ -129,13 +171,7 @@ export interface ScheduleItemRow {
   departure_time: string;
   duration: number;
   is_fixed: boolean;
-  transport_to_next?: {
-    mode: string;
-    distance: number;
-    duration: number;
-    description?: string;
-    fare?: number;
-  };
+  transport_to_next?: TransportInfoRow;
 }
 
 /**

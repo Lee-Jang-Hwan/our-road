@@ -3,7 +3,7 @@
 // ============================================
 
 import type { Coordinate } from "@/types/place";
-import type { TransportMode } from "@/types/route";
+import type { TransportMode, TransitDetails } from "@/types/route";
 import type { DistanceMatrix } from "@/types/optimize";
 import type { OptimizeNode, DistanceEntry } from "./types";
 import {
@@ -12,7 +12,7 @@ import {
 } from "@/lib/utils/haversine";
 import { batchProcess, tryOrNull } from "@/lib/utils/retry";
 import { getCarRoute } from "@/lib/api/kakao";
-import { getBestTransitRoute } from "@/lib/api/odsay";
+import { getBestTransitRouteWithDetails } from "@/lib/api/odsay";
 
 // ============================================
 // Types
@@ -92,6 +92,15 @@ export function createHaversineDistanceMatrix(
 // ============================================
 
 /**
+ * 두 좌표가 너무 가까운지 확인 (5m 이내)
+ * Kakao Mobility API는 출발지와 도착지가 5m 이내면 경로 탐색 불가
+ */
+function isTooClose(origin: Coordinate, destination: Coordinate): boolean {
+  const distance = haversineDistance(origin, destination);
+  return distance < 10; // 10m 이내면 API 호출 스킵 (안전 마진 포함)
+}
+
+/**
  * 두 지점 간의 실제 경로 정보 조회
  *
  * @param origin - 출발지 좌표
@@ -104,6 +113,16 @@ async function getRouteInfo(
   destination: Coordinate,
   mode: TransportMode
 ): Promise<DistanceEntry | null> {
+  // 동일 위치 또는 너무 가까운 경우 API 호출 없이 처리
+  if (isTooClose(origin, destination)) {
+    const dist = haversineDistance(origin, destination);
+    return {
+      distance: Math.round(dist),
+      duration: Math.max(1, estimateDuration(dist, mode)), // 최소 1분
+      mode,
+    };
+  }
+
   switch (mode) {
     case "car": {
       const route = await tryOrNull(() =>
@@ -114,6 +133,7 @@ async function getRouteInfo(
           distance: route.totalDistance,
           duration: route.totalDuration,
           mode: "car",
+          polyline: route.polyline, // 실제 경로 폴리라인
         };
       }
       break;
@@ -121,13 +141,15 @@ async function getRouteInfo(
 
     case "public": {
       const route = await tryOrNull(() =>
-        getBestTransitRoute(origin, destination)
+        getBestTransitRouteWithDetails(origin, destination)
       );
       if (route) {
         return {
           distance: route.totalDistance,
           duration: route.totalDuration,
           mode: "public",
+          polyline: route.polyline, // 대중교통 경로 폴리라인
+          transitDetails: route.details,
         };
       }
       break;
@@ -175,6 +197,12 @@ export async function createApiDistanceMatrix(
   const modes: TransportMode[][] = Array.from({ length: n }, () =>
     Array(n).fill(mode)
   );
+  const polylines: (string | null)[][] = Array.from({ length: n }, () =>
+    Array(n).fill(null)
+  );
+  const transitDetailsMatrix: (TransitDetails | null)[][] = Array.from({ length: n }, () =>
+    Array(n).fill(null)
+  );
 
   // 모든 (i, j) 쌍 생성 (i !== j)
   const pairs: Array<{ i: number; j: number }> = [];
@@ -203,6 +231,8 @@ export async function createApiDistanceMatrix(
         distances[i][j] = result.distance;
         durations[i][j] = result.duration;
         modes[i][j] = result.mode;
+        polylines[i][j] = result.polyline || null;
+        transitDetailsMatrix[i][j] = result.transitDetails || null;
       } else {
         // 폴백: Haversine 거리
         const dist = Math.round(
@@ -211,6 +241,8 @@ export async function createApiDistanceMatrix(
         distances[i][j] = dist;
         durations[i][j] = estimateDuration(dist, mode);
         modes[i][j] = mode;
+        polylines[i][j] = null;
+        transitDetailsMatrix[i][j] = null;
       }
 
       completed++;
@@ -220,7 +252,7 @@ export async function createApiDistanceMatrix(
     500 // 배치 간 500ms 대기
   );
 
-  return { places, distances, durations, modes };
+  return { places, distances, durations, modes, polylines, transitDetails: transitDetailsMatrix };
 }
 
 // ============================================
@@ -288,6 +320,8 @@ export function getDistanceEntry(
     distance: matrix.distances[fromIdx][toIdx],
     duration: matrix.durations[fromIdx][toIdx],
     mode: matrix.modes[fromIdx][toIdx],
+    polyline: matrix.polylines?.[fromIdx]?.[toIdx] ?? undefined,
+    transitDetails: matrix.transitDetails?.[fromIdx]?.[toIdx] ?? undefined,
   };
 }
 
@@ -316,6 +350,8 @@ export function createDistanceMatrixGetter(
       distance: matrix.distances[fromIdx][toIdx],
       duration: matrix.durations[fromIdx][toIdx],
       mode: matrix.modes[fromIdx][toIdx],
+      polyline: matrix.polylines?.[fromIdx]?.[toIdx] ?? undefined,
+      transitDetails: matrix.transitDetails?.[fromIdx]?.[toIdx] ?? undefined,
     };
   };
 }

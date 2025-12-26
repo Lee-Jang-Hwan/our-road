@@ -49,12 +49,17 @@ export function useTripDraft() {
     setIsLoaded(true);
   }, []);
 
-  // 여행 기본 정보 저장
+  // 여행 기본 정보 저장 (새 여행이면 places/fixedSchedules 초기화)
   const saveTripInfo = useCallback((tripInfo: CreateTripInput, tempId: string) => {
+    // 같은 tripId면 기존 데이터 유지, 다른 tripId면 초기화
+    const currentDraft = draftRef.current;
+    const isSameTrip = currentDraft?.tempId === tempId;
+
     const newDraft: TripDraft = {
       tripInfo,
-      places: draftRef.current?.places || [],
-      fixedSchedules: draftRef.current?.fixedSchedules || [],
+      // 다른 여행이면 places/fixedSchedules 초기화
+      places: isSameTrip ? (currentDraft?.places || []) : [],
+      fixedSchedules: isSameTrip ? (currentDraft?.fixedSchedules || []) : [],
       tempId,
       createdAt: new Date().toISOString(),
     };

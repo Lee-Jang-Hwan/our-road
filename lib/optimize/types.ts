@@ -3,7 +3,7 @@
 // ============================================
 
 import type { Coordinate } from "@/types/place";
-import type { TransportMode } from "@/types/route";
+import type { TransportMode, TransitDetails } from "@/types/route";
 
 /**
  * 최적화 노드 (내부 계산용)
@@ -40,6 +40,10 @@ export interface DistanceEntry {
   duration: number;
   /** 이동 수단 */
   mode: TransportMode;
+  /** 경로 폴리라인 (인코딩된 문자열) */
+  polyline?: string;
+  /** 대중교통 상세 정보 (public 모드일 때) */
+  transitDetails?: TransitDetails;
 }
 
 /**

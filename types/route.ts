@@ -19,6 +19,66 @@ export type PublicTransportMode =
   | "ferry"; // 페리
 
 /**
+ * 대중교통 노선 정보
+ */
+export interface TransitLane {
+  /** 노선명 (예: "2호선", "472") */
+  name: string;
+  /** 버스 번호 (버스인 경우) */
+  busNo?: string;
+  /** 버스 유형명 (버스인 경우, 예: "간선", "지선") */
+  busType?: string;
+  /** 지하철 노선 코드 (지하철인 경우) */
+  subwayCode?: number;
+  /** 노선 색상 (hex) */
+  lineColor?: string;
+}
+
+/**
+ * 대중교통 하위 구간 정보
+ */
+export interface TransitSubPath {
+  /** 구간 타입 (1: 지하철, 2: 버스, 3: 도보) */
+  trafficType: 1 | 2 | 3;
+  /** 거리 (미터) */
+  distance: number;
+  /** 소요 시간 (분) */
+  sectionTime: number;
+  /** 정류장/역 수 */
+  stationCount?: number;
+  /** 출발 정류장/역 이름 */
+  startName?: string;
+  /** 출발 좌표 */
+  startCoord?: { lat: number; lng: number };
+  /** 도착 정류장/역 이름 */
+  endName?: string;
+  /** 도착 좌표 */
+  endCoord?: { lat: number; lng: number };
+  /** 노선 정보 */
+  lane?: TransitLane;
+  /** 방면 정보 (지하철) */
+  way?: string;
+  /** 경유 정류장/역 좌표 배열 (폴리라인 생성용) */
+  passStopCoords?: Array<{ lat: number; lng: number }>;
+}
+
+/**
+ * 대중교통 상세 정보
+ */
+export interface TransitDetails {
+  /** 총 요금 (원) */
+  totalFare: number;
+  /** 환승 횟수 */
+  transferCount: number;
+  /** 도보 시간 (분) */
+  walkingTime: number;
+  /** 도보 거리 (미터) */
+  walkingDistance: number;
+  /** 상세 구간 정보 */
+  subPaths: TransitSubPath[];
+}
+
+/**
  * 구간 이동 정보
  */
 export interface RouteSegment {
@@ -34,6 +94,8 @@ export interface RouteSegment {
   polyline?: string;
   /** 요금 (원) */
   fare?: number;
+  /** 대중교통 상세 정보 (public 모드일 때) */
+  transitDetails?: TransitDetails;
 }
 
 /**

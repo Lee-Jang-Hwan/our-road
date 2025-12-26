@@ -32,7 +32,7 @@ export interface DailyDistributorOptions {
   dailyStartTime?: string;
   /** 일일 종료 시간 (HH:mm, 기본: "22:00") */
   dailyEndTime?: string;
-  /** 일일 최대 활동 시간 (분, 기본: 480 = 8시간) */
+  /** 일일 최대 활동 시간 (분) - 지정하지 않으면 startTime~endTime 전체 사용 */
   maxDailyMinutes?: number;
   /** 고정 일정 목록 */
   fixedSchedules?: FixedSchedule[];
@@ -83,7 +83,7 @@ function calculateDailyAvailability(
     endDate,
     dailyStartTime = "10:00",
     dailyEndTime = "22:00",
-    maxDailyMinutes = 480,
+    maxDailyMinutes,
     fixedSchedules = [],
     placeDurations,
   } = options;
@@ -93,10 +93,11 @@ function calculateDailyAvailability(
 
   const dailyEndMinute = timeToMinutes(dailyEndTime);
   const dailyStartMinute = timeToMinutes(dailyStartTime);
-  const defaultAvailable = Math.min(
-    dailyEndMinute - dailyStartMinute,
-    maxDailyMinutes
-  );
+  // maxDailyMinutes가 지정되지 않으면 startTime~endTime 전체 시간 사용
+  const timeWindowMinutes = dailyEndMinute - dailyStartMinute;
+  const defaultAvailable = maxDailyMinutes
+    ? Math.min(timeWindowMinutes, maxDailyMinutes)
+    : timeWindowMinutes;
 
   return dates.map((date) => {
     // 해당 날짜의 고정 일정 필터링
@@ -162,7 +163,7 @@ function canAssignToDay(
  *
  * 최적화된 경로를 일자별 시간 제약에 맞게 분배합니다.
  * - 고정 일정은 해당 날짜에 우선 배치
- * - 일반 장소는 순서를 유지하면서 시간 제약 내에서 배치
+ * - 일반 장소는 순서를 유지하면서 균등하게 분배
  * - 이동 시간도 고려하여 분배
  *
  * @param route - 최적화된 경로 (장소 ID 순서)
@@ -197,12 +198,17 @@ export function distributeToDaily(
   const getDistance = createDistanceMatrixGetter(distanceMatrix);
   const { onProgress } = options;
 
+  const totalDays = dailyAvailability.length;
+
   // 결과 초기화
   const days: string[][] = dailyAvailability.map(() => []);
   const dailyDurations: number[] = dailyAvailability.map(() => 0);
   const unassignedPlaces: string[] = [];
 
-  // 1단계: 고정 일정 먼저 배치
+  // 1단계: 고정 일정과 일반 장소 분리
+  const fixedPlaces: Array<{ placeId: string; dayIndex: number }> = [];
+  const normalPlaces: string[] = [];
+
   for (const placeId of route) {
     const node = nodes.get(placeId);
     if (!node) continue;
@@ -212,35 +218,29 @@ export function distributeToDaily(
         (d) => d.date === node.fixedDate
       );
       if (dayIndex !== -1) {
+        fixedPlaces.push({ placeId, dayIndex });
         days[dayIndex].push(placeId);
         dailyDurations[dayIndex] += node.duration;
         dailyAvailability[dayIndex].assignedPlaces.push(placeId);
         dailyAvailability[dayIndex].usedMinutes += node.duration;
         dailyAvailability[dayIndex].availableMinutes -= node.duration;
       }
+    } else {
+      normalPlaces.push(placeId);
     }
   }
 
-  // 2단계: 일반 장소 순서대로 배치
+  // 2단계: 일반 장소를 일자별로 균등 분배
+  // 각 일자별 목표 장소 수 계산
+  const placesPerDay = Math.ceil(normalPlaces.length / totalDays);
+
   let currentDayIndex = 0;
+  let currentDayPlaceCount = 0;
   let lastPlaceId: string | null = null;
 
-  for (const placeId of route) {
+  for (const placeId of normalPlaces) {
     const node = nodes.get(placeId);
     if (!node) continue;
-
-    // 이미 배치된 고정 일정은 건너뜀
-    if (node.isFixed) {
-      // 해당 날짜로 이동하고 lastPlaceId 갱신
-      const dayIndex = dailyAvailability.findIndex(
-        (d) => d.date === node.fixedDate
-      );
-      if (dayIndex !== -1) {
-        currentDayIndex = dayIndex;
-        lastPlaceId = placeId;
-      }
-      continue;
-    }
 
     // 현재 위치에서의 이동 시간 계산
     let travelTime = 0;
@@ -249,44 +249,47 @@ export function distributeToDaily(
       travelTime = entry?.duration ?? 0;
     }
 
-    // 현재 일자에 배치 시도
-    let assigned = false;
+    // 현재 일자가 목표 장소 수에 도달했거나 시간이 부족하면 다음 일자로
+    const day = dailyAvailability[currentDayIndex];
     const requiredMinutes = node.duration + travelTime;
 
-    // 현재 일자부터 시작하여 배치 가능한 일자 탐색
-    for (let d = currentDayIndex; d < dailyAvailability.length; d++) {
-      const day = dailyAvailability[d];
+    const shouldMoveToNextDay =
+      (currentDayPlaceCount >= placesPerDay && currentDayIndex < totalDays - 1) ||
+      (day.availableMinutes < requiredMinutes && currentDayIndex < totalDays - 1);
 
-      // 일자가 바뀌면 이동 시간 재계산 (이전 일자 마지막 장소에서)
-      if (d > currentDayIndex) {
-        const prevDayPlaces = days[d - 1];
-        const prevLastPlace =
-          prevDayPlaces.length > 0
-            ? prevDayPlaces[prevDayPlaces.length - 1]
-            : lastPlaceId;
+    if (shouldMoveToNextDay) {
+      currentDayIndex++;
+      currentDayPlaceCount = 0;
 
-        if (prevLastPlace) {
-          const entry = getDistance(prevLastPlace, placeId);
-          travelTime = entry?.duration ?? 0;
-        } else {
-          travelTime = 0;
-        }
+      // 일자가 바뀌면 이동 시간 재계산
+      if (lastPlaceId) {
+        const entry = getDistance(lastPlaceId, placeId);
+        travelTime = entry?.duration ?? 0;
       }
+    }
 
+    // 배치 시도
+    let assigned = false;
+    for (let d = currentDayIndex; d < dailyAvailability.length; d++) {
+      const targetDay = dailyAvailability[d];
       const adjustedRequired = node.duration + travelTime;
 
-      if (day.availableMinutes >= adjustedRequired) {
+      if (targetDay.availableMinutes >= adjustedRequired) {
         days[d].push(placeId);
         dailyDurations[d] += adjustedRequired;
-        day.assignedPlaces.push(placeId);
-        day.usedMinutes += adjustedRequired;
-        day.availableMinutes -= adjustedRequired;
+        targetDay.assignedPlaces.push(placeId);
+        targetDay.usedMinutes += adjustedRequired;
+        targetDay.availableMinutes -= adjustedRequired;
 
         currentDayIndex = d;
+        currentDayPlaceCount++;
         lastPlaceId = placeId;
         assigned = true;
         break;
       }
+
+      // 다음 일자로 넘어갈 때 이동시간 재계산
+      travelTime = 0;
     }
 
     // 배치 실패

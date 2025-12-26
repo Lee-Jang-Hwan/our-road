@@ -147,6 +147,9 @@ export function FixedScheduleForm({
   const selectedPlaceId = form.watch("placeId");
   const selectedPlace = places.find((p) => p.id === selectedPlaceId);
 
+  // 날짜 선택 Popover 상태 (최상위에서 관리)
+  const [dateOpen, setDateOpen] = React.useState(false);
+
   return (
     <Form {...form}>
       <form
@@ -205,7 +208,7 @@ export function FixedScheduleForm({
           render={({ field }) => (
             <FormItem>
               <FormLabel>날짜</FormLabel>
-              <Popover>
+              <Popover open={dateOpen} onOpenChange={setDateOpen}>
                 <PopoverTrigger asChild>
                   <FormControl>
                     <Button
@@ -230,9 +233,10 @@ export function FixedScheduleForm({
                   <Calendar
                     mode="single"
                     selected={parseDate(field.value)}
-                    onSelect={(date) =>
-                      field.onChange(date ? format(date, "yyyy-MM-dd") : "")
-                    }
+                    onSelect={(date) => {
+                      field.onChange(date ? format(date, "yyyy-MM-dd") : "");
+                      setDateOpen(false);
+                    }}
                     disabled={isDateDisabled}
                     locale={ko}
                     initialFocus

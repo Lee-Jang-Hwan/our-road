@@ -8,10 +8,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScheduleItem } from "./schedule-item";
 import { RouteSegmentConnector } from "./route-segment";
 import type { DailyItinerary, ScheduleItem as ScheduleItemType } from "@/types/schedule";
+import type { TripLocation } from "@/types/trip";
 
 interface DayContentProps {
   /** 일자별 일정 */
   itinerary: DailyItinerary;
+  /** 출발지 정보 */
+  origin?: TripLocation;
+  /** 도착지 정보 */
+  destination?: TripLocation;
   /** 항목 클릭 핸들러 */
   onItemClick?: (item: ScheduleItemType) => void;
   /** 수정 핸들러 */
@@ -31,6 +36,8 @@ interface DayContentProps {
  */
 export function DayContent({
   itinerary,
+  origin,
+  destination,
   onItemClick,
   onEdit,
   onDelete,
@@ -64,6 +71,21 @@ export function DayContent({
         <DayContentEmpty />
       ) : (
         <div className="space-y-1">
+          {/* 출발지 출발 */}
+          {origin && (
+            <>
+              <OriginDestinationItem
+                type="origin"
+                name={origin.name}
+                time={itinerary.dailyStartTime || itinerary.startTime}
+              />
+              {/* 출발지 → 첫 장소 이동 */}
+              {itinerary.transportFromOrigin && (
+                <RouteSegmentConnector segment={itinerary.transportFromOrigin} />
+              )}
+            </>
+          )}
+
           {itinerary.schedule.map((item, index) => (
             <React.Fragment key={`${item.placeId}-${item.order}`}>
               {/* 일정 항목 */}
@@ -80,6 +102,20 @@ export function DayContent({
               )}
             </React.Fragment>
           ))}
+
+          {/* 마지막 장소 → 도착지 이동 */}
+          {destination && (
+            <>
+              {itinerary.transportToDestination && (
+                <RouteSegmentConnector segment={itinerary.transportToDestination} />
+              )}
+              <OriginDestinationItem
+                type="destination"
+                name={destination.name}
+                time={calculateDestinationArrivalTime(itinerary)}
+              />
+            </>
+          )}
         </div>
       )}
     </div>
@@ -131,6 +167,71 @@ function DayContentEmpty() {
       <p className="text-sm text-muted-foreground/70 mt-1">
         장소를 추가하여 일정을 계획해보세요
       </p>
+    </div>
+  );
+}
+
+/**
+ * 도착지 도착 시간 계산
+ */
+function calculateDestinationArrivalTime(itinerary: DailyItinerary): string {
+  const lastItem = itinerary.schedule[itinerary.schedule.length - 1];
+  if (!lastItem) return itinerary.endTime;
+
+  // 마지막 장소 출발 시간 + 도착지까지 이동 시간
+  const departureMinutes = timeToMinutes(lastItem.departureTime);
+  const travelMinutes = itinerary.transportToDestination?.duration ?? 0;
+  return minutesToTime(departureMinutes + travelMinutes);
+}
+
+/**
+ * 시간 문자열을 분으로 변환
+ */
+function timeToMinutes(time: string): number {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+/**
+ * 분을 시간 문자열로 변환
+ */
+function minutesToTime(minutes: number): string {
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
+}
+
+interface OriginDestinationItemProps {
+  type: "origin" | "destination";
+  name: string;
+  time: string;
+}
+
+/**
+ * 출발지/도착지 표시 컴포넌트
+ */
+function OriginDestinationItem({ type, name, time }: OriginDestinationItemProps) {
+  const isOrigin = type === "origin";
+
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-lg border border-dashed bg-muted/30">
+      <div
+        className={cn(
+          "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
+          isOrigin ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
+        )}
+      >
+        <MapPin className="h-4 w-4" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="font-medium text-sm truncate">{name}</p>
+        <p className="text-xs text-muted-foreground">
+          {isOrigin ? "출발" : "도착"}
+        </p>
+      </div>
+      <div className="text-right shrink-0">
+        <p className="text-sm font-medium">{time}</p>
+      </div>
     </div>
   );
 }
@@ -189,6 +290,10 @@ interface DayContentPanelProps {
   itineraries: DailyItinerary[];
   /** 현재 선택된 일차 */
   selectedDay: number;
+  /** 출발지 정보 */
+  origin?: TripLocation;
+  /** 도착지 정보 */
+  destination?: TripLocation;
   /** 항목 클릭 핸들러 */
   onItemClick?: (item: ScheduleItemType) => void;
   /** 수정 핸들러 */
@@ -207,6 +312,8 @@ interface DayContentPanelProps {
 export function DayContentPanel({
   itineraries,
   selectedDay,
+  origin,
+  destination,
   onItemClick,
   onEdit,
   onDelete,
@@ -233,6 +340,8 @@ export function DayContentPanel({
   return (
     <DayContent
       itinerary={selectedItinerary}
+      origin={origin}
+      destination={destination}
       onItemClick={onItemClick}
       onEdit={onEdit}
       onDelete={onDelete}

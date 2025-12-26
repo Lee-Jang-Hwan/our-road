@@ -46,6 +46,75 @@ export interface DeleteItineraryResult {
 // ============================================
 
 /**
+ * RouteSegment를 TransportInfoRow 형식으로 변환
+ */
+function convertTransportToRow(transport: {
+  mode: string;
+  distance: number;
+  duration: number;
+  description?: string;
+  fare?: number;
+  polyline?: string;
+  transitDetails?: {
+    totalFare: number;
+    transferCount: number;
+    walkingTime: number;
+    walkingDistance: number;
+    subPaths: Array<{
+      trafficType: 1 | 2 | 3;
+      distance: number;
+      sectionTime: number;
+      stationCount?: number;
+      startName?: string;
+      endName?: string;
+      lane?: {
+        name: string;
+        busNo?: string;
+        busType?: string;
+        subwayCode?: number;
+        lineColor?: string;
+      };
+      way?: string;
+    }>;
+  };
+}) {
+  return {
+    mode: transport.mode,
+    distance: transport.distance,
+    duration: transport.duration,
+    description: transport.description,
+    fare: transport.fare,
+    polyline: transport.polyline,
+    transit_details: transport.transitDetails
+      ? {
+          total_fare: transport.transitDetails.totalFare,
+          transfer_count: transport.transitDetails.transferCount,
+          walking_time: transport.transitDetails.walkingTime,
+          walking_distance: transport.transitDetails.walkingDistance,
+          sub_paths: transport.transitDetails.subPaths.map((sp) => ({
+            traffic_type: sp.trafficType,
+            distance: sp.distance,
+            section_time: sp.sectionTime,
+            station_count: sp.stationCount,
+            start_name: sp.startName,
+            end_name: sp.endName,
+            lane: sp.lane
+              ? {
+                  name: sp.lane.name,
+                  bus_no: sp.lane.busNo,
+                  bus_type: sp.lane.busType,
+                  subway_code: sp.lane.subwayCode,
+                  line_color: sp.lane.lineColor,
+                }
+              : undefined,
+            way: sp.way,
+          })),
+        }
+      : undefined,
+  };
+}
+
+/**
  * DailyItinerary를 DB Row 형식으로 변환
  */
 function convertItineraryToRow(
@@ -61,13 +130,7 @@ function convertItineraryToRow(
     duration: item.duration,
     is_fixed: item.isFixed,
     transport_to_next: item.transportToNext
-      ? {
-          mode: item.transportToNext.mode,
-          distance: item.transportToNext.distance,
-          duration: item.transportToNext.duration,
-          description: item.transportToNext.description,
-          fare: item.transportToNext.fare,
-        }
+      ? convertTransportToRow(item.transportToNext)
       : undefined,
   }));
 

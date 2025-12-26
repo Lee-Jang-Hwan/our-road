@@ -3,7 +3,7 @@
 // ============================================
 
 import type { Coordinate, Place } from "./place";
-import type { TransportMode } from "./route";
+import type { TransportMode, TransitDetails } from "./route";
 import type { DailyItinerary, FixedSchedule } from "./schedule";
 
 /**
@@ -156,6 +156,10 @@ export interface DistanceMatrix {
   durations: number[][];
   /** 각 구간 이동 수단 */
   modes: TransportMode[][];
+  /** 각 구간 경로 폴리라인 (인코딩된 문자열) */
+  polylines?: (string | null)[][];
+  /** 대중교통 상세 정보 (public 모드일 때) */
+  transitDetails?: (TransitDetails | null)[][];
 }
 
 /**

@@ -17,6 +17,8 @@ interface MarkerData {
   isFixed?: boolean;
   /** 클릭 가능 여부 */
   clickable?: boolean;
+  /** 커스텀 배경 색상 (hex 코드) */
+  color?: string;
 }
 
 interface PlaceMarkersProps {
@@ -39,15 +41,33 @@ const MARKER_SIZES = {
 
 /**
  * 번호가 표시된 SVG 마커 이미지 생성
+ * @param order - 표시할 순서 번호
+ * @param isFixed - 고정 일정 여부
+ * @param isSelected - 선택된 마커 여부
+ * @param size - 마커 크기
+ * @param customColor - 커스텀 배경 색상 (우선 적용)
  */
 function createNumberedMarkerSvg(
   order: number,
   isFixed: boolean,
   isSelected: boolean,
-  size: "sm" | "md" | "lg"
+  size: "sm" | "md" | "lg",
+  customColor?: string
 ): string {
   const { width, height, fontSize } = MARKER_SIZES[size];
-  const bgColor = isFixed ? "#7c3aed" : isSelected ? "#2563eb" : "#ef4444";
+
+  // 색상 우선순위: customColor > isFixed > isSelected > 기본(red)
+  let bgColor: string;
+  if (customColor) {
+    bgColor = customColor;
+  } else if (isFixed) {
+    bgColor = "#7c3aed"; // violet-600
+  } else if (isSelected) {
+    bgColor = "#2563eb"; // blue-600
+  } else {
+    bgColor = "#ef4444"; // red-500
+  }
+
   const strokeColor = isSelected ? "#1d4ed8" : "white";
   const strokeWidth = isSelected ? 3 : 2;
 
@@ -105,13 +125,13 @@ export function PlaceMarkers({
 
     // 마커 생성 또는 업데이트
     markers.forEach((markerData) => {
-      const { id, coordinate, order = 1, isFixed = false, clickable = true } = markerData;
+      const { id, coordinate, order = 1, isFixed = false, clickable = true, color } = markerData;
       const isSelected = id === selectedId;
       const position = new window.kakao.maps.LatLng(coordinate.lat, coordinate.lng);
 
-      // 마커 이미지 생성
+      // 마커 이미지 생성 (커스텀 색상 지원)
       const { width, height } = MARKER_SIZES[size];
-      const imageSrc = createNumberedMarkerSvg(order, isFixed, isSelected, size);
+      const imageSrc = createNumberedMarkerSvg(order, isFixed, isSelected, size, color);
       const imageSize = new window.kakao.maps.Size(width, height);
       const imageOption = { offset: new window.kakao.maps.Point(width / 2, height) };
       const markerImage = new window.kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);

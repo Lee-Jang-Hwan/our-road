@@ -21,6 +21,9 @@ export type {
 export type {
   TransportMode,
   PublicTransportMode,
+  TransitLane,
+  TransitSubPath,
+  TransitDetails,
   RouteSegment,
   TransitSegment,
   TransitRoute,

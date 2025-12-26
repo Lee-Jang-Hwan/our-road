@@ -15,6 +15,7 @@ import {
   LuLocate,
   LuExternalLink,
 } from "react-icons/lu";
+import { Train, Bus, Footprints, ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +29,7 @@ import { DirectRoutePolyline } from "@/components/map/route-polyline";
 import { CurrentLocationTracker, useCurrentLocation } from "@/components/map/current-location";
 
 import { getTripWithDetails } from "@/actions/trips/get-trip";
+import { getSegmentColor } from "@/lib/utils";
 import type { TripWithDetails, Coordinate } from "@/types";
 import type { ScheduleItem, DailyItinerary } from "@/types/schedule";
 
@@ -209,25 +211,80 @@ function NavigationBottomPanel({
 
             {/* 이동 정보 */}
             {currentItem.transportToNext && (
-              <div className="flex items-center gap-4 text-sm">
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <LuNavigation className="w-4 h-4" />
-                  <span>
-                    {currentItem.transportToNext.mode === "walking"
-                      ? "도보"
-                      : currentItem.transportToNext.mode === "car"
-                      ? "자동차"
-                      : "대중교통"}
-                  </span>
+              <div className="space-y-2">
+                <div className="flex items-center gap-4 text-sm">
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <LuNavigation className="w-4 h-4" />
+                    <span>
+                      {currentItem.transportToNext.mode === "walking"
+                        ? "도보"
+                        : currentItem.transportToNext.mode === "car"
+                        ? "자동차"
+                        : "대중교통"}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <LuClock className="w-4 h-4" />
+                    <span>{formatDuration(currentItem.transportToNext.duration)}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-muted-foreground">
+                    <LuRoute className="w-4 h-4" />
+                    <span>{formatDistance(currentItem.transportToNext.distance)}</span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <LuClock className="w-4 h-4" />
-                  <span>{formatDuration(currentItem.transportToNext.duration)}</span>
-                </div>
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <LuRoute className="w-4 h-4" />
-                  <span>{formatDistance(currentItem.transportToNext.distance)}</span>
-                </div>
+
+                {/* 대중교통 상세 정보 */}
+                {currentItem.transportToNext.mode === "public" &&
+                  currentItem.transportToNext.transitDetails && (
+                    <div className="space-y-2">
+                      {/* 노선 요약 */}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {currentItem.transportToNext.transitDetails.subPaths
+                          .filter((sp) => sp.trafficType !== 3)
+                          .map((subPath, index) => (
+                            <div key={index} className="flex items-center gap-1">
+                              {index > 0 && (
+                                <ArrowRight className="w-3 h-3 text-muted-foreground" />
+                              )}
+                              <span
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium text-white"
+                                style={{
+                                  backgroundColor: subPath.lane?.lineColor || "#6b7280",
+                                }}
+                              >
+                                {subPath.trafficType === 1 ? (
+                                  <Train className="w-3 h-3" />
+                                ) : (
+                                  <Bus className="w-3 h-3" />
+                                )}
+                                {subPath.lane?.name ||
+                                  (subPath.trafficType === 1 ? "지하철" : "버스")}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+
+                      {/* 요금 및 환승 정보 */}
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        {currentItem.transportToNext.transitDetails.totalFare > 0 && (
+                          <span className="text-primary font-medium">
+                            ₩{currentItem.transportToNext.transitDetails.totalFare.toLocaleString()}
+                          </span>
+                        )}
+                        {currentItem.transportToNext.transitDetails.transferCount > 0 && (
+                          <span>
+                            환승 {currentItem.transportToNext.transitDetails.transferCount}회
+                          </span>
+                        )}
+                        {currentItem.transportToNext.transitDetails.walkingTime > 0 && (
+                          <span className="flex items-center gap-1">
+                            <Footprints className="w-3 h-3" />
+                            도보 {currentItem.transportToNext.transitDetails.walkingTime}분
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
               </div>
             )}
           </>
@@ -305,7 +362,7 @@ function NavigationMapContent({
     return map;
   }, [trip.places]);
 
-  // 마커 데이터 생성
+  // 마커 데이터 생성 (구간별 색상 적용)
   const markers = useMemo(() => {
     return currentDayItinerary.schedule.map((item, index) => {
       const coordinate = placeCoordinates.get(item.placeId) || { lat: 0, lng: 0 };
@@ -316,6 +373,7 @@ function NavigationMapContent({
         name: item.placeName,
         isFixed: item.isFixed,
         clickable: true,
+        color: getSegmentColor(index), // 구간별 색상 적용
       };
     });
   }, [currentDayItinerary.schedule, placeCoordinates]);
@@ -389,7 +447,7 @@ function NavigationMapContent({
         size="md"
       />
 
-      {/* 경로 폴리라인 (현재 위치 → 목적지) */}
+      {/* 경로 폴리라인 (현재 위치 → 목적지) - 현재 목적지 색상 적용 */}
       {routePath.length >= 2 && (
         <DirectRoutePolyline
           origin={routePath[0]}
@@ -397,6 +455,7 @@ function NavigationMapContent({
           waypoints={routePath.slice(1, -1)}
           transportMode="public"
           straight={true}
+          strokeColor={getSegmentColor(currentIndex)}
         />
       )}
 
@@ -678,11 +737,11 @@ export default function NavigatePage({ params }: NavigatePageProps) {
       )}
 
       {/* 지도 영역 */}
-      <div className="flex-1 relative">
+      <div className="flex-1 relative overflow-hidden">
         <KakaoMap
           center={initialCenter}
           level={5}
-          className="w-full h-full"
+          className="absolute inset-0 w-full h-full"
         >
           <NavigationMapContent
             trip={trip}

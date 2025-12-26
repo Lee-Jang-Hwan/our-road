@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { MapPin, Navigation, Loader2, X, Clock } from "lucide-react";
+import { MapPin, Navigation, Loader2, X, Clock, Search } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -71,42 +71,45 @@ export function LocationInput({
   const [results, setResults] = React.useState<PlaceSearchResult[]>([]);
   const [isSearching, setIsSearching] = React.useState(false);
   const [isGettingLocation, setIsGettingLocation] = React.useState(false);
-  const debounceRef = React.useRef<NodeJS.Timeout | null>(null);
+  const [error, setError] = React.useState<string | null>(null);
 
-  // 검색 디바운스 처리
-  React.useEffect(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-
+  // 검색 실행 함수
+  const handleSearch = React.useCallback(async () => {
     if (query.length < 2) {
-      setResults([]);
+      setError("2글자 이상 입력해주세요");
       return;
     }
 
-    debounceRef.current = setTimeout(async () => {
-      setIsSearching(true);
-      try {
-        const result = await searchPlaces({ query, page: 1, size: 10 });
-        if (result.success && result.data) {
-          setResults(result.data.places);
-        } else {
-          setResults([]);
-        }
-      } catch (error) {
-        console.error("장소 검색 실패:", error);
-        setResults([]);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 300);
+    setIsSearching(true);
+    setError(null);
+    setOpen(true);
 
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
+    try {
+      const result = await searchPlaces({ query, page: 1, size: 10 });
+      if (result.success && result.data) {
+        setResults(result.data.places);
+      } else {
+        setResults([]);
+        if (result.error) {
+          setError(result.error);
+        }
       }
-    };
+    } catch (err) {
+      console.error("장소 검색 실패:", err);
+      setResults([]);
+      setError("검색 중 오류가 발생했습니다.");
+    } finally {
+      setIsSearching(false);
+    }
   }, [query]);
+
+  // Enter 키 처리
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSearch();
+    }
+  };
 
   // 현재 위치 가져오기
   const handleGetCurrentLocation = async () => {
@@ -157,12 +160,16 @@ export function LocationInput({
     setOpen(false);
     setQuery("");
     setResults([]);
+    setError(null);
   };
 
   // 선택 초기화
   const handleClear = () => {
     onChange(undefined);
     setQuery("");
+    setResults([]);
+    setError(null);
+    setOpen(false);
   };
 
   return (
@@ -195,34 +202,45 @@ export function LocationInput({
             />
           </Button>
         ) : (
-          <div className="flex-1 relative">
-            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder={placeholder}
-              value={query}
-              onChange={(e) => {
-                setQuery(e.target.value);
-                setOpen(true);
-              }}
-              onFocus={() => setOpen(true)}
-              disabled={disabled}
-              className="pl-10 pr-10 touch-target"
-            />
-            {(isSearching || query) && (
-              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                {isSearching ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                ) : query ? (
+          <div className="flex-1 flex gap-2">
+            <div className="relative flex-1">
+              <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder={placeholder}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={handleKeyDown}
+                disabled={disabled}
+                className="pl-10 pr-10 touch-target"
+              />
+              {query && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
                   <X
                     className="h-4 w-4 text-muted-foreground cursor-pointer hover:text-foreground"
                     onClick={() => {
                       setQuery("");
                       setResults([]);
+                      setError(null);
+                      setOpen(false);
                     }}
                   />
-                ) : null}
-              </div>
-            )}
+                </div>
+              )}
+            </div>
+            <Button
+              type="button"
+              size="icon"
+              onClick={handleSearch}
+              disabled={disabled || isSearching || query.length < 2}
+              className="shrink-0 touch-target"
+              title="검색"
+            >
+              {isSearching ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Search className="h-4 w-4" />
+              )}
+            </Button>
           </div>
         )}
 
@@ -245,7 +263,7 @@ export function LocationInput({
       </div>
 
       {/* 검색 결과 - 인라인으로 표시 (모바일 친화적) */}
-      {open && query.length >= 2 && (
+      {open && (
         <div className="rounded-md border bg-popover shadow-md max-h-[40vh] overflow-auto">
           <Command shouldFilter={false}>
             <CommandList className="max-h-none">
@@ -254,12 +272,16 @@ export function LocationInput({
                   <Loader2 className="h-4 w-4 animate-spin mr-2" />
                   검색 중...
                 </div>
+              ) : error ? (
+                <div className="py-6 text-center text-sm text-destructive">
+                  {error}
+                </div>
               ) : results.length === 0 ? (
                 <CommandEmpty className="py-6 text-center text-sm">
                   검색 결과가 없습니다
                 </CommandEmpty>
               ) : (
-                <CommandGroup heading="검색 결과">
+                <CommandGroup heading={`검색 결과 (${results.length}건)`}>
                   {results.map((result) => (
                     <CommandItem
                       key={result.id}

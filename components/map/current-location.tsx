@@ -160,6 +160,19 @@ export function useCurrentLocation(options: UseCurrentLocationOptions = {}) {
 
   const watchIdRef = React.useRef<number | null>(null);
 
+  // 콜백을 ref로 저장하여 의존성 배열 문제 방지
+  const onLocationChangeRef = React.useRef(onLocationChange);
+  const onErrorRef = React.useRef(onError);
+
+  // 콜백 ref 업데이트
+  React.useEffect(() => {
+    onLocationChangeRef.current = onLocationChange;
+  }, [onLocationChange]);
+
+  React.useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
+
   // 현재 위치 1회 조회
   const getCurrentLocation = React.useCallback(() => {
     if (!navigator.geolocation) {
@@ -187,7 +200,7 @@ export function useCurrentLocation(options: UseCurrentLocationOptions = {}) {
           error: null,
         });
 
-        onLocationChange?.(coordinate, accuracy);
+        onLocationChangeRef.current?.(coordinate, accuracy);
       },
       (error) => {
         const errorMessage = getGeolocationErrorMessage(error);
@@ -196,7 +209,7 @@ export function useCurrentLocation(options: UseCurrentLocationOptions = {}) {
           isLoading: false,
           error: errorMessage,
         }));
-        onError?.(error);
+        onErrorRef.current?.(error);
       },
       {
         enableHighAccuracy,
@@ -204,13 +217,17 @@ export function useCurrentLocation(options: UseCurrentLocationOptions = {}) {
         timeout,
       }
     );
-  }, [enableHighAccuracy, maximumAge, timeout, onLocationChange, onError]);
+  }, [enableHighAccuracy, maximumAge, timeout]);
 
   // 위치 추적 시작/중지
   React.useEffect(() => {
     if (!enabled || !navigator.geolocation) return;
 
-    setState((prev) => ({ ...prev, isLoading: true }));
+    // 초기 로딩 상태 설정은 한 번만
+    setState((prev) => {
+      if (prev.isLoading) return prev;
+      return { ...prev, isLoading: true };
+    });
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
@@ -227,7 +244,7 @@ export function useCurrentLocation(options: UseCurrentLocationOptions = {}) {
           error: null,
         });
 
-        onLocationChange?.(coordinate, accuracy);
+        onLocationChangeRef.current?.(coordinate, accuracy);
       },
       (error) => {
         const errorMessage = getGeolocationErrorMessage(error);
@@ -236,7 +253,7 @@ export function useCurrentLocation(options: UseCurrentLocationOptions = {}) {
           isLoading: false,
           error: errorMessage,
         }));
-        onError?.(error);
+        onErrorRef.current?.(error);
       },
       {
         enableHighAccuracy,
@@ -251,7 +268,7 @@ export function useCurrentLocation(options: UseCurrentLocationOptions = {}) {
         watchIdRef.current = null;
       }
     };
-  }, [enabled, enableHighAccuracy, maximumAge, timeout, onLocationChange, onError]);
+  }, [enabled, enableHighAccuracy, maximumAge, timeout]);
 
   return {
     ...state,

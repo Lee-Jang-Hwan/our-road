@@ -168,15 +168,39 @@ async function createDailyItinerary(
   date: string,
   dayNumber: number,
   dailyStartTime: string,
-  transportMode: TransportMode
+  dailyEndTime: string,
+  transportMode: TransportMode,
+  originId: string,
+  destinationId: string
 ): Promise<DailyItinerary> {
   const schedule: ScheduleItem[] = [];
   const getDistance = createDistanceMatrixGetter(distanceMatrix);
 
-  let currentTime = timeToMinutes(dailyStartTime);
   let totalDistance = 0;
   let totalDuration = 0;
   let totalStayDuration = 0;
+
+  // 출발지에서 첫 장소까지 이동 정보 계산
+  let transportFromOrigin: DailyItinerary["transportFromOrigin"];
+  let currentTime = timeToMinutes(dailyStartTime);
+
+  if (dayPlaceIds.length > 0) {
+    const firstPlaceId = dayPlaceIds[0];
+    const entry = getDistance(originId, firstPlaceId);
+    if (entry) {
+      transportFromOrigin = {
+        mode: entry.mode,
+        distance: entry.distance,
+        duration: entry.duration,
+        polyline: entry.polyline,
+        transitDetails: entry.transitDetails,
+      };
+      // 첫 장소 도착 시간 = 출발 시간 + 이동 시간
+      currentTime = timeToMinutes(dailyStartTime) + entry.duration;
+      totalDistance += entry.distance;
+      totalDuration += entry.duration;
+    }
+  }
 
   for (let i = 0; i < dayPlaceIds.length; i++) {
     const placeId = dayPlaceIds[i];
@@ -204,6 +228,8 @@ async function createDailyItinerary(
           mode: entry.mode,
           distance: entry.distance,
           duration: entry.duration,
+          polyline: entry.polyline,
+          transitDetails: entry.transitDetails,
         };
 
         totalDistance += entry.distance;
@@ -226,6 +252,24 @@ async function createDailyItinerary(
     });
   }
 
+  // 마지막 장소에서 도착지까지 이동 정보 계산
+  let transportToDestination: DailyItinerary["transportToDestination"];
+  if (dayPlaceIds.length > 0) {
+    const lastPlaceId = dayPlaceIds[dayPlaceIds.length - 1];
+    const entry = getDistance(lastPlaceId, destinationId);
+    if (entry) {
+      transportToDestination = {
+        mode: entry.mode,
+        distance: entry.distance,
+        duration: entry.duration,
+        polyline: entry.polyline,
+        transitDetails: entry.transitDetails,
+      };
+      totalDistance += entry.distance;
+      totalDuration += entry.duration;
+    }
+  }
+
   const startTime = schedule[0]?.arrivalTime ?? dailyStartTime;
   const endTime = schedule[schedule.length - 1]?.departureTime ?? dailyStartTime;
 
@@ -239,6 +283,10 @@ async function createDailyItinerary(
     placeCount: schedule.length,
     startTime,
     endTime,
+    transportFromOrigin,
+    transportToDestination,
+    dailyStartTime,
+    dailyEndTime,
   };
 }
 
@@ -524,6 +572,8 @@ export async function optimizeRoute(
           placeCount: 0,
           startTime: trip.dailyStartTime,
           endTime: trip.dailyStartTime,
+          dailyStartTime: trip.dailyStartTime,
+          dailyEndTime: trip.dailyEndTime,
         });
         continue;
       }
@@ -535,7 +585,10 @@ export async function optimizeRoute(
         date,
         i + 1,
         trip.dailyStartTime,
-        transportMode
+        trip.dailyEndTime,
+        transportMode,
+        originNode.id,
+        destinationNode.id
       );
 
       itinerary.push(dailyItinerary);

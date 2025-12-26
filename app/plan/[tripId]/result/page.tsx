@@ -10,7 +10,7 @@ import {
   LuLoader,
   LuSparkles,
 } from "react-icons/lu";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, MapPin, Clock, ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -18,15 +18,19 @@ import { DayTabs, DayTabsContainer } from "@/components/itinerary/day-tabs";
 import { DayContentPanel } from "@/components/itinerary/day-content";
 import { DaySummary } from "@/components/itinerary/day-summary";
 import { KakaoMap } from "@/components/map/kakao-map";
-import { PlaceMarkers } from "@/components/map/place-markers";
+import { PlaceMarkers, SingleMarker } from "@/components/map/place-markers";
+import { RealRoutePolyline } from "@/components/map/route-polyline";
 import { OffScreenMarkers, FitBoundsButton } from "@/components/map/off-screen-markers";
 import { useSwipe } from "@/hooks/use-swipe";
 import { optimizeRoute } from "@/actions/optimize/optimize-route";
 import { saveItinerary } from "@/actions/optimize/save-itinerary";
 import { getPlaces } from "@/actions/places";
+import { getTrip } from "@/actions/trips/get-trip";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
+import { getSegmentColor } from "@/lib/utils";
 import type { DailyItinerary, ScheduleItem } from "@/types/schedule";
 import type { Coordinate, Place } from "@/types/place";
+import type { Trip } from "@/types/trip";
 
 interface ResultPageProps {
   params: Promise<{ tripId: string }>;
@@ -40,6 +44,7 @@ export default function ResultPage({ params }: ResultPageProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [itineraries, setItineraries] = useState<DailyItinerary[]>([]);
   const [places, setPlaces] = useState<Place[]>([]);
+  const [trip, setTrip] = useState<Trip | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasPlaces, setHasPlaces] = useState(true);
@@ -73,6 +78,12 @@ export default function ResultPage({ params }: ResultPageProps) {
   useEffect(() => {
     const init = async () => {
       setIsLoading(true);
+
+      // trip 정보 로드
+      const tripResult = await getTrip(tripId);
+      if (tripResult.success && tripResult.data) {
+        setTrip(tripResult.data);
+      }
 
       // 먼저 장소가 있는지 확인
       const placesResult = await getPlaces(tripId);
@@ -182,11 +193,11 @@ export default function ResultPage({ params }: ResultPageProps) {
     (it) => it.dayNumber === selectedDay
   );
 
-  // 현재 일자 마커 데이터 (일정 순서대로)
+  // 현재 일자 마커 데이터 (일정 순서대로, 구간별 색상 적용)
   const currentDayMarkers = useMemo(() => {
     if (!currentItinerary) return [];
 
-    return currentItinerary.schedule.map((item) => {
+    return currentItinerary.schedule.map((item, index) => {
       const place = places.find((p) => p.id === item.placeId);
       return {
         id: item.placeId,
@@ -195,22 +206,96 @@ export default function ResultPage({ params }: ResultPageProps) {
         name: item.placeName,
         isFixed: item.isFixed,
         clickable: true,
+        color: getSegmentColor(index), // 구간별 색상 적용
       };
     });
   }, [currentItinerary, places]);
 
-  // 맵 중심점 계산 (현재 일자 장소들의 중심)
+  // 맵 중심점 계산 (출발지, 장소들, 도착지 모두 포함)
   const mapCenter = useMemo<Coordinate>(() => {
-    if (currentDayMarkers.length === 0) {
+    const allCoords: Coordinate[] = [];
+
+    // 출발지 추가
+    if (trip?.origin) {
+      allCoords.push({ lat: trip.origin.lat, lng: trip.origin.lng });
+    }
+
+    // 장소들 추가
+    currentDayMarkers.forEach((m) => allCoords.push(m.coordinate));
+
+    // 도착지 추가
+    if (trip?.destination) {
+      allCoords.push({ lat: trip.destination.lat, lng: trip.destination.lng });
+    }
+
+    if (allCoords.length === 0) {
       return { lat: 37.5665, lng: 126.978 }; // 서울 시청
     }
-    const sumLat = currentDayMarkers.reduce((sum, m) => sum + m.coordinate.lat, 0);
-    const sumLng = currentDayMarkers.reduce((sum, m) => sum + m.coordinate.lng, 0);
+
+    const sumLat = allCoords.reduce((sum, c) => sum + c.lat, 0);
+    const sumLng = allCoords.reduce((sum, c) => sum + c.lng, 0);
     return {
-      lat: sumLat / currentDayMarkers.length,
-      lng: sumLng / currentDayMarkers.length,
+      lat: sumLat / allCoords.length,
+      lng: sumLng / allCoords.length,
     };
-  }, [currentDayMarkers]);
+  }, [currentDayMarkers, trip?.origin, trip?.destination]);
+
+  // 경로 구간 배열 (출발지 → 장소들 순서대로 → 도착지)
+  // 각 구간별 polyline(실제 경로) 또는 직선 연결, 구간별 색상 인덱스 포함
+  const routeSegments = useMemo(() => {
+    if (!trip || !currentItinerary) return [];
+
+    const segments: Array<{
+      from: Coordinate;
+      to: Coordinate;
+      encodedPath?: string;
+      transportMode: "walking" | "public" | "car";
+      segmentIndex: number;
+    }> = [];
+
+    const transportMode = trip.transportModes.includes("car") ? "car" as const : "public" as const;
+    const originCoord = { lat: trip.origin.lat, lng: trip.origin.lng };
+    const destCoord = { lat: trip.destination.lat, lng: trip.destination.lng };
+
+    // 출발지 → 첫 장소 (첫 번째 장소 색상 사용)
+    if (currentItinerary.schedule.length > 0 && currentDayMarkers.length > 0) {
+      segments.push({
+        from: originCoord,
+        to: currentDayMarkers[0].coordinate,
+        encodedPath: currentItinerary.transportFromOrigin?.polyline,
+        transportMode,
+        segmentIndex: 0,
+      });
+    }
+
+    // 장소들 사이 (도착 장소의 색상 사용)
+    for (let i = 0; i < currentItinerary.schedule.length - 1; i++) {
+      const scheduleItem = currentItinerary.schedule[i];
+      if (currentDayMarkers[i] && currentDayMarkers[i + 1]) {
+        segments.push({
+          from: currentDayMarkers[i].coordinate,
+          to: currentDayMarkers[i + 1].coordinate,
+          encodedPath: scheduleItem.transportToNext?.polyline,
+          transportMode,
+          segmentIndex: i + 1,
+        });
+      }
+    }
+
+    // 마지막 장소 → 도착지 (마지막 장소 색상 사용)
+    if (currentItinerary.schedule.length > 0 && currentDayMarkers.length > 0) {
+      const lastIndex = currentDayMarkers.length - 1;
+      segments.push({
+        from: currentDayMarkers[lastIndex].coordinate,
+        to: destCoord,
+        encodedPath: currentItinerary.transportToDestination?.polyline,
+        transportMode,
+        segmentIndex: lastIndex,
+      });
+    }
+
+    return segments;
+  }, [currentItinerary, currentDayMarkers, trip]);
 
   // 로딩 상태
   if (isLoading) {
@@ -276,15 +361,59 @@ export default function ResultPage({ params }: ResultPageProps) {
         </Button>
       </header>
 
+      {/* 여행 정보 요약 */}
+      {trip && (
+        <div className="px-4 py-3 border-b bg-muted/30">
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <MapPin className="h-4 w-4 shrink-0" />
+              <span className="truncate max-w-[100px]">{trip.origin.name}</span>
+              <ArrowRight className="h-4 w-4 shrink-0" />
+              <span className="truncate max-w-[100px]">{trip.destination.name}</span>
+            </div>
+            <div className="flex items-center gap-1 text-muted-foreground shrink-0">
+              <Clock className="h-4 w-4" />
+              <span>{trip.dailyStartTime} - {trip.dailyEndTime}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 카카오 맵 */}
-      {days.length > 0 && currentDayMarkers.length > 0 && (
-        <div className="w-full h-48 border-b">
+      {days.length > 0 && trip && (
+        <div className="w-full h-48 border-b relative overflow-hidden">
           <KakaoMap
             center={mapCenter}
             level={7}
-            className="w-full h-full"
+            className="absolute inset-0 w-full h-full"
           >
-            <PlaceMarkers markers={currentDayMarkers} size="md" />
+            {/* 경로 폴리라인 (출발지 → 장소들 → 도착지) - 구간별 색상 적용 */}
+            {routeSegments.length > 0 && (
+              <RealRoutePolyline
+                segments={routeSegments}
+                strokeWeight={5}
+                strokeOpacity={0.9}
+                useSegmentColors={true}
+              />
+            )}
+
+            {/* 출발지 마커 */}
+            <SingleMarker
+              coordinate={{ lat: trip.origin.lat, lng: trip.origin.lng }}
+              type="origin"
+            />
+
+            {/* 장소 마커들 */}
+            {currentDayMarkers.length > 0 && (
+              <PlaceMarkers markers={currentDayMarkers} size="md" />
+            )}
+
+            {/* 도착지 마커 */}
+            <SingleMarker
+              coordinate={{ lat: trip.destination.lat, lng: trip.destination.lng }}
+              type="destination"
+            />
+
             <OffScreenMarkers markers={currentDayMarkers} />
             <FitBoundsButton markers={currentDayMarkers} />
           </KakaoMap>
@@ -320,6 +449,8 @@ export default function ResultPage({ params }: ResultPageProps) {
                 <DayContentPanel
                   itineraries={itineraries}
                   selectedDay={selectedDay}
+                  origin={trip?.origin}
+                  destination={trip?.destination}
                   onItemClick={handleItemClick}
                   isLoading={false}
                 />

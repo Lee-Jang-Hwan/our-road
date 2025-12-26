@@ -9,6 +9,10 @@ import {
   Clock,
   Route,
   Banknote,
+  Bus,
+  Train,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -118,13 +122,34 @@ interface RouteSegmentConnectorProps {
 }
 
 /**
+ * 구간 타입에 따른 아이콘 반환
+ */
+function getTrafficIcon(trafficType: 1 | 2 | 3, className?: string) {
+  switch (trafficType) {
+    case 1: // 지하철
+      return <Train className={cn("w-3 h-3", className)} />;
+    case 2: // 버스
+      return <Bus className={cn("w-3 h-3", className)} />;
+    case 3: // 도보
+      return <Footprints className={cn("w-3 h-3", className)} />;
+  }
+}
+
+/**
  * 타임라인 스타일의 이동 구간 연결선
  */
 export function RouteSegmentConnector({
   segment,
   className,
 }: RouteSegmentConnectorProps) {
+  const [isExpanded, setIsExpanded] = React.useState(false);
   const icon = transportIcons[segment.mode] || <ArrowDown className="h-3.5 w-3.5" />;
+  const hasTransitDetails = segment.mode === "public" && segment.transitDetails;
+
+  // 대중교통 구간만 필터링 (도보 제외)
+  const transitPaths = hasTransitDetails
+    ? segment.transitDetails!.subPaths.filter((sp) => sp.trafficType !== 3)
+    : [];
 
   return (
     <div className={cn("relative py-2 pl-[18px]", className)}>
@@ -132,17 +157,124 @@ export function RouteSegmentConnector({
       <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-border" />
 
       {/* 이동 정보 */}
-      <div className="ml-6 flex items-center gap-2 text-xs text-muted-foreground">
-        <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded">
-          {icon}
-          <span>{formatDuration(segment.duration)}</span>
-          <span className="text-muted-foreground/60">·</span>
-          <span>{formatDistance(segment.distance)}</span>
-        </div>
-        {segment.fare && segment.fare > 0 && (
-          <span className="text-muted-foreground/70">
-            ₩{segment.fare.toLocaleString()}
-          </span>
+      <div className="ml-6">
+        {hasTransitDetails ? (
+          // 대중교통 상세 정보 표시
+          <div className="space-y-1.5">
+            {/* 요약 정보 (클릭하여 펼치기) */}
+            <button
+              type="button"
+              onClick={() => setIsExpanded(!isExpanded)}
+              className="flex items-center gap-2 text-xs text-muted-foreground hover:bg-muted/50 rounded px-2 py-1.5 -ml-2 transition-colors"
+            >
+              <div className="flex items-center gap-1.5">
+                {icon}
+                <span>{formatDuration(segment.duration)}</span>
+                <span className="text-muted-foreground/60">·</span>
+                <span>{formatDistance(segment.distance)}</span>
+              </div>
+
+              {/* 노선 배지들 */}
+              <div className="flex items-center gap-1 flex-wrap">
+                {transitPaths.slice(0, 3).map((subPath, index) => (
+                  <span
+                    key={index}
+                    className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium text-white"
+                    style={{ backgroundColor: subPath.lane?.lineColor || "#6b7280" }}
+                  >
+                    {getTrafficIcon(subPath.trafficType, "w-2.5 h-2.5")}
+                    <span>{subPath.lane?.name || (subPath.trafficType === 1 ? "지하철" : "버스")}</span>
+                  </span>
+                ))}
+                {transitPaths.length > 3 && (
+                  <span className="text-[10px] text-muted-foreground">+{transitPaths.length - 3}</span>
+                )}
+              </div>
+
+              {/* 요금 */}
+              {segment.transitDetails!.totalFare > 0 && (
+                <span className="text-primary text-[10px] font-medium">
+                  ₩{segment.transitDetails!.totalFare.toLocaleString()}
+                </span>
+              )}
+
+              {/* 펼치기/접기 아이콘 */}
+              {isExpanded ? (
+                <ChevronUp className="w-3.5 h-3.5 shrink-0" />
+              ) : (
+                <ChevronDown className="w-3.5 h-3.5 shrink-0" />
+              )}
+            </button>
+
+            {/* 상세 구간 정보 */}
+            {isExpanded && (
+              <div className="ml-2 pl-3 border-l-2 border-primary/20 space-y-2">
+                {segment.transitDetails!.subPaths.map((subPath, index) => (
+                  <div key={index} className="flex items-start gap-2 text-xs">
+                    {/* 아이콘 */}
+                    <div
+                      className="flex items-center justify-center w-5 h-5 rounded-full shrink-0 mt-0.5"
+                      style={{
+                        backgroundColor: subPath.lane?.lineColor
+                          ? `${subPath.lane.lineColor}20`
+                          : "rgb(var(--muted))",
+                        color: subPath.lane?.lineColor || "inherit",
+                      }}
+                    >
+                      {getTrafficIcon(subPath.trafficType, "w-3 h-3")}
+                    </div>
+
+                    {/* 내용 */}
+                    <div className="flex-1 min-w-0">
+                      {subPath.trafficType === 3 ? (
+                        // 도보
+                        <span className="text-muted-foreground">
+                          도보 {formatDistance(subPath.distance)} ({subPath.sectionTime}분)
+                        </span>
+                      ) : (
+                        // 대중교통
+                        <div>
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <span
+                              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium text-white"
+                              style={{ backgroundColor: subPath.lane?.lineColor || "#6b7280" }}
+                            >
+                              {subPath.lane?.name || (subPath.trafficType === 1 ? "지하철" : "버스")}
+                            </span>
+                            {subPath.way && (
+                              <span className="text-muted-foreground">{subPath.way} 방면</span>
+                            )}
+                          </div>
+                          <div className="mt-0.5 text-foreground">
+                            {subPath.startName} → {subPath.endName}
+                          </div>
+                          <div className="text-muted-foreground">
+                            {subPath.stationCount && <span>{subPath.stationCount}개 정류장 · </span>}
+                            {subPath.sectionTime}분
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          // 기본 표시 (도보, 자동차 등)
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded">
+              {icon}
+              <span>{formatDuration(segment.duration)}</span>
+              <span className="text-muted-foreground/60">·</span>
+              <span>{formatDistance(segment.distance)}</span>
+            </div>
+            {segment.fare && segment.fare > 0 && (
+              <span className="text-muted-foreground/70">
+                ₩{segment.fare.toLocaleString()}
+              </span>
+            )}
+          </div>
         )}
       </div>
     </div>

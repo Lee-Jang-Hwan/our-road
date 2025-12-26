@@ -429,9 +429,20 @@ export function KakaoMap({
 
   return (
     <KakaoMapContext.Provider value={{ map: mapRef.current, isReady }}>
-      <div className={cn("relative", className)}>
+      <div
+        className={cn("relative overflow-hidden", className)}
+        style={{
+          clipPath: "inset(0)",
+          contain: "strict",
+          isolation: "isolate",
+        }}
+      >
         {/* 맵 컨테이너 */}
-        <div ref={containerRef} className="w-full h-full" />
+        <div
+          ref={containerRef}
+          className="absolute inset-0 w-full h-full"
+          style={{ clipPath: "inset(0)" }}
+        />
 
         {/* 로딩 오버레이 */}
         {!isReady && (

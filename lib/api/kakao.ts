@@ -455,9 +455,11 @@ export async function getCarRoute(
 
     const route = data.routes[0];
 
-    // 경로 탐색 실패
+    // 경로 탐색 실패 (유고 정보, 동일 위치 등)
+    // - result_code 1: 출발지/도착지 주변 도로에 유고 정보(교통 장애)
+    // - result_code 2: 출발지와 도착지가 5m 이내
+    // 이 경우 조용히 null 반환하고 fallback 처리
     if (route.result_code !== 0) {
-      console.warn("Kakao Mobility 경로 탐색 실패:", route.result_msg);
       return null;
     }
 

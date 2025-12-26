@@ -40,57 +40,54 @@ export function PlaceSearch({
   const [results, setResults] = React.useState<PlaceSearchResult[]>([]);
   const [isSearching, setIsSearching] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [hasSearched, setHasSearched] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement>(null);
-  const debounceRef = React.useRef<NodeJS.Timeout | null>(null);
 
-  // 검색 디바운스 처리 (300ms) - Server Action 사용
-  React.useEffect(() => {
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-
+  // 검색 실행 함수
+  const handleSearch = React.useCallback(async () => {
     if (query.length < 2) {
-      setResults([]);
-      setError(null);
+      setError("2글자 이상 입력해주세요");
       return;
     }
 
-    debounceRef.current = setTimeout(async () => {
-      setIsSearching(true);
-      setError(null);
-      try {
-        // Server Action 호출
-        const result = await searchPlaces({ query, page: 1, size: 10 });
+    setIsSearching(true);
+    setError(null);
+    setHasSearched(true);
 
-        if (result.success && result.data) {
-          setResults(result.data.places);
-        } else {
-          setResults([]);
-          if (result.error) {
-            setError(result.error);
-          }
-        }
-      } catch (err) {
-        console.error("장소 검색 실패:", err);
+    try {
+      const result = await searchPlaces({ query, page: 1, size: 10 });
+
+      if (result.success && result.data) {
+        setResults(result.data.places);
+      } else {
         setResults([]);
-        setError("검색 중 오류가 발생했습니다.");
-      } finally {
-        setIsSearching(false);
+        if (result.error) {
+          setError(result.error);
+        }
       }
-    }, 300);
-
-    return () => {
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
-    };
+    } catch (err) {
+      console.error("장소 검색 실패:", err);
+      setResults([]);
+      setError("검색 중 오류가 발생했습니다.");
+    } finally {
+      setIsSearching(false);
+    }
   }, [query]);
+
+  // Enter 키 처리
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleSearch();
+    }
+  };
 
   // 검색 결과 선택
   const handleSelect = (result: PlaceSearchResult) => {
     onSelect(result);
     setQuery("");
     setResults([]);
+    setHasSearched(false);
   };
 
   // 검색어 초기화
@@ -98,41 +95,53 @@ export function PlaceSearch({
     setQuery("");
     setResults([]);
     setError(null);
+    setHasSearched(false);
     inputRef.current?.focus();
   };
 
-  const showResults = query.length >= 2;
+  const showResults = hasSearched;
 
   return (
     <div className={cn("relative flex flex-col", className)}>
       {/* 검색 입력 */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          ref={inputRef}
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder={placeholder}
-          disabled={disabled}
-          autoFocus={autoFocus}
-          className="pl-10 pr-10 touch-target"
-        />
-        {query && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
-            onClick={handleClear}
-          >
-            {isSearching ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
+      <div className="flex gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholder}
+            disabled={disabled}
+            autoFocus={autoFocus}
+            className="pl-10 pr-10 touch-target"
+          />
+          {query && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-8 w-8"
+              onClick={handleClear}
+            >
               <X className="h-4 w-4" />
-            )}
-          </Button>
-        )}
+            </Button>
+          )}
+        </div>
+        <Button
+          type="button"
+          onClick={handleSearch}
+          disabled={disabled || isSearching || query.length < 2}
+          className="shrink-0"
+        >
+          {isSearching ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            "검색"
+          )}
+        </Button>
       </div>
 
       {/* 검색 결과 - 인라인으로 표시 (모바일 친화적) */}
@@ -195,7 +204,7 @@ export function PlaceSearch({
       {/* 검색 안내 */}
       {!showResults && !query && (
         <p className="mt-2 text-xs text-muted-foreground">
-          2글자 이상 입력하면 검색됩니다
+          검색어 입력 후 검색 버튼을 누르거나 Enter를 눌러주세요
         </p>
       )}
     </div>
