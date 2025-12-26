@@ -253,17 +253,9 @@ export async function getTransitRoute(
       validationResult.data;
 
     // 4. ODsay API 요청 URL 구성
-    const params = new URLSearchParams({
-      apiKey: ODSAY_API_KEY,
-      SX: String(origin.lng),
-      SY: String(origin.lat),
-      EX: String(destination.lng),
-      EY: String(destination.lat),
-      OPT: String(sortType ?? 0),
-      SearchType: String(searchType ?? 0),
-    });
-
-    const url = `${ODSAY_BASE_URL}/searchPubTransPathT?${params.toString()}`;
+    // API 키에 특수문자(/)가 있으므로 encodeURIComponent로 직접 인코딩
+    // URLSearchParams는 /를 인코딩하지 않아 문제가 발생함
+    const url = `${ODSAY_BASE_URL}/searchPubTransPathT?apiKey=${encodeURIComponent(ODSAY_API_KEY)}&SX=${origin.lng}&SY=${origin.lat}&EX=${destination.lng}&EY=${destination.lat}&OPT=${sortType ?? 0}&SearchType=${searchType ?? 0}&lang=0&output=json`;
 
     // 5. API 호출 (재시도 로직 포함)
     let lastError: Error | null = null;
