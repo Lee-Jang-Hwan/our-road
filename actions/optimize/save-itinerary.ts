@@ -143,6 +143,14 @@ function convertItineraryToRow(
     total_duration: itinerary.totalDuration,
     total_stay_duration: itinerary.totalStayDuration,
     place_count: itinerary.placeCount,
+    transport_from_origin: itinerary.transportFromOrigin
+      ? convertTransportToRow(itinerary.transportFromOrigin)
+      : undefined,
+    transport_to_destination: itinerary.transportToDestination
+      ? convertTransportToRow(itinerary.transportToDestination)
+      : undefined,
+    daily_start_time: itinerary.dailyStartTime,
+    daily_end_time: itinerary.dailyEndTime,
   };
 }
 

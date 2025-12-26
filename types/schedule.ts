@@ -124,6 +124,14 @@ export interface TripItineraryRow {
   total_stay_duration: number | null;
   place_count: number | null;
   created_at: string;
+  /** 출발지에서 첫 장소까지 이동 정보 */
+  transport_from_origin?: TransportInfoRow;
+  /** 마지막 장소에서 도착지까지 이동 정보 */
+  transport_to_destination?: TransportInfoRow;
+  /** 설정된 일과 시작 시간 (HH:mm) */
+  daily_start_time?: string;
+  /** 설정된 일과 종료 시간 (HH:mm) */
+  daily_end_time?: string;
 }
 
 /**

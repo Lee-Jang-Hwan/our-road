@@ -65,14 +65,51 @@ function delay(ms: number): Promise<void> {
 
 /**
  * ODsay 에러 응답인지 확인
+ * ODsay API는 에러 시 { error: [...] } 또는 { error: { code, msg } } 형태로 응답
  */
-function isODsayError(data: unknown): data is ODsayError {
-  return (
-    typeof data === "object" &&
-    data !== null &&
-    "error" in data &&
-    typeof (data as ODsayError).error === "object"
-  );
+function isODsayError(data: unknown): boolean {
+  if (typeof data !== "object" || data === null) return false;
+
+  // error 필드가 있는지 확인
+  if ("error" in data) {
+    const errorData = data as { error: unknown };
+    // 배열 형태: [{ code, message }]
+    if (Array.isArray(errorData.error)) {
+      return true;
+    }
+    // 객체 형태: { code, msg }
+    if (typeof errorData.error === "object") {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * ODsay 에러에서 메시지 추출
+ */
+function extractODsayErrorMessage(data: unknown): { code: string | number; message: string } {
+  const errorData = data as { error: unknown };
+
+  // 배열 형태: [{ code, message }]
+  if (Array.isArray(errorData.error) && errorData.error.length > 0) {
+    const firstError = errorData.error[0];
+    return {
+      code: firstError.code ?? "UNKNOWN",
+      message: firstError.message ?? firstError.msg ?? JSON.stringify(firstError),
+    };
+  }
+
+  // 객체 형태: { code, msg }
+  if (typeof errorData.error === "object" && errorData.error !== null) {
+    const err = errorData.error as { code?: number | string; msg?: string; message?: string };
+    return {
+      code: err.code ?? "UNKNOWN",
+      message: err.msg ?? err.message ?? JSON.stringify(err),
+    };
+  }
+
+  return { code: "UNKNOWN", message: JSON.stringify(errorData) };
 }
 
 /**
@@ -117,11 +154,8 @@ async function fetchWithRetry<T>(
 
       // ODsay 자체 에러 응답 확인
       if (isODsayError(data)) {
-        throw new ODsayApiError(
-          data.error.msg,
-          data.error.code,
-          data
-        );
+        const { code, message } = extractODsayErrorMessage(data);
+        throw new ODsayApiError(message, code, data);
       }
 
       return data as T;
@@ -212,29 +246,30 @@ export async function searchTransitRoute(
     );
   }
 
-  const params = new URLSearchParams({
-    apiKey: ODSAY_API_KEY,
-    SX: String(options.origin.lng),
-    SY: String(options.origin.lat),
-    EX: String(options.destination.lng),
-    EY: String(options.destination.lat),
-    OPT: String(options.sortType ?? 0),
-    SearchType: String(options.searchType ?? 0),
-    lang: "0",
-    output: "json",
-  });
+  // API 키에 특수문자(/)가 있으므로 직접 URL 구성
+  const url = `${ODSAY_BASE_URL}/searchPubTransPathT?apiKey=${encodeURIComponent(ODSAY_API_KEY)}&SX=${options.origin.lng}&SY=${options.origin.lat}&EX=${options.destination.lng}&EY=${options.destination.lat}&OPT=${options.sortType ?? 0}&SearchType=${options.searchType ?? 0}&lang=0&output=json`;
 
-  const url = `${ODSAY_BASE_URL}/searchPubTransPathT?${params.toString()}`;
+  console.log("[ODsay] searchTransitRoute 호출:", {
+    origin: options.origin,
+    destination: options.destination,
+  });
 
   try {
     const data = await fetchWithRetry<ODsayResponse<ODsaySearchPathResult>>(url);
 
     // 경로가 없는 경우
     if (!data.result || !data.result.path || data.result.path.length === 0) {
+      console.log("[ODsay] 경로 없음");
       return null;
     }
 
     const result = data.result;
+
+    console.log("[ODsay] 경로 검색 성공:", {
+      pathCount: result.path.length,
+      firstPathMapObj: result.path[0]?.info?.mapObj,
+      firstPathSubPathCount: result.path[0]?.subPath?.length,
+    });
 
     // 경로 변환
     const routes = result.path.map(convertODsayPathToTransitRoute);
@@ -251,13 +286,14 @@ export async function searchTransitRoute(
     };
   } catch (error) {
     if (error instanceof ODsayApiError) {
+      console.error("[ODsay] API 에러:", error.code, error.message);
       // 경로 없음 에러는 null 반환
       if (error.code === -98 || error.code === -99) {
         return null;
       }
       throw error;
     }
-    console.error("대중교통 경로 조회 오류:", error);
+    console.error("[ODsay] 대중교통 경로 조회 오류:", error);
     return null;
   }
 }
@@ -441,6 +477,8 @@ function encodeNumber(num: number): string {
 function extractRoutePolyline(path: ODsayPath): string | undefined {
   const allCoords: Coordinate[] = [];
 
+  console.log("[ODsay] extractRoutePolyline: subPath 개수:", path.subPath?.length);
+
   for (const subPath of path.subPath) {
     // 출발 좌표
     if (subPath.startX && subPath.startY) {
@@ -449,6 +487,7 @@ function extractRoutePolyline(path: ODsayPath): string | undefined {
 
     // 경유 정류장 좌표 (대중교통 구간)
     if (subPath.passStopList?.stations && subPath.passStopList.stations.length > 0) {
+      console.log("[ODsay] extractRoutePolyline: 정류장 수:", subPath.passStopList.stations.length);
       for (const station of subPath.passStopList.stations) {
         if (station.y && station.x) {
           allCoords.push({
@@ -457,6 +496,8 @@ function extractRoutePolyline(path: ODsayPath): string | undefined {
           });
         }
       }
+    } else {
+      console.log("[ODsay] extractRoutePolyline: passStopList 없음 (trafficType:", subPath.trafficType, ")");
     }
 
     // 도착 좌표
@@ -464,6 +505,8 @@ function extractRoutePolyline(path: ODsayPath): string | undefined {
       allCoords.push({ lat: subPath.endY, lng: subPath.endX });
     }
   }
+
+  console.log("[ODsay] extractRoutePolyline: 총 좌표 수:", allCoords.length);
 
   if (allCoords.length < 2) {
     return undefined;
@@ -474,12 +517,13 @@ function extractRoutePolyline(path: ODsayPath): string | undefined {
 
 /**
  * ODsay loadLane API 응답 타입
+ * graphPos는 객체 배열 형태: [{x: lng, y: lat}, ...]
  */
 interface ODsayLoadLaneResult {
   lane?: Array<{
     class: number;
     section: Array<{
-      graphPos: string; // "lng,lat|lng,lat|..." 형태의 좌표 문자열
+      graphPos: Array<{ x: number; y: number }>;
     }>;
   }>;
 }
@@ -495,41 +539,50 @@ async function getDetailedRouteCoords(mapObj: string): Promise<Coordinate[]> {
   }
 
   try {
-    const params = new URLSearchParams({
-      apiKey: ODSAY_API_KEY,
-      mapObject: mapObj,
-      lang: "0",
-      output: "json",
-    });
+    // ODsay loadLane API는 mapObject 앞에 "0:0@" 접두사가 필요
+    // 예: searchPubTransPathT 응답의 mapObj가 "2:2:237:238"이면
+    // loadLane 호출 시 "0:0@2:2:237:238" 형태로 전달해야 함
+    const formattedMapObject = mapObj.startsWith("0:0@") ? mapObj : `0:0@${mapObj}`;
 
-    const url = `${ODSAY_BASE_URL}/loadLane?${params.toString()}`;
+    // API 키에 특수문자(/)가 있으므로 직접 URL 구성
+    const url = `${ODSAY_BASE_URL}/loadLane?apiKey=${encodeURIComponent(ODSAY_API_KEY)}&mapObject=${encodeURIComponent(formattedMapObject)}&lang=0&output=json`;
+
+    console.log("[ODsay] loadLane 호출:", { formattedMapObject });
+
     const data = await fetchWithRetry<ODsayResponse<ODsayLoadLaneResult>>(url);
 
     if (!data.result?.lane) {
+      console.log("[ODsay] loadLane: lane 데이터 없음");
       return [];
     }
+
+    console.log("[ODsay] loadLane 성공:", {
+      laneCount: data.result.lane.length,
+    });
 
     const allCoords: Coordinate[] = [];
 
     for (const lane of data.result.lane) {
       for (const section of lane.section) {
-        if (section.graphPos) {
-          const points = section.graphPos.split("|");
-          for (const point of points) {
-            const [lngStr, latStr] = point.split(",");
-            const lng = parseFloat(lngStr);
-            const lat = parseFloat(latStr);
-            if (!isNaN(lat) && !isNaN(lng)) {
-              allCoords.push({ lat, lng });
+        if (section.graphPos && Array.isArray(section.graphPos)) {
+          // graphPos는 [{x: lng, y: lat}, ...] 형태의 객체 배열
+          for (const point of section.graphPos) {
+            if (typeof point.x === "number" && typeof point.y === "number") {
+              allCoords.push({ lat: point.y, lng: point.x });
             }
           }
+        } else if (section.graphPos) {
+          // 혹시 문자열 형태일 경우 로깅
+          console.log("[ODsay] graphPos 형식:", typeof section.graphPos, section.graphPos);
         }
       }
     }
 
+    console.log("[ODsay] loadLane 좌표 추출:", { coordsCount: allCoords.length });
+
     return allCoords;
   } catch (error) {
-    console.error("loadLane API 오류:", error);
+    console.error("[ODsay] loadLane API 오류:", error);
     return [];
   }
 }
@@ -588,6 +641,8 @@ export async function getBestTransitRouteWithDetails(
   origin: Coordinate,
   destination: Coordinate
 ): Promise<TransitRouteWithDetails | null> {
+  console.log("[ODsay] getBestTransitRouteWithDetails 호출");
+
   const result = await searchTransitRoute({
     origin,
     destination,
@@ -595,6 +650,7 @@ export async function getBestTransitRouteWithDetails(
   });
 
   if (!result || result.rawPaths.length === 0) {
+    console.log("[ODsay] getBestTransitRouteWithDetails: 경로 없음");
     return null;
   }
 
@@ -602,17 +658,28 @@ export async function getBestTransitRouteWithDetails(
   const route = result.routes[0];
   const details = extractTransitDetails(bestPath);
 
+  console.log("[ODsay] transitDetails 추출:", {
+    totalFare: details.totalFare,
+    transferCount: details.transferCount,
+    subPathsCount: details.subPaths?.length,
+  });
+
   // 1차: loadLane API로 상세 경로 좌표 조회 시도
   let polyline: string | undefined;
   const mapObj = bestPath.info?.mapObj;
 
+  console.log("[ODsay] mapObj:", mapObj);
+
   if (mapObj) {
     polyline = await getDetailedRoutePolyline(mapObj);
+    console.log("[ODsay] loadLane polyline 결과:", polyline ? `${polyline.length}자` : "없음");
   }
 
   // 2차: loadLane 실패 시 subPath 좌표로 폴백
   if (!polyline) {
+    console.log("[ODsay] loadLane 실패, subPath 좌표로 폴백");
     polyline = extractRoutePolyline(bestPath);
+    console.log("[ODsay] 폴백 polyline 결과:", polyline ? `${polyline.length}자` : "없음");
   }
 
   return {

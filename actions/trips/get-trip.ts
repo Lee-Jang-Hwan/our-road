@@ -87,6 +87,48 @@ function convertRowToFixedSchedule(row: TripFixedScheduleRow): FixedSchedule {
 }
 
 /**
+ * TransportInfoRow를 RouteSegment로 변환
+ */
+function convertTransportInfo(info: TripItineraryRow["transport_from_origin"]): DailyItinerary["transportFromOrigin"] {
+  if (!info) return undefined;
+
+  return {
+    mode: info.mode as "walking" | "public" | "car",
+    distance: info.distance,
+    duration: info.duration,
+    description: info.description,
+    fare: info.fare,
+    polyline: info.polyline,
+    transitDetails: info.transit_details
+      ? {
+          totalFare: info.transit_details.total_fare,
+          transferCount: info.transit_details.transfer_count,
+          walkingTime: info.transit_details.walking_time,
+          walkingDistance: info.transit_details.walking_distance,
+          subPaths: info.transit_details.sub_paths.map((sp) => ({
+            trafficType: sp.traffic_type,
+            distance: sp.distance,
+            sectionTime: sp.section_time,
+            stationCount: sp.station_count,
+            startName: sp.start_name,
+            endName: sp.end_name,
+            lane: sp.lane
+              ? {
+                  name: sp.lane.name,
+                  busNo: sp.lane.bus_no,
+                  busType: sp.lane.bus_type,
+                  subwayCode: sp.lane.subway_code,
+                  lineColor: sp.lane.line_color,
+                }
+              : undefined,
+            way: sp.way,
+          })),
+        }
+      : undefined,
+  };
+}
+
+/**
  * TripItineraryRow를 DailyItinerary로 변환
  */
 function convertRowToItinerary(row: TripItineraryRow): DailyItinerary {
@@ -101,15 +143,7 @@ function convertRowToItinerary(row: TripItineraryRow): DailyItinerary {
       departureTime: item.departure_time,
       duration: item.duration,
       isFixed: item.is_fixed,
-      transportToNext: item.transport_to_next
-        ? {
-            mode: item.transport_to_next.mode as "walking" | "public" | "car",
-            distance: item.transport_to_next.distance,
-            duration: item.transport_to_next.duration,
-            description: item.transport_to_next.description,
-            fare: item.transport_to_next.fare,
-          }
-        : undefined,
+      transportToNext: convertTransportInfo(item.transport_to_next),
     })),
     totalDistance: row.total_distance ?? 0,
     totalDuration: row.total_duration ?? 0,
@@ -117,6 +151,10 @@ function convertRowToItinerary(row: TripItineraryRow): DailyItinerary {
     placeCount: row.place_count ?? 0,
     startTime: row.schedule[0]?.arrival_time ?? "10:00",
     endTime: row.schedule[row.schedule.length - 1]?.departure_time ?? "22:00",
+    transportFromOrigin: convertTransportInfo(row.transport_from_origin),
+    transportToDestination: convertTransportInfo(row.transport_to_destination),
+    dailyStartTime: row.daily_start_time,
+    dailyEndTime: row.daily_end_time,
   };
 }
 
