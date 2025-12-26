@@ -3,6 +3,7 @@
 import { use, useEffect, useState, useMemo, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
+import Image from "next/image";
 import {
   LuChevronLeft,
   LuMapPin,
@@ -13,7 +14,6 @@ import {
   LuChevronUp,
   LuChevronDown,
   LuLocate,
-  LuExternalLink,
 } from "react-icons/lu";
 import { Train, Bus, Footprints, ArrowRight } from "lucide-react";
 
@@ -35,6 +35,51 @@ import type { ScheduleItem, DailyItinerary } from "@/types/schedule";
 
 interface NavigatePageProps {
   params: Promise<{ tripId: string }>;
+}
+
+/**
+ * 카카오맵 로고 아이콘
+ */
+function KakaoMapIcon({ className }: { className?: string }) {
+  return (
+    <Image
+      src="/kakaomap_basic.png"
+      alt="카카오맵"
+      width={24}
+      height={24}
+      className={className}
+    />
+  );
+}
+
+/**
+ * 네이버맵 로고 아이콘
+ */
+function NaverMapIcon({ className }: { className?: string }) {
+  return (
+    <Image
+      src="/naver.webp"
+      alt="네이버 지도"
+      width={24}
+      height={24}
+      className={className}
+    />
+  );
+}
+
+/**
+ * 구글맵 로고 아이콘
+ */
+function GoogleMapIcon({ className }: { className?: string }) {
+  return (
+    <Image
+      src="/google.png"
+      alt="구글맵"
+      width={24}
+      height={24}
+      className={className}
+    />
+  );
 }
 
 /**
@@ -119,6 +164,22 @@ function openNaverMapNavigation(
 }
 
 /**
+ * 구글맵 앱 열기 (길찾기)
+ */
+function openGoogleMapNavigation(
+  destination: { name: string; coordinate: Coordinate },
+  origin?: Coordinate
+) {
+  if (origin) {
+    const url = `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${destination.coordinate.lat},${destination.coordinate.lng}&travelmode=transit`;
+    window.open(url, "_blank");
+  } else {
+    const url = `https://www.google.com/maps/search/?api=1&query=${destination.coordinate.lat},${destination.coordinate.lng}`;
+    window.open(url, "_blank");
+  }
+}
+
+/**
  * 네비게이션 하단 패널
  */
 function NavigationBottomPanel({
@@ -127,6 +188,7 @@ function NavigationBottomPanel({
   currentLocation,
   onOpenKakaoMap,
   onOpenNaverMap,
+  onOpenGoogleMap,
   onPrevious,
   onNext,
   hasPrevious,
@@ -139,6 +201,7 @@ function NavigationBottomPanel({
   currentLocation: Coordinate | null;
   onOpenKakaoMap: () => void;
   onOpenNaverMap: () => void;
+  onOpenGoogleMap: () => void;
   onPrevious: () => void;
   onNext: () => void;
   hasPrevious: boolean;
@@ -291,7 +354,7 @@ function NavigationBottomPanel({
         )}
 
         {/* 네비게이션 버튼들 */}
-        <div className="flex gap-2">
+        <div className="flex gap-4 justify-center">
           <Button
             variant="outline"
             size="icon"
@@ -303,19 +366,27 @@ function NavigationBottomPanel({
           </Button>
           <Button
             variant="outline"
-            className="flex-1 touch-target"
+            size="icon"
             onClick={onOpenKakaoMap}
+            className="touch-target"
           >
-            <LuExternalLink className="w-4 h-4 mr-2" />
-            카카오맵
+            <KakaoMapIcon className="w-6 h-6" />
           </Button>
           <Button
             variant="outline"
-            className="flex-1 touch-target"
+            size="icon"
             onClick={onOpenNaverMap}
+            className="touch-target"
           >
-            <LuExternalLink className="w-4 h-4 mr-2" />
-            네이버맵
+            <NaverMapIcon className="w-6 h-6" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={onOpenGoogleMap}
+            className="touch-target"
+          >
+            <GoogleMapIcon className="w-6 h-6" />
           </Button>
           <Button
             variant="outline"
@@ -607,6 +678,15 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     );
   }, [currentItemWithCoordinate, currentLocation]);
 
+  // 구글맵 앱 열기
+  const handleOpenGoogleMap = useCallback(() => {
+    if (!currentItemWithCoordinate) return;
+    openGoogleMapNavigation(
+      { name: currentItemWithCoordinate.placeName, coordinate: currentItemWithCoordinate.coordinate },
+      currentLocation || undefined
+    );
+  }, [currentItemWithCoordinate, currentLocation]);
+
   // 로딩 중
   if (!isLoaded || isLoading) {
     return (
@@ -761,6 +841,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
             currentLocation={currentLocation}
             onOpenKakaoMap={handleOpenKakaoMap}
             onOpenNaverMap={handleOpenNaverMap}
+            onOpenGoogleMap={handleOpenGoogleMap}
             onPrevious={handlePrevious}
             onNext={handleNext}
             hasPrevious={currentIndex > 0}
