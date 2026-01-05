@@ -33,10 +33,7 @@ import {
   generateDateRange,
   createDistanceMatrixGetter,
 } from "@/lib/optimize";
-import {
-  enrichDistanceMatrixWithTransit,
-  extractRouteSegments,
-} from "@/lib/optimize/enrich-transit-routes";
+import { optimizePublicTransitRoute } from "./optimize-route-public-transit";
 
 // ============================================
 // Types
@@ -530,7 +527,21 @@ export async function optimizeRoute(
     // 8. 이동 수단 결정
     const transportMode = getPrimaryTransportMode(trip.transportModes);
 
-    // 9. 거리 행렬 계산 (숙소 포함)
+    // 9. 대중교통 모드: 신규 알고리즘 사용
+    if (transportMode === "public") {
+      return await optimizePublicTransitRoute({
+        tripId,
+        trip,
+        places,
+        placeNodes,
+        fixedSchedules,
+        userOptions,
+        errors,
+        startTime,
+      });
+    }
+
+    // 10. 차량 모드: 기존 거리 행렬 방식
     const allAccommodationNodes = Array.from(accommodationNodes.values());
     const allNodes = [
       originNode,
@@ -604,54 +615,7 @@ export async function optimizeRoute(
       });
     }
 
-    // 14. 대중교통 모드인 경우 최종 경로에 ODsay 상세 정보 추가
-    // (행렬 계산에서는 Kakao Mobility로 거리만 추정, 결과 표시에만 ODsay 사용)
-    if (transportMode === "public") {
-      try {
-        // 날짜별 숙소 조회 함수
-        const getAccommodationForDate = (date: string) => {
-          const accomData = tripAccommodations.find(
-            (a) => a.startDate <= date && date < a.endDate
-          );
-          const accomNode = accommodationNodes.get(date);
-          if (accomData && accomNode) {
-            return {
-              id: accomNode.id,
-              coordinate: accomNode.coordinate,
-            };
-          }
-          return undefined;
-        };
-
-        // 실제 사용되는 경로 구간 추출
-        const transitSegments = extractRouteSegments(
-          distributionResult.days,
-          nodeMap,
-          originNode.id,
-          destinationNode.id,
-          getAccommodationForDate,
-          dates
-        );
-
-        // ODsay API로 상세 정보 조회 및 거리 행렬 업데이트
-        if (transitSegments.length > 0) {
-          await enrichDistanceMatrixWithTransit(
-            distanceMatrix,
-            transitSegments,
-            { batchSize: 3, batchDelay: 500 }
-          );
-        }
-      } catch (error) {
-        // ODsay 조회 실패 시 경고만 추가 (기본 정보로 계속 진행)
-        console.error("[Optimize] 대중교통 상세 정보 조회 실패:", error);
-        errors.push({
-          code: "TRANSIT_DETAILS_ERROR",
-          message: "일부 대중교통 상세 정보를 불러올 수 없습니다.",
-        });
-      }
-    }
-
-    // 15. DailyItinerary 생성 (일자별 동적 시작/끝점)
+    // 14. DailyItinerary 생성 (일자별 동적 시작/끝점)
     const itinerary: DailyItinerary[] = [];
     const totalDaysCount = distributionResult.days.length;
 

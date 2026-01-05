@@ -213,6 +213,8 @@ export interface Waypoint {
   dayLock?: number;
   importance?: number;
   stayMinutes?: number;
+  fixedDate?: string; // "YYYY-MM-DD" format
+  fixedStartTime?: string; // "HH:mm" format
 }
 
 export interface TripInput {

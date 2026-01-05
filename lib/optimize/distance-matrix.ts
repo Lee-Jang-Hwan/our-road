@@ -141,23 +141,12 @@ async function getRouteInfo(
     }
 
     case "public": {
-      // 대중교통 행렬 계산: Kakao Mobility API 거리 기반 추정
-      // ODsay API는 최종 경로에만 사용 (enrich-transit-routes.ts에서 처리)
-      // 이유: ODsay 일일 990회 제한 vs Kakao 300,000회
-      const route = await tryOrNull(() =>
-        getCarRoute({ origin, destination })
+      // 대중교통 모드는 신규 알고리즘(lib/algorithms/public-transit)에서 처리
+      // 거리 행렬 방식은 차량 모드에만 사용
+      console.warn(
+        "[getRouteInfo] Public transit mode should use new algorithm, not distance matrix"
       );
-      if (route) {
-        // 대중교통은 자동차보다 약 1.3배 더 오래 걸림 (도심 평균)
-        const transitDurationMultiplier = 1.3;
-        return {
-          distance: route.totalDistance,
-          duration: Math.round(route.totalDuration * transitDurationMultiplier),
-          mode: "public",
-          // polyline, transitDetails는 최종 경로에서 ODsay로 조회
-        };
-      }
-      break;
+      return null;
     }
 
     case "walking": {

@@ -1,3 +1,6 @@
+// [DEPRECATED] This file is no longer used for public transit optimization.
+// Public transit now uses lib/algorithms/public-transit instead.
+// This file is kept for reference only.
 // ============================================
 // Enrich Transit Routes (?以묎탳??寃쎈줈 ?곸꽭 ?뺣낫 議고쉶)
 // ============================================
