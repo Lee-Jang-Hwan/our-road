@@ -67,6 +67,32 @@ export const routeQuerySchema = baseRouteSchema.extend({
 });
 
 // ============================================
+// Public Transit Algorithm Schemas
+// ============================================
+
+export const latLngSchema = coordinateSchema;
+
+export const waypointSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  coord: latLngSchema,
+  isFixed: z.boolean(),
+  dayLock: z.number().int().min(1).optional(),
+  importance: z.number().int().min(1).max(5).optional(),
+  stayMinutes: z.number().int().min(0).max(24 * 60).optional(),
+});
+
+export const tripInputSchema = z.object({
+  tripId: z.string().min(1),
+  days: z.number().int().min(1).max(30),
+  start: latLngSchema,
+  end: latLngSchema.optional(),
+  lodging: latLngSchema.optional(),
+  dailyMaxMinutes: z.number().int().min(10).max(24 * 60).optional(),
+  waypoints: z.array(waypointSchema).min(1),
+});
+
+// ============================================
 // Type Exports
 // ============================================
 
@@ -76,3 +102,6 @@ export type CarRouteInput = z.infer<typeof carRouteSchema>;
 export type TransitRouteInput = z.infer<typeof transitRouteSchema>;
 export type WalkingRouteInput = z.infer<typeof walkingRouteSchema>;
 export type RouteQueryInput = z.infer<typeof routeQuerySchema>;
+export type LatLngInput = z.infer<typeof latLngSchema>;
+export type WaypointInput = z.infer<typeof waypointSchema>;
+export type TripInputInput = z.infer<typeof tripInputSchema>;

@@ -32,6 +32,15 @@ export type {
   RouteResult,
   RouteOptions,
   RouteError,
+  TripMode,
+  LatLng,
+  Waypoint,
+  TripInput,
+  Cluster,
+  DayPlan,
+  SegmentKey,
+  SegmentCost,
+  TripOutput,
 } from "./route";
 
 // ============================================
