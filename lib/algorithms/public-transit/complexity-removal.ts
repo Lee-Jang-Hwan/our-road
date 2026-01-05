@@ -227,3 +227,195 @@ function getImportance(waypoint: Waypoint): number {
 function getStayMinutes(waypoint: Waypoint): number {
   return waypoint.stayMinutes ?? 0;
 }
+
+// ============================================
+// API-based Time Optimization
+// ============================================
+
+export interface DayTimeInfo {
+  dayIndex: number;
+  totalMinutes: number;
+  exceedMinutes: number;
+}
+
+/**
+ * Calculate actual daily time from API segment costs
+ */
+export function calculateActualDailyTimes(
+  dayPlans: DayPlan[],
+  segmentCosts: import("@/types").SegmentCost[],
+  waypoints: Map<string, Waypoint>
+): DayTimeInfo[] {
+  const costMap = new Map<string, import("@/types").SegmentCost>();
+  for (const cost of segmentCosts) {
+    const key = `${cost.key.fromId}:${cost.key.toId}`;
+    costMap.set(key, cost);
+  }
+
+  return dayPlans.map((dayPlan, index) => {
+    let totalMinutes = 0;
+
+    // Add travel time between waypoints
+    for (let i = 0; i < dayPlan.waypointOrder.length - 1; i++) {
+      const fromId = dayPlan.waypointOrder[i];
+      const toId = dayPlan.waypointOrder[i + 1];
+      const key = `${fromId}:${toId}`;
+      const cost = costMap.get(key);
+      if (cost) {
+        totalMinutes += cost.durationMinutes;
+      }
+    }
+
+    // Add stay time at each waypoint
+    for (const waypointId of dayPlan.waypointOrder) {
+      const waypoint = waypoints.get(waypointId);
+      if (waypoint) {
+        totalMinutes += getStayMinutes(waypoint);
+      }
+    }
+
+    // Add first segment (start -> first waypoint)
+    if (dayPlan.waypointOrder.length > 0) {
+      const firstId = dayPlan.waypointOrder[0];
+      const startKey = `__start__:${firstId}`;
+      const startCost = costMap.get(startKey);
+      if (startCost) {
+        totalMinutes += startCost.durationMinutes;
+      }
+    }
+
+    // Add last segment (last waypoint -> end/lodging)
+    if (dayPlan.waypointOrder.length > 0) {
+      const lastId = dayPlan.waypointOrder[dayPlan.waypointOrder.length - 1];
+      const endKey = `${lastId}:__end__`;
+      const endCost = costMap.get(endKey);
+      if (endCost) {
+        totalMinutes += endCost.durationMinutes;
+      }
+    }
+
+    return {
+      dayIndex: index,
+      totalMinutes,
+      exceedMinutes: 0, // Will be calculated later
+    };
+  });
+}
+
+/**
+ * Identify days that exceed the daily time limit
+ */
+export function identifyOverloadedDays(
+  dayTimeInfos: DayTimeInfo[],
+  dailyMaxMinutes: number
+): DayTimeInfo[] {
+  return dayTimeInfos
+    .map((info) => ({
+      ...info,
+      exceedMinutes: Math.max(0, info.totalMinutes - dailyMaxMinutes),
+    }))
+    .filter((info) => info.exceedMinutes > 0)
+    .sort((a, b) => b.exceedMinutes - a.exceedMinutes); // Most overloaded first
+}
+
+/**
+ * Select waypoints to remove from overloaded days based on weighted score
+ */
+export function selectWaypointsToRemoveFromDay(
+  dayPlan: DayPlan,
+  targetReductionMinutes: number,
+  fixedIds: string[],
+  waypoints: Map<string, Waypoint>,
+  segmentCosts: import("@/types").SegmentCost[]
+): string[] {
+  const candidates: Array<{ id: string; score: number; deltaTime: number }> = [];
+
+  for (const waypointId of dayPlan.waypointOrder) {
+    if (fixedIds.includes(waypointId)) continue;
+    const waypoint = waypoints.get(waypointId);
+    if (!waypoint || waypoint.dayLock !== undefined) continue;
+
+    const score = calculateComplexityImpact(
+      waypoint,
+      dayPlan.waypointOrder,
+      waypoints
+    );
+
+    // Calculate time saved by removing this waypoint
+    const index = dayPlan.waypointOrder.indexOf(waypointId);
+    const deltaTime = calculateTimeSaved(
+      dayPlan.waypointOrder,
+      index,
+      waypoints,
+      segmentCosts
+    );
+
+    candidates.push({ id: waypointId, score, deltaTime });
+  }
+
+  // Sort by score (highest removal priority first)
+  candidates.sort((a, b) => b.score - a.score);
+
+  // Select waypoints until we meet the target reduction
+  const toRemove: string[] = [];
+  let accumulatedTime = 0;
+
+  for (const candidate of candidates) {
+    if (accumulatedTime >= targetReductionMinutes) break;
+    toRemove.push(candidate.id);
+    accumulatedTime += candidate.deltaTime;
+  }
+
+  return toRemove;
+}
+
+/**
+ * Calculate time saved by removing a waypoint (including travel time and stay time)
+ */
+function calculateTimeSaved(
+  route: string[],
+  index: number,
+  waypoints: Map<string, Waypoint>,
+  segmentCosts: import("@/types").SegmentCost[]
+): number {
+  if (index < 0 || index >= route.length) return 0;
+
+  const waypointId = route[index];
+  const waypoint = waypoints.get(waypointId);
+  if (!waypoint) return 0;
+
+  let timeSaved = getStayMinutes(waypoint);
+
+  // Build cost map
+  const costMap = new Map<string, import("@/types").SegmentCost>();
+  for (const cost of segmentCosts) {
+    const key = `${cost.key.fromId}:${cost.key.toId}`;
+    costMap.set(key, cost);
+  }
+
+  const prevId = route[index - 1];
+  const nextId = route[index + 1];
+
+  if (prevId && nextId) {
+    // Time with waypoint: prev -> current + current -> next
+    const prevToCurrent = costMap.get(`${prevId}:${waypointId}`);
+    const currentToNext = costMap.get(`${waypointId}:${nextId}`);
+    const timeWith =
+      (prevToCurrent?.durationMinutes ?? 0) +
+      (currentToNext?.durationMinutes ?? 0);
+
+    // Time without waypoint: prev -> next (use fallback if not in cache)
+    const prevToNext = costMap.get(`${prevId}:${nextId}`);
+    const timeWithout = prevToNext?.durationMinutes ?? 0;
+
+    timeSaved += Math.max(0, timeWith - timeWithout);
+  } else if (prevId) {
+    const prevToCurrent = costMap.get(`${prevId}:${waypointId}`);
+    timeSaved += prevToCurrent?.durationMinutes ?? 0;
+  } else if (nextId) {
+    const currentToNext = costMap.get(`${waypointId}:${nextId}`);
+    timeSaved += currentToNext?.durationMinutes ?? 0;
+  }
+
+  return timeSaved;
+}

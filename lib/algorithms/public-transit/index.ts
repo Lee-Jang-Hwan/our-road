@@ -11,6 +11,9 @@ import {
   exceedsDailyLimitProxy,
   selectWorstComplexityPoint,
   removeWaypoint,
+  calculateActualDailyTimes,
+  identifyOverloadedDays,
+  selectWaypointsToRemoveFromDay,
 } from "./complexity-removal";
 import { extractSegments, callRoutingAPIForSegments } from "./api-caller";
 import { detectAnomalousSegments, applyLocalFixes } from "./anomaly-detection";
@@ -124,7 +127,94 @@ export async function generatePublicTransitRoute(
     input.end,
     input.lodging
   );
-  const segmentCosts = await callRoutingAPIForSegments(segments);
+  let segmentCosts = await callRoutingAPIForSegments(segments);
+
+  // API-based time optimization (Phase 2)
+  if (input.dailyMaxMinutes) {
+    const maxReoptimizationRounds = 3;
+    let roundCount = 0;
+
+    while (roundCount < maxReoptimizationRounds) {
+      const dayTimeInfos = calculateActualDailyTimes(
+        dayPlans,
+        segmentCosts,
+        waypointMap
+      );
+      const overloadedDays = identifyOverloadedDays(
+        dayTimeInfos,
+        input.dailyMaxMinutes
+      );
+
+      if (overloadedDays.length === 0) {
+        // All days are within limit
+        break;
+      }
+
+      // Select and remove waypoints from the most overloaded day
+      const mostOverloaded = overloadedDays[0];
+      const dayPlan = dayPlans[mostOverloaded.dayIndex];
+
+      const toRemove = selectWaypointsToRemoveFromDay(
+        dayPlan,
+        mostOverloaded.exceedMinutes,
+        fixedIds,
+        waypointMap,
+        segmentCosts
+      );
+
+      if (toRemove.length === 0) {
+        console.warn(
+          `[generatePublicTransitRoute] Cannot reduce time for day ${mostOverloaded.dayIndex}: no removable waypoints`
+        );
+        break;
+      }
+
+      // Remove waypoints
+      for (const waypointId of toRemove) {
+        removeWaypoint(dayPlans, waypointId);
+      }
+
+      // Recalculate segments and API costs
+      const newSegments = extractSegments(
+        dayPlans,
+        waypointMap,
+        input.start,
+        input.end,
+        input.lodging
+      );
+
+      // Only call API for changed segments (optimization)
+      const changedSegments = newSegments.filter((seg) => {
+        return !segments.some(
+          (oldSeg) =>
+            oldSeg.key.fromId === seg.key.fromId &&
+            oldSeg.key.toId === seg.key.toId
+        );
+      });
+
+      if (changedSegments.length > 0) {
+        const newCosts = await callRoutingAPIForSegments(changedSegments);
+
+        // Merge new costs with existing costs
+        const costMap = new Map(
+          segmentCosts.map((c) => [`${c.key.fromId}:${c.key.toId}`, c])
+        );
+        for (const cost of newCosts) {
+          costMap.set(`${cost.key.fromId}:${cost.key.toId}`, cost);
+        }
+
+        segmentCosts = Array.from(costMap.values());
+      }
+
+      roundCount++;
+    }
+
+    if (roundCount >= maxReoptimizationRounds) {
+      console.warn(
+        `[generatePublicTransitRoute] Reached max reoptimization rounds (${maxReoptimizationRounds}). Some days may still exceed time limit.`
+      );
+    }
+  }
 
   const warnings = detectAnomalousSegments(segmentCosts);
   if (warnings.length > 0) {

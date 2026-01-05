@@ -102,6 +102,61 @@ export function extractSegments(
   return segments;
 }
 
+// Circuit Breaker state
+interface CircuitBreakerState {
+  failureCount: number;
+  lastFailureTime: number;
+  state: "CLOSED" | "OPEN" | "HALF_OPEN";
+}
+
+const circuitBreaker: CircuitBreakerState = {
+  failureCount: 0,
+  lastFailureTime: 0,
+  state: "CLOSED",
+};
+
+const CIRCUIT_BREAKER_THRESHOLD = 5; // Open after 5 consecutive failures
+const CIRCUIT_BREAKER_TIMEOUT = 30000; // 30 seconds
+const CIRCUIT_BREAKER_HALF_OPEN_RETRIES = 3;
+
+function checkCircuitBreaker(): boolean {
+  const now = Date.now();
+
+  if (circuitBreaker.state === "OPEN") {
+    if (now - circuitBreaker.lastFailureTime > CIRCUIT_BREAKER_TIMEOUT) {
+      // Try to recover
+      circuitBreaker.state = "HALF_OPEN";
+      circuitBreaker.failureCount = 0;
+      return true;
+    }
+    return false; // Circuit is open, reject request
+  }
+
+  return true; // Circuit is closed or half-open, allow request
+}
+
+function recordSuccess(): void {
+  if (circuitBreaker.state === "HALF_OPEN") {
+    circuitBreaker.state = "CLOSED";
+  }
+  circuitBreaker.failureCount = 0;
+}
+
+function recordFailure(): void {
+  circuitBreaker.failureCount++;
+  circuitBreaker.lastFailureTime = Date.now();
+
+  if (circuitBreaker.state === "HALF_OPEN") {
+    circuitBreaker.state = "OPEN";
+    console.warn("[CircuitBreaker] Reopening circuit after failure in HALF_OPEN state");
+  } else if (circuitBreaker.failureCount >= CIRCUIT_BREAKER_THRESHOLD) {
+    circuitBreaker.state = "OPEN";
+    console.warn(
+      `[CircuitBreaker] Opening circuit after ${CIRCUIT_BREAKER_THRESHOLD} failures`
+    );
+  }
+}
+
 export async function callRoutingAPIForSegments(
   segments: SegmentRequest[]
 ): Promise<SegmentCost[]> {
@@ -111,14 +166,22 @@ export async function callRoutingAPIForSegments(
 
   const results: SegmentCost[] = [];
   const batchSize = 3;
-  const maxRetries = 2;
+  const maxRetries = 3; // Increased from 2 to 3
 
   for (let i = 0; i < segments.length; i += batchSize) {
     const batch = segments.slice(i, i + batchSize);
 
     const batchResults = await Promise.all(
       batch.map(async (segment) => {
-        // Retry logic for API calls
+        // Check circuit breaker
+        if (!checkCircuitBreaker()) {
+          console.warn(
+            `[callRoutingAPI] Circuit breaker is OPEN, using fallback for ${segment.key.fromId} -> ${segment.key.toId}`
+          );
+          return fallbackSegmentCost(segment);
+        }
+
+        // Retry logic with exponential backoff
         for (let attempt = 0; attempt <= maxRetries; attempt++) {
           try {
             const route = await getBestTransitRouteWithDetails(
@@ -129,14 +192,20 @@ export async function callRoutingAPIForSegments(
             if (!route) {
               if (attempt === maxRetries) {
                 console.warn(
-                  `[callRoutingAPI] No route found for ${segment.key.fromId} -> ${segment.key.toId}, using fallback`
+                  `[callRoutingAPI] No route found for ${segment.key.fromId} -> ${segment.key.toId} after ${maxRetries} retries, using fallback`
                 );
+                recordFailure();
                 return fallbackSegmentCost(segment);
               }
-              // Retry
+              // Retry with exponential backoff
+              await new Promise((resolve) =>
+                setTimeout(resolve, Math.pow(2, attempt) * 200)
+              );
               continue;
             }
 
+            // Success
+            recordSuccess();
             return {
               key: segment.key,
               durationMinutes: route.totalDuration,
@@ -147,19 +216,23 @@ export async function callRoutingAPIForSegments(
           } catch (error) {
             if (attempt === maxRetries) {
               console.error(
-                `[callRoutingAPI] Error fetching route for ${segment.key.fromId} -> ${segment.key.toId}:`,
+                `[callRoutingAPI] Error fetching route for ${segment.key.fromId} -> ${segment.key.toId} after ${maxRetries} retries:`,
                 error
               );
+              recordFailure();
               return fallbackSegmentCost(segment);
             }
-            // Wait before retry (exponential backoff)
-            await new Promise((resolve) =>
-              setTimeout(resolve, Math.pow(2, attempt) * 100)
+            // Exponential backoff: 200ms, 400ms, 800ms
+            const delay = Math.pow(2, attempt) * 200;
+            console.log(
+              `[callRoutingAPI] Retry ${attempt + 1}/${maxRetries} for ${segment.key.fromId} -> ${segment.key.toId} after ${delay}ms`
             );
+            await new Promise((resolve) => setTimeout(resolve, delay));
           }
         }
 
         // Fallback (should not reach here)
+        recordFailure();
         return fallbackSegmentCost(segment);
       })
     );
@@ -168,16 +241,37 @@ export async function callRoutingAPIForSegments(
 
     // Small delay between batches to avoid rate limiting
     if (i + batchSize < segments.length) {
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      await new Promise((resolve) => setTimeout(resolve, 300));
     }
   }
 
   return results;
 }
 
+/**
+ * Calculate fallback segment cost using improved estimation
+ * - Walking: 4 km/h for distances < 500m
+ * - Public transit: 20 km/h average speed + 5 min overhead for transfers/waiting
+ */
 function fallbackSegmentCost(segment: SegmentRequest): SegmentCost {
   const distanceMeters = calculateDistance(segment.fromCoord, segment.toCoord);
-  const durationMinutes = Math.round((distanceMeters / 1000) * 5);
+  const distanceKm = distanceMeters / 1000;
+
+  let durationMinutes: number;
+
+  if (distanceMeters < 500) {
+    // Short distance: assume walking at 4 km/h
+    durationMinutes = Math.round((distanceKm / 4) * 60);
+  } else {
+    // Longer distance: assume public transit
+    // Average speed: 20 km/h + 5 min overhead for waiting/transfers
+    const travelTimeMinutes = (distanceKm / 20) * 60;
+    const overheadMinutes = 5;
+    durationMinutes = Math.round(travelTimeMinutes + overheadMinutes);
+  }
+
+  // Ensure minimum duration
+  durationMinutes = Math.max(1, durationMinutes);
 
   return {
     key: segment.key,
