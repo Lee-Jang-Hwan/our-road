@@ -209,13 +209,24 @@ export async function createApiDistanceMatrix(
     Array(n).fill(null)
   );
 
-  // 모든 (i, j) 쌍 생성 (i !== j)
+  // 출발지/도착지 ID 확인 (관례: __origin__, __destination__, __accommodation_N__)
+  const originIdx = places.findIndex((id) => id === "__origin__");
+  const destinationIdx = places.findIndex((id) => id === "__destination__");
+
+  // 필요한 (i, j) 쌍만 생성 (불필요한 구간 제거)
   const pairs: Array<{ i: number; j: number }> = [];
   for (let i = 0; i < n; i++) {
     for (let j = 0; j < n; j++) {
-      if (i !== j) {
-        pairs.push({ i, j });
-      }
+      if (i === j) continue; // 자기 자신은 제외
+
+      // 불필요한 구간 필터링
+      // 1. 도착지에서 나가는 경로 제외 (도착지는 종점)
+      if (i === destinationIdx) continue;
+
+      // 2. 출발지로 들어오는 경로 제외 (출발지는 시작점)
+      if (j === originIdx) continue;
+
+      pairs.push({ i, j });
     }
   }
 
