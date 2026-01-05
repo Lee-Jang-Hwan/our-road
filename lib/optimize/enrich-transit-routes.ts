@@ -1,21 +1,23 @@
 // ============================================
-// Enrich Transit Routes (대중교통 경로 상세 정보 조회)
+// Enrich Transit Routes (?以묎탳??寃쎈줈 ?곸꽭 ?뺣낫 議고쉶)
 // ============================================
 
 /**
  * @fileoverview
- * 최적화 완료 후 최종 경로에 대해서만 ODsay API를 호출하여
- * 대중교통 상세 정보(폴리라인, 환승 정보, 요금 등)를 추가합니다.
+ * 理쒖쟻???꾨즺 ??理쒖쥌 寃쎈줈????댁꽌留?ODsay API瑜??몄텧?섏뿬
+ * ?以묎탳???곸꽭 ?뺣낫(?대━?쇱씤, ?섏듅 ?뺣낫, ?붽툑 ??瑜?異붽??⑸땲??
  *
- * 이 모듈은 ODsay API 호출 횟수를 최소화하기 위해 설계되었습니다:
- * - 기존: n × (n-1) 호출 (모든 쌍에 대해)
- * - 개선: 최종 경로의 n-1 구간에 대해서만 호출
+ * ??紐⑤뱢? ODsay API ?몄텧 ?잛닔瑜?理쒖냼?뷀븯湲??꾪빐 ?ㅺ퀎?섏뿀?듬땲??
+ * - 湲곗〈: n 횞 (n-1) ?몄텧 (紐⑤뱺 ?띿뿉 ???
+ * - 媛쒖꽑: 理쒖쥌 寃쎈줈??n-1 援ш컙????댁꽌留??몄텧
  */
 
 import type { Coordinate } from "@/types/place";
-import type { TransitDetails } from "@/types/route";
+import type { TransportMode, TransitDetails } from "@/types/route";
 import type { DistanceMatrix } from "@/types/optimize";
 import { getBestTransitRouteWithDetails } from "@/lib/api/odsay";
+import { getTmapWalkingRoute } from "@/lib/api/tmap";
+import { haversineDistance, estimateDuration } from "@/lib/utils/haversine";
 import { batchProcess, tryOrNull } from "@/lib/utils/retry";
 
 // ============================================
@@ -23,34 +25,35 @@ import { batchProcess, tryOrNull } from "@/lib/utils/retry";
 // ============================================
 
 /**
- * 대중교통 상세 정보를 조회할 구간
+ * ?以묎탳???곸꽭 ?뺣낫瑜?議고쉶??援ш컙
  */
 export interface TransitEnrichmentSegment {
-  /** 출발지 ID (거리 행렬 인덱스용) */
+  /** 異쒕컻吏 ID (嫄곕━ ?됰젹 ?몃뜳?ㅼ슜) */
   fromId: string;
-  /** 도착지 ID (거리 행렬 인덱스용) */
+  /** ?꾩갑吏 ID (嫄곕━ ?됰젹 ?몃뜳?ㅼ슜) */
   toId: string;
-  /** 출발지 좌표 */
+  mode?: TransportMode;
+  /** 異쒕컻吏 醫뚰몴 */
   fromCoord: Coordinate;
-  /** 도착지 좌표 */
+  /** ?꾩갑吏 醫뚰몴 */
   toCoord: Coordinate;
 }
 
 /**
- * 조회된 대중교통 상세 정보
+ * 議고쉶???以묎탳???곸꽭 ?뺣낫
  */
 export interface EnrichedTransitRoute {
-  /** 출발지 ID */
+  /** 異쒕컻吏 ID */
   fromId: string;
-  /** 도착지 ID */
+  /** ?꾩갑吏 ID */
   toId: string;
-  /** 인코딩된 폴리라인 */
+  /** ?몄퐫?⑸맂 ?대━?쇱씤 */
   polyline?: string;
-  /** 대중교통 상세 정보 (환승, 요금, 노선 등) */
+  /** ?以묎탳???곸꽭 ?뺣낫 (?섏듅, ?붽툑, ?몄꽑 ?? */
   transitDetails?: TransitDetails;
-  /** 실제 거리 (미터) - ODsay 기준 */
+  /** ?ㅼ젣 嫄곕━ (誘명꽣) - ODsay 湲곗? */
   distance?: number;
-  /** 실제 소요시간 (분) - ODsay 기준 */
+  /** ?ㅼ젣 ?뚯슂?쒓컙 (遺? - ODsay 湲곗? */
   duration?: number;
 }
 
@@ -59,11 +62,11 @@ export interface EnrichedTransitRoute {
 // ============================================
 
 /**
- * 최종 경로 구간들에 대해 ODsay 대중교통 상세 정보 조회
+ * 理쒖쥌 寃쎈줈 援ш컙?ㅼ뿉 ???ODsay ?以묎탳???곸꽭 ?뺣낫 議고쉶
  *
- * @param segments - 조회할 구간 배열
- * @param options - 옵션
- * @returns 구간별 상세 정보 Map (key: `${fromId}:${toId}`)
+ * @param segments - 議고쉶??援ш컙 諛곗뿴
+ * @param options - ?듭뀡
+ * @returns 援ш컙蹂??곸꽭 ?뺣낫 Map (key: `${fromId}:${toId}`)
  *
  * @example
  * ```ts
@@ -81,16 +84,17 @@ export interface EnrichedTransitRoute {
 export async function enrichTransitRoutes(
   segments: TransitEnrichmentSegment[],
   options?: {
-    /** 배치 크기 (기본: 3) */
+    /** 諛곗튂 ?ш린 (湲곕낯: 3) */
     batchSize?: number;
-    /** 배치 간 딜레이 (기본: 500ms) */
+    /** 諛곗튂 媛??쒕젅??(湲곕낯: 500ms) */
     batchDelay?: number;
-    /** 진행 콜백 */
+    /** 吏꾪뻾 肄쒕갚 */
     onProgress?: (completed: number, total: number) => void;
   }
 ): Promise<Map<string, EnrichedTransitRoute>> {
   const { batchSize = 3, batchDelay = 500, onProgress } = options ?? {};
   const results = new Map<string, EnrichedTransitRoute>();
+  const walkingThresholdMeters = 500;
 
   if (segments.length === 0) {
     return results;
@@ -103,6 +107,39 @@ export async function enrichTransitRoutes(
     segments,
     async (segment) => {
       const key = createSegmentKey(segment.fromId, segment.toId);
+      const straightDistance = haversineDistance(
+        segment.fromCoord,
+        segment.toCoord
+      );
+
+      if (straightDistance <= walkingThresholdMeters) {
+        const tmapRoute = await tryOrNull(() =>
+          getTmapWalkingRoute(segment.fromCoord, segment.toCoord)
+        );
+
+        if (tmapRoute) {
+          results.set(key, {
+            fromId: segment.fromId,
+            toId: segment.toId,
+            mode: "walking",
+            polyline: tmapRoute.polyline,
+            distance: tmapRoute.totalDistance,
+            duration: tmapRoute.totalDuration,
+          });
+        } else {
+          results.set(key, {
+            fromId: segment.fromId,
+            toId: segment.toId,
+            mode: "walking",
+            distance: Math.round(straightDistance),
+            duration: estimateDuration(straightDistance, "walking"),
+          });
+        }
+
+        completed++;
+        onProgress?.(completed, total);
+        return;
+      }
 
       const routeWithDetails = await tryOrNull(() =>
         getBestTransitRouteWithDetails(segment.fromCoord, segment.toCoord)
@@ -112,16 +149,18 @@ export async function enrichTransitRoutes(
         results.set(key, {
           fromId: segment.fromId,
           toId: segment.toId,
+          mode: "public",
           polyline: routeWithDetails.polyline,
           transitDetails: routeWithDetails.details,
           distance: routeWithDetails.totalDistance,
           duration: routeWithDetails.totalDuration,
         });
       } else {
-        // 조회 실패 시 기본 정보만 저장
+        // 議고쉶 ?ㅽ뙣 ??湲곕낯 ?뺣낫留????
         results.set(key, {
           fromId: segment.fromId,
           toId: segment.toId,
+          mode: "public",
         });
       }
 
@@ -140,14 +179,14 @@ export async function enrichTransitRoutes(
 // ============================================
 
 /**
- * 거리 행렬에 대중교통 상세 정보 추가
+ * 嫄곕━ ?됰젹???以묎탳???곸꽭 ?뺣낫 異붽?
  *
- * 최적화 완료 후 실제 사용되는 구간에만 ODsay 정보를 조회하여
- * 거리 행렬의 polylines, transitDetails 배열을 업데이트합니다.
+ * 理쒖쟻???꾨즺 ???ㅼ젣 ?ъ슜?섎뒗 援ш컙?먮쭔 ODsay ?뺣낫瑜?議고쉶?섏뿬
+ * 嫄곕━ ?됰젹??polylines, transitDetails 諛곗뿴???낅뜲?댄듃?⑸땲??
  *
- * @param distanceMatrix - 거리 행렬 (mutated)
- * @param segments - 조회할 구간 배열
- * @param options - 옵션
+ * @param distanceMatrix - 嫄곕━ ?됰젹 (mutated)
+ * @param segments - 議고쉶??援ш컙 諛곗뿴
+ * @param options - ?듭뀡
  */
 export async function enrichDistanceMatrixWithTransit(
   distanceMatrix: DistanceMatrix,
@@ -162,14 +201,14 @@ export async function enrichDistanceMatrixWithTransit(
     return;
   }
 
-  // ODsay 상세 정보 조회
+  // ODsay ?곸꽭 ?뺣낫 議고쉶
   const enrichedMap = await enrichTransitRoutes(segments, options);
 
-  // 인덱스 맵 생성
+  // ?몃뜳??留??앹꽦
   const indexMap = new Map<string, number>();
   distanceMatrix.places.forEach((id, idx) => indexMap.set(id, idx));
 
-  // polylines, transitDetails 배열이 없으면 초기화
+  // polylines, transitDetails 諛곗뿴???놁쑝硫?珥덇린??
   const n = distanceMatrix.places.length;
   if (!distanceMatrix.polylines) {
     distanceMatrix.polylines = Array.from({ length: n }, () =>
@@ -182,7 +221,7 @@ export async function enrichDistanceMatrixWithTransit(
     );
   }
 
-  // 결과를 거리 행렬에 반영
+  // 寃곌낵瑜?嫄곕━ ?됰젹??諛섏쁺
   for (const segment of segments) {
     const key = createSegmentKey(segment.fromId, segment.toId);
     const enriched = enrichedMap.get(key);
@@ -195,17 +234,23 @@ export async function enrichDistanceMatrixWithTransit(
     }
 
     if (enriched) {
-      // 폴리라인 업데이트
+      // ?대━?쇱씤 ?낅뜲?댄듃
       if (enriched.polyline) {
         distanceMatrix.polylines[fromIdx][toIdx] = enriched.polyline;
       }
 
-      // 대중교통 상세 정보 업데이트
-      if (enriched.transitDetails) {
-        distanceMatrix.transitDetails[fromIdx][toIdx] = enriched.transitDetails;
+      if (enriched.mode) {
+        distanceMatrix.modes[fromIdx][toIdx] = enriched.mode;
       }
 
-      // ODsay 기준 거리/시간으로 업데이트 (더 정확)
+      // ?以묎탳???곸꽭 ?뺣낫 ?낅뜲?댄듃
+      if (enriched.transitDetails) {
+        distanceMatrix.transitDetails[fromIdx][toIdx] = enriched.transitDetails;
+      } else if (enriched.mode === "walking") {
+        distanceMatrix.transitDetails[fromIdx][toIdx] = null;
+      }
+
+      // ODsay 湲곗? 嫄곕━/?쒓컙?쇰줈 ?낅뜲?댄듃 (???뺥솗)
       if (enriched.distance !== undefined) {
         distanceMatrix.distances[fromIdx][toIdx] = enriched.distance;
       }
@@ -221,22 +266,22 @@ export async function enrichDistanceMatrixWithTransit(
 // ============================================
 
 /**
- * 구간 키 생성
+ * 援ш컙 ???앹꽦
  */
 export function createSegmentKey(fromId: string, toId: string): string {
   return `${fromId}:${toId}`;
 }
 
 /**
- * 일자별 분배 결과에서 실제 사용되는 구간 추출
+ * ?쇱옄蹂?遺꾨같 寃곌낵?먯꽌 ?ㅼ젣 ?ъ슜?섎뒗 援ш컙 異붿텧
  *
- * @param days - 일자별 장소 ID 배열
- * @param nodeMap - 노드 맵 (ID -> 좌표)
- * @param originId - 출발지 ID
- * @param destinationId - 도착지 ID
- * @param getAccommodationForDate - 날짜별 숙소 노드 조회 함수
- * @param dates - 날짜 배열
- * @returns 조회할 구간 배열
+ * @param days - ?쇱옄蹂??μ냼 ID 諛곗뿴
+ * @param nodeMap - ?몃뱶 留?(ID -> 醫뚰몴)
+ * @param originId - 異쒕컻吏 ID
+ * @param destinationId - ?꾩갑吏 ID
+ * @param getAccommodationForDate - ?좎쭨蹂??숈냼 ?몃뱶 議고쉶 ?⑥닔
+ * @param dates - ?좎쭨 諛곗뿴
+ * @returns 議고쉶??援ш컙 諛곗뿴
  */
 export function extractRouteSegments(
   days: string[][],
@@ -255,7 +300,7 @@ export function extractRouteSegments(
     const isFirstDay = dayIdx === 0;
     const isLastDay = dayIdx === days.length - 1;
 
-    // 실제 방문 장소만 필터링 (출발지/도착지/숙소 제외)
+    // ?ㅼ젣 諛⑸Ц ?μ냼留??꾪꽣留?(異쒕컻吏/?꾩갑吏/?숈냼 ?쒖쇅)
     const actualPlaceIds = dayPlaceIds.filter(
       (id) =>
         id !== "__origin__" &&
@@ -267,7 +312,7 @@ export function extractRouteSegments(
       continue;
     }
 
-    // 시작점 결정
+    // ?쒖옉??寃곗젙
     let startId: string;
     if (isFirstDay) {
       startId = originId;
@@ -277,7 +322,7 @@ export function extractRouteSegments(
       startId = prevAccom?.id ?? originId;
     }
 
-    // 시작점 -> 첫 장소
+    // ?쒖옉??-> 泥??μ냼
     const firstPlaceId = actualPlaceIds[0];
     const startNode = nodeMap.get(startId);
     const firstNode = nodeMap.get(firstPlaceId);
@@ -295,7 +340,7 @@ export function extractRouteSegments(
       }
     }
 
-    // 장소 간 이동
+    // ?μ냼 媛??대룞
     for (let i = 0; i < actualPlaceIds.length - 1; i++) {
       const fromId = actualPlaceIds[i];
       const toId = actualPlaceIds[i + 1];
@@ -316,7 +361,7 @@ export function extractRouteSegments(
       }
     }
 
-    // 마지막 장소 -> 끝점
+    // 留덉?留??μ냼 -> ?앹젏
     const lastPlaceId = actualPlaceIds[actualPlaceIds.length - 1];
     let endId: string;
 
@@ -327,7 +372,7 @@ export function extractRouteSegments(
       if (todayAccom) {
         endId = todayAccom.id;
       } else {
-        // 숙소가 없으면 끝점 이동 없음
+        // ?숈냼媛 ?놁쑝硫??앹젏 ?대룞 ?놁쓬
         continue;
       }
     }
@@ -351,3 +396,4 @@ export function extractRouteSegments(
 
   return segments;
 }
+

@@ -249,7 +249,14 @@ export interface SegmentCost {
   distanceMeters?: number;
   transfers?: number;
   waitTimeMinutes?: number;
-  polyline?: string;
+  polyline?: string | LatLng[]; // String for encoded polyline or array of coordinates
+  transitDetails?: {
+    transportMode: 'subway' | 'bus' | 'walking';
+    lineName?: string;
+    startStation?: string;
+    endStation?: string;
+    stationCount?: number;
+  };
 }
 
 export interface TripOutput {

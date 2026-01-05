@@ -28,13 +28,13 @@ export default function RouteView({
   const [selectedDay, setSelectedDay] = useAtom(selectedDayAtom);
 
   return (
-    <div className="w-full h-screen flex flex-col lg:flex-row gap-4 p-4">
+    <div className="w-full h-full flex flex-col lg:flex-row gap-4 lg:p-4">
       {/* Map Section (Left - 60%) */}
-      <div className="lg:w-[60%] h-[50vh] lg:h-full relative">
-        <RouteMap tripOutput={tripOutput} />
+      <div className="lg:w-[60%] h-[40vh] lg:h-full relative">
+        <RouteMap tripOutput={tripOutput} waypoints={waypoints} />
 
         {/* Day Filter Pills */}
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white rounded-full shadow-lg p-2 flex gap-2">
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-white rounded-full shadow-lg p-2 flex gap-2 z-[1000]">
           <button
             onClick={() => setSelectedDay(null)}
             className={`px-4 py-2 rounded-full transition-colors ${
@@ -67,7 +67,7 @@ export default function RouteView({
       </div>
 
       {/* Info Section (Right - 40%) */}
-      <div className="lg:w-[40%] flex flex-col h-[50vh] lg:h-full">
+      <div className="lg:w-[40%] flex flex-col flex-1 lg:h-full overflow-hidden">
         {/* Tab Navigation */}
         <div className="bg-white rounded-lg shadow mb-4">
           <div className="flex border-b">

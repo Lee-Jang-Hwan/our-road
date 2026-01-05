@@ -141,14 +141,34 @@ export default function RouteDetails({ tripOutput, waypoints }: RouteDetailsProp
 
                         {/* Segment (travel to next waypoint) */}
                         {segment && (
-                          <div className="ml-3 my-2 text-sm text-gray-600 flex items-center gap-2">
-                            <Navigation size={14} />
-                            <span>{segment.durationMinutes || 0}분</span>
-                            {segment.distanceMeters && (
-                              <span>· {Math.round(segment.distanceMeters / 100) / 10}km</span>
-                            )}
-                            {segment.transfers !== undefined && segment.transfers > 0 && (
-                              <span>· 환승 {segment.transfers}회</span>
+                          <div className="ml-3 my-2">
+                            <div className="flex items-center gap-2 text-sm text-gray-600">
+                              <Navigation size={14} />
+                              <span>{segment.durationMinutes || 0}분</span>
+                              {segment.distanceMeters && (
+                                <span>· {Math.round(segment.distanceMeters / 100) / 10}km</span>
+                              )}
+                              {segment.transfers !== undefined && segment.transfers > 0 && (
+                                <span>· 환승 {segment.transfers}회</span>
+                              )}
+                            </div>
+                            {/* Transit details */}
+                            {segment.transitDetails && (
+                              <div className="mt-1 ml-5 text-xs text-blue-600 flex items-center gap-1">
+                                <span className="px-2 py-0.5 bg-blue-100 rounded">
+                                  {segment.transitDetails.lineName}
+                                </span>
+                                {segment.transitDetails.startStation && segment.transitDetails.endStation && (
+                                  <span className="text-gray-600">
+                                    {segment.transitDetails.startStation} → {segment.transitDetails.endStation}
+                                  </span>
+                                )}
+                                {segment.transitDetails.stationCount && (
+                                  <span className="text-gray-600">
+                                    ({segment.transitDetails.stationCount}개 역)
+                                  </span>
+                                )}
+                              </div>
                             )}
                           </div>
                         )}
