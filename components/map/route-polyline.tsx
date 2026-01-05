@@ -300,10 +300,11 @@ export function DirectRoutePolyline({
 // ============================================
 
 interface RealRoutePolylineProps {
-  /** 경로 구간 배열 - 각 구간에 encodedPath(폴리라인)가 있으면 실제 경로, 없으면 직선 */
+  /** 경로 구간 배열 - path 또는 encodedPath가 있으면 실제 경로, 없으면 직선 */
   segments: Array<{
     from: Coordinate;
     to: Coordinate;
+    path?: Coordinate[];
     encodedPath?: string;
     transportMode: TransportMode;
     segmentIndex?: number;
@@ -318,8 +319,9 @@ interface RealRoutePolylineProps {
 
 /**
  * 실제 경로 폴리라인 컴포넌트
- * - encodedPath가 있으면 실제 도로 경로 표시
- * - 없으면 직선으로 연결
+ * - path 배열이 있으면 좌표 배열로 경로 표시
+ * - encodedPath가 있으면 인코딩된 폴리라인으로 경로 표시
+ * - 둘 다 없으면 직선으로 연결
  * - useSegmentColors가 true면 각 구간마다 다른 색상 사용
  */
 export function RealRoutePolyline({
@@ -342,6 +344,19 @@ export function RealRoutePolyline({
             <RoutePolyline
               key={`route-${index}`}
               encodedPath={segment.encodedPath}
+              strokeColor={strokeColor}
+              strokeWeight={strokeWeight}
+              strokeOpacity={strokeOpacity}
+              strokeStyle="solid"
+              zIndex={index + 1}
+            />
+          );
+        } else if (segment.path && segment.path.length > 1) {
+          // 좌표 배열로 경로 표시
+          return (
+            <RoutePolyline
+              key={`route-${index}`}
+              path={segment.path}
               strokeColor={strokeColor}
               strokeWeight={strokeWeight}
               strokeOpacity={strokeOpacity}

@@ -119,11 +119,12 @@ export default function RouteMap({ tripOutput, waypoints }: RouteMapProps) {
     return markers;
   }, [tripOutput, waypoints, selectedDayPlan]);
 
-  // Get route segments for polylines
+  // Get route segments for polylines with actual path coordinates
   const routeSegments = useMemo(() => {
     const segments: Array<{
       from: Coordinate;
       to: Coordinate;
+      path?: Coordinate[];
       encodedPath?: string;
       transportMode: 'walking' | 'public' | 'car';
       segmentIndex: number;
@@ -134,54 +135,55 @@ export default function RouteMap({ tripOutput, waypoints }: RouteMapProps) {
     daysToShow.forEach((dayPlan, dayIndex) => {
       const waypointOrder = dayPlan.waypointOrder;
 
-      // Find segments for this day
-      for (let i = 0; i < waypointOrder.length; i++) {
-        const fromId = i === 0 ? '__start__' : waypointOrder[i - 1];
-        const toId = waypointOrder[i];
+      // Start point segment
+      if (waypointOrder.length > 0) {
+        const firstWpId = waypointOrder[0];
+        const segmentCost = tripOutput.segmentCosts.find(
+          (seg) => seg.key.fromId === '__start__' && seg.key.toId === firstWpId
+        );
 
-        // Find segment cost
+        if (segmentCost) {
+          const firstWp = getWaypointById(firstWpId);
+          if (firstWp) {
+            const polylinePath = Array.isArray(segmentCost.polyline)
+              ? segmentCost.polyline
+              : undefined;
+
+            segments.push({
+              from: polylinePath ? polylinePath[0] : firstWp.coord,
+              to: firstWp.coord,
+              path: polylinePath,
+              encodedPath: typeof segmentCost.polyline === 'string' ? segmentCost.polyline : undefined,
+              transportMode: segmentCost.transitDetails ? 'public' : 'walking',
+              segmentIndex: selectedDayPlan ? 0 : dayIndex * 10,
+            });
+          }
+        }
+      }
+
+      // Segments between waypoints
+      for (let i = 0; i < waypointOrder.length - 1; i++) {
+        const fromId = waypointOrder[i];
+        const toId = waypointOrder[i + 1];
+
         const segmentCost = tripOutput.segmentCosts.find(
           (seg) => seg.key.fromId === fromId && seg.key.toId === toId
         );
 
         if (segmentCost) {
-          const fromWp = i === 0 ? getWaypointById(toId) : getWaypointById(fromId);
+          const fromWp = getWaypointById(fromId);
           const toWp = getWaypointById(toId);
 
           if (fromWp && toWp) {
-            const from = i === 0 ? fromWp.coord : fromWp.coord;
-            const to = toWp.coord;
+            const polylinePath = Array.isArray(segmentCost.polyline)
+              ? segmentCost.polyline
+              : undefined;
 
-            segments.push({
-              from,
-              to,
-              encodedPath: undefined, // polyline is array of coords in our mock data
-              transportMode: segmentCost.transitDetails ? 'public' : 'walking',
-              segmentIndex: selectedDayPlan ? i : dayIndex * 10 + i,
-            });
-
-            // Convert polyline array to encoded path or just use coordinates
-            if (segmentCost.polyline && Array.isArray(segmentCost.polyline)) {
-              // For now, we'll render direct lines
-              // In real implementation, this would be encoded polyline string
-            }
-          }
-        }
-
-        // Segments between waypoints
-        if (i < waypointOrder.length - 1) {
-          const fromWp = getWaypointById(waypointOrder[i]);
-          const toWp = getWaypointById(waypointOrder[i + 1]);
-
-          const segmentCost = tripOutput.segmentCosts.find(
-            (seg) => seg.key.fromId === waypointOrder[i] && seg.key.toId === waypointOrder[i + 1]
-          );
-
-          if (fromWp && toWp && segmentCost) {
             segments.push({
               from: fromWp.coord,
               to: toWp.coord,
-              encodedPath: undefined,
+              path: polylinePath,
+              encodedPath: typeof segmentCost.polyline === 'string' ? segmentCost.polyline : undefined,
               transportMode: segmentCost.transitDetails ? 'public' : 'walking',
               segmentIndex: selectedDayPlan ? i + 1 : dayIndex * 10 + i + 1,
             });
