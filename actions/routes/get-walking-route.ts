@@ -2,6 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { walkingRouteSchema, type WalkingRouteInput } from "@/lib/schemas";
+import { getTmapWalkingRoute } from "@/lib/api/tmap";
 import type { WalkingRoute, Coordinate } from "@/types";
 
 // ============================================
@@ -136,8 +137,7 @@ function createSimplePolyline(
  * 도보 경로 조회 Server Action
  *
  * 두 지점 간의 도보 경로를 조회합니다.
- * Haversine 공식을 사용하여 직선거리를 계산하고,
- * 실제 도보 거리는 직선거리의 약 1.3배로 추정합니다.
+ * TMAP API를 우선 사용하고, 실패시 Haversine 공식 기반 추정치를 사용합니다.
  *
  * **중요**: 도보 경로로만 조회하며, 다른 수단으로 자동 전환하지 않습니다.
  * 거리가 너무 멀면 (10km 초과) ROUTE_NOT_FOUND 에러를 반환합니다.
@@ -189,38 +189,45 @@ export async function getWalkingRoute(
       destination: Coordinate;
     };
 
-    // 3. 거리 계산
+    // 3. 거리 사전 확인 (직선거리 기준)
     const straightLineDistance = haversineDistance(origin, destination);
+    const estimatedDistance = Math.round(straightLineDistance * 1.3);
 
-    // 실제 도보 거리는 직선거리의 약 1.3배로 추정
-    // (도로, 건물 등을 우회해야 하므로)
-    const estimatedWalkingDistance = Math.round(straightLineDistance * 1.3);
-
-    // 4. 거리 제한 확인 - 너무 멀면 ROUTE_NOT_FOUND 반환 (다른 수단으로 전환하지 않음)
-    if (estimatedWalkingDistance > MAX_WALKING_DISTANCE) {
+    // 거리 제한 확인 - 너무 멀면 ROUTE_NOT_FOUND 반환
+    if (estimatedDistance > MAX_WALKING_DISTANCE) {
       return {
         success: false,
         error: {
           code: "ROUTE_NOT_FOUND",
-          message: `도보로 이동하기에는 거리가 너무 멉니다 (약 ${(estimatedWalkingDistance / 1000).toFixed(1)}km). 다른 이동 수단을 이용해주세요.`,
+          message: `도보로 이동하기에는 거리가 너무 멉니다 (약 ${(estimatedDistance / 1000).toFixed(1)}km). 다른 이동 수단을 이용해주세요.`,
           details: {
-            distance: estimatedWalkingDistance,
+            distance: estimatedDistance,
             maxDistance: MAX_WALKING_DISTANCE,
           },
         },
       };
     }
 
-    // 5. 소요 시간 계산
-    const duration = calculateWalkingDuration(estimatedWalkingDistance);
+    // 4. TMAP API로 실제 도보 경로 조회 시도
+    const tmapRoute = await getTmapWalkingRoute(origin, destination);
 
-    // 6. 폴리라인 생성 (직선)
+    if (tmapRoute) {
+      // TMAP 성공 - 실제 경로 데이터 반환
+      return {
+        success: true,
+        data: tmapRoute,
+      };
+    }
+
+    // 5. TMAP 실패 시 Fallback: Haversine 기반 추정
+    console.log("TMAP API 실패, Haversine fallback 사용");
+
+    const duration = calculateWalkingDuration(estimatedDistance);
     const polyline = createSimplePolyline(origin, destination);
 
-    // 7. 결과 반환
     const walkingRoute: WalkingRoute = {
       totalDuration: duration,
-      totalDistance: estimatedWalkingDistance,
+      totalDistance: estimatedDistance,
       polyline,
     };
 

@@ -54,3 +54,30 @@ export type {
   TransitRouteOptions,
   TransitSearchResult,
 } from "./odsay";
+
+// ============================================
+// TMAP API (도보 경로)
+// ============================================
+export {
+  // 도보 경로
+  getTmapWalkingRoute,
+  getTmapWalkingDuration,
+  getTmapWalkingDistance,
+  // Error
+  TmapApiError,
+  // Config (advanced)
+  TMAP_API_BASE_URL,
+} from "./tmap";
+
+// ============================================
+// Rate Limiter (API 호출 제한)
+// ============================================
+export {
+  checkRateLimit,
+  incrementApiCallCount,
+  getApiCallCount,
+  getRemainingApiCalls,
+  withRateLimit,
+  RateLimitError,
+  API_DAILY_LIMITS,
+} from "./rate-limiter";

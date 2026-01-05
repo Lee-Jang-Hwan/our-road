@@ -12,7 +12,8 @@ import {
 } from "@/lib/utils/haversine";
 import { batchProcess, tryOrNull } from "@/lib/utils/retry";
 import { getCarRoute } from "@/lib/api/kakao";
-import { getBestTransitRouteWithDetails } from "@/lib/api/odsay";
+// Note: ODsay는 최종 경로에만 사용 (enrich-transit-routes.ts에서 처리)
+// 대중교통 행렬 계산은 Kakao Mobility API 거리 기반으로 추정
 
 // ============================================
 // Types
@@ -140,16 +141,20 @@ async function getRouteInfo(
     }
 
     case "public": {
+      // 대중교통 행렬 계산: Kakao Mobility API 거리 기반 추정
+      // ODsay API는 최종 경로에만 사용 (enrich-transit-routes.ts에서 처리)
+      // 이유: ODsay 일일 990회 제한 vs Kakao 300,000회
       const route = await tryOrNull(() =>
-        getBestTransitRouteWithDetails(origin, destination)
+        getCarRoute({ origin, destination })
       );
       if (route) {
+        // 대중교통은 자동차보다 약 1.3배 더 오래 걸림 (도심 평균)
+        const transitDurationMultiplier = 1.3;
         return {
           distance: route.totalDistance,
-          duration: route.totalDuration,
+          duration: Math.round(route.totalDuration * transitDurationMultiplier),
           mode: "public",
-          polyline: route.polyline, // 대중교통 경로 폴리라인
-          transitDetails: route.details,
+          // polyline, transitDetails는 최종 경로에서 ODsay로 조회
         };
       }
       break;

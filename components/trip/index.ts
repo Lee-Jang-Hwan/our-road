@@ -10,3 +10,7 @@ export {
   TransportIcon,
 } from "./transport-selector";
 export { TripForm, TripFormSummary } from "./trip-form";
+export { TripFormWizard } from "./trip-form-wizard";
+export { TripFormStep1 } from "./trip-form-step1";
+export { TripFormStep2 } from "./trip-form-step2";
+export { AccommodationInput } from "./accommodation-input";

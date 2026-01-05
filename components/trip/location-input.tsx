@@ -169,7 +169,8 @@ export function LocationInput({
     setQuery("");
     setResults([]);
     setError(null);
-    setOpen(false);
+    // 검색 입력 모드로 유지하여 사용자가 바로 다시 검색할 수 있도록 함
+    // value가 undefined가 되면 자동으로 검색 입력 UI가 표시됨
   };
 
   return (
@@ -217,12 +218,7 @@ export function LocationInput({
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
                   <X
                     className="h-4 w-4 text-muted-foreground cursor-pointer hover:text-foreground"
-                    onClick={() => {
-                      setQuery("");
-                      setResults([]);
-                      setError(null);
-                      setOpen(false);
-                    }}
+                    onClick={handleClear}
                   />
                 </div>
               )}

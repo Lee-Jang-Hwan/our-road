@@ -43,6 +43,22 @@ export const tripLocationSchema = z.object({
 });
 
 /**
+ * 숙소 스키마 (연속 일정 지원)
+ */
+export const dailyAccommodationSchema = z
+  .object({
+    startDate: dateSchema,
+    endDate: dateSchema,
+    location: tripLocationSchema,
+    checkInTime: timeSchema.optional(),
+    checkOutTime: timeSchema.optional(),
+  })
+  .refine((data) => data.startDate <= data.endDate, {
+    message: "체크아웃 날짜는 체크인 날짜 이후여야 합니다",
+    path: ["endDate"],
+  });
+
+/**
  * 여행 생성 스키마
  */
 export const createTripSchema = z
@@ -60,6 +76,7 @@ export const createTripSchema = z
     transportModes: z
       .array(transportModeSchema)
       .min(1, "최소 1개의 이동 수단을 선택해주세요"),
+    accommodations: z.array(dailyAccommodationSchema).optional(),
   })
   .refine((data) => data.startDate <= data.endDate, {
     message: "종료일은 시작일 이후여야 합니다",
@@ -173,6 +190,7 @@ export const tripIdParamSchema = z.object({
 export type TripStatusInput = z.infer<typeof tripStatusSchema>;
 export type TransportModeInput = z.infer<typeof transportModeSchema>;
 export type TripLocationInput = z.infer<typeof tripLocationSchema>;
+export type DailyAccommodationInput = z.infer<typeof dailyAccommodationSchema>;
 export type CreateTripInput = z.infer<typeof createTripSchema>;
 export type UpdateTripInput = z.infer<typeof updateTripSchema>;
 export type TripListFilterInput = z.infer<typeof tripListFilterSchema>;

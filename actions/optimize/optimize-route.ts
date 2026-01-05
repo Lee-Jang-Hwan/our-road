@@ -13,9 +13,10 @@ import type {
   OptimizeError,
   DistanceMatrix,
 } from "@/types/optimize";
-import type { DailyItinerary, ScheduleItem, FixedSchedule } from "@/types/schedule";
+import type { DailyItinerary, ScheduleItem, FixedSchedule, DayEndpoint } from "@/types/schedule";
 import type { Place, TripPlaceRow } from "@/types/place";
 import type { Trip, TripRow, TripLocation } from "@/types/trip";
+import type { DailyAccommodation } from "@/types/accommodation";
 import type { TransportMode } from "@/types/route";
 import type { OptimizeNode } from "@/lib/optimize/types";
 import {
@@ -32,8 +33,10 @@ import {
   generateDateRange,
   createDistanceMatrixGetter,
 } from "@/lib/optimize";
-import { getCarRoute } from "@/actions/routes";
-import { getBestTransitRoute, getTransitDuration } from "@/actions/routes";
+import {
+  enrichDistanceMatrixWithTransit,
+  extractRouteSegments,
+} from "@/lib/optimize/enrich-transit-routes";
 
 // ============================================
 // Types
@@ -84,6 +87,7 @@ function convertRowToTrip(row: TripRow): Trip {
     dailyEndTime: row.daily_end_time,
     transportModes: row.transport_mode,
     status: row.status,
+    accommodations: row.accommodations ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -143,6 +147,26 @@ function locationToOptimizeNode(
 }
 
 /**
+ * 숙소를 OptimizeNode로 변환
+ */
+function accommodationToOptimizeNode(
+  accom: DailyAccommodation,
+  index: number
+): OptimizeNode {
+  return {
+    id: `__accommodation_${index}__`,
+    name: accom.location.name,
+    coordinate: {
+      lat: accom.location.lat,
+      lng: accom.location.lng,
+    },
+    duration: 0,
+    priority: 0,
+    isFixed: false,
+  };
+}
+
+/**
  * 이동수단 결정 (여행 설정 기준)
  */
 function getPrimaryTransportMode(modes: TransportMode[]): TransportMode {
@@ -160,6 +184,9 @@ function getPrimaryTransportMode(modes: TransportMode[]): TransportMode {
 
 /**
  * 일자별 분배 결과를 DailyItinerary로 변환
+ * @param skipTransportToDestination - true면 도착지까지 이동 정보 생략 (숙소 없는 날)
+ * @param dayOrigin - 이 날의 시작점 정보 (출발지 또는 전날 숙소)
+ * @param dayDestination - 이 날의 끝점 정보 (도착지, 숙소, 또는 undefined)
  */
 async function createDailyItinerary(
   dayPlaceIds: string[],
@@ -171,7 +198,10 @@ async function createDailyItinerary(
   dailyEndTime: string,
   transportMode: TransportMode,
   originId: string,
-  destinationId: string
+  destinationId: string,
+  skipTransportToDestination: boolean = false,
+  dayOrigin?: DayEndpoint,
+  dayDestination?: DayEndpoint
 ): Promise<DailyItinerary> {
   const schedule: ScheduleItem[] = [];
   const getDistance = createDistanceMatrixGetter(distanceMatrix);
@@ -252,9 +282,9 @@ async function createDailyItinerary(
     });
   }
 
-  // 마지막 장소에서 도착지까지 이동 정보 계산
+  // 마지막 장소에서 도착지까지 이동 정보 계산 (숙소 없는 날은 생략)
   let transportToDestination: DailyItinerary["transportToDestination"];
-  if (dayPlaceIds.length > 0) {
+  if (dayPlaceIds.length > 0 && !skipTransportToDestination) {
     const lastPlaceId = dayPlaceIds[dayPlaceIds.length - 1];
     const entry = getDistance(lastPlaceId, destinationId);
     if (entry) {
@@ -287,6 +317,8 @@ async function createDailyItinerary(
     transportToDestination,
     dailyStartTime,
     dailyEndTime,
+    dayOrigin,
+    dayDestination,
   };
 }
 
@@ -299,10 +331,9 @@ async function createDailyItinerary(
  *
  * 1. 거리 행렬 계산
  * 2. Nearest Neighbor 초기 경로 생성
- * 3. 2-opt 개선
- * 4. 고정 일정 반영
- * 5. 일자별 분배
- * 6. 구간 이동 정보 조회
+ * 3. 고정 일정 반영
+ * 4. 일자별 분배
+ * 5. 구간 이동 정보 조회
  *
  * @param input - 최적화 요청 (tripId 필수)
  * @returns 최적화 결과
@@ -450,6 +481,25 @@ export async function optimizeRoute(
     nodeMap.set(originNode.id, originNode);
     nodeMap.set(destinationNode.id, destinationNode);
 
+    // 숙소 노드 생성 (연속 일정 지원)
+    const accommodationNodes = new Map<string, OptimizeNode>();
+    const tripAccommodations = trip.accommodations ?? [];
+
+    for (let i = 0; i < tripAccommodations.length; i++) {
+      const accom = tripAccommodations[i];
+      const node = accommodationToOptimizeNode(accom, i);
+      nodeMap.set(node.id, node);
+
+      // 숙소 기간 내 모든 날짜에 대해 노드 매핑 (startDate부터 endDate 전날까지)
+      // 체크아웃은 endDate 아침이므로, endDate 전날까지 숙박
+      const start = new Date(accom.startDate);
+      const end = new Date(accom.endDate);
+      for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
+        const dateStr = d.toISOString().split("T")[0];
+        accommodationNodes.set(dateStr, node);
+      }
+    }
+
     // 장소 노드 생성
     const placeNodes: OptimizeNode[] = [];
     for (let i = 0; i < places.length; i++) {
@@ -480,8 +530,14 @@ export async function optimizeRoute(
     // 8. 이동 수단 결정
     const transportMode = getPrimaryTransportMode(trip.transportModes);
 
-    // 9. 거리 행렬 계산
-    const allNodes = [originNode, ...placeNodes, destinationNode];
+    // 9. 거리 행렬 계산 (숙소 포함)
+    const allAccommodationNodes = Array.from(accommodationNodes.values());
+    const allNodes = [
+      originNode,
+      ...placeNodes,
+      ...allAccommodationNodes,
+      destinationNode,
+    ];
 
     const distanceMatrix = await createDistanceMatrix(allNodes, {
       mode: transportMode,
@@ -504,7 +560,7 @@ export async function optimizeRoute(
       destinationNode.id
     );
 
-    // 12. 2-opt 개선
+    // 12. 2-opt로 경로 개선
     const improvedResult = twoOptWithEndpoints(
       initialResult.route,
       distanceMatrix,
@@ -548,17 +604,173 @@ export async function optimizeRoute(
       });
     }
 
-    // 14. DailyItinerary 생성
-    const itinerary: DailyItinerary[] = [];
+    // 14. 대중교통 모드인 경우 최종 경로에 ODsay 상세 정보 추가
+    // (행렬 계산에서는 Kakao Mobility로 거리만 추정, 결과 표시에만 ODsay 사용)
+    if (transportMode === "public") {
+      try {
+        // 날짜별 숙소 조회 함수
+        const getAccommodationForDate = (date: string) => {
+          const accomData = tripAccommodations.find(
+            (a) => a.startDate <= date && date < a.endDate
+          );
+          const accomNode = accommodationNodes.get(date);
+          if (accomData && accomNode) {
+            return {
+              id: accomNode.id,
+              coordinate: accomNode.coordinate,
+            };
+          }
+          return undefined;
+        };
 
-    for (let i = 0; i < distributionResult.days.length; i++) {
+        // 실제 사용되는 경로 구간 추출
+        const transitSegments = extractRouteSegments(
+          distributionResult.days,
+          nodeMap,
+          originNode.id,
+          destinationNode.id,
+          getAccommodationForDate,
+          dates
+        );
+
+        // ODsay API로 상세 정보 조회 및 거리 행렬 업데이트
+        if (transitSegments.length > 0) {
+          await enrichDistanceMatrixWithTransit(
+            distanceMatrix,
+            transitSegments,
+            { batchSize: 3, batchDelay: 500 }
+          );
+        }
+      } catch (error) {
+        // ODsay 조회 실패 시 경고만 추가 (기본 정보로 계속 진행)
+        console.error("[Optimize] 대중교통 상세 정보 조회 실패:", error);
+        errors.push({
+          code: "TRANSIT_DETAILS_ERROR",
+          message: "일부 대중교통 상세 정보를 불러올 수 없습니다.",
+        });
+      }
+    }
+
+    // 15. DailyItinerary 생성 (일자별 동적 시작/끝점)
+    const itinerary: DailyItinerary[] = [];
+    const totalDaysCount = distributionResult.days.length;
+
+    for (let i = 0; i < totalDaysCount; i++) {
       const dayPlaceIds = distributionResult.days[i];
       const date = dates[i];
+      const isFirstDay = i === 0;
+      const isLastDay = i === totalDaysCount - 1;
 
-      // 출발지/도착지 제외 (실제 방문 장소만)
+      // 출발지/도착지/숙소 제외 (실제 방문 장소만)
       const actualPlaceIds = dayPlaceIds.filter(
-        (id) => id !== "__origin__" && id !== "__destination__"
+        (id) =>
+          id !== "__origin__" &&
+          id !== "__destination__" &&
+          !id.startsWith("__accommodation_")
       );
+
+      // 시작점 결정
+      let actualStartId: string;
+      let dayOriginInfo: DayEndpoint | undefined;
+
+      if (isFirstDay) {
+        // 첫날: 출발지에서 시작
+        actualStartId = originNode.id;
+        dayOriginInfo = {
+          name: trip.origin.name,
+          address: trip.origin.address,
+          lat: trip.origin.lat,
+          lng: trip.origin.lng,
+          type: "origin",
+        };
+      } else {
+        // 그 외: 이전 날의 숙소 또는 이전 날 마지막 장소
+        const prevDate = dates[i - 1];
+        // 연속 일정 지원: prevDate가 startDate <= prevDate < endDate 범위에 있는 숙소 찾기
+        const prevAccomData = tripAccommodations.find(
+          (a) => a.startDate <= prevDate && prevDate < a.endDate
+        );
+        const prevAccomNode = accommodationNodes.get(prevDate);
+
+        if (prevAccomNode && prevAccomData) {
+          actualStartId = prevAccomNode.id;
+          dayOriginInfo = {
+            name: prevAccomData.location.name,
+            address: prevAccomData.location.address,
+            lat: prevAccomData.location.lat,
+            lng: prevAccomData.location.lng,
+            type: "accommodation",
+          };
+        } else if (
+          itinerary[i - 1] &&
+          itinerary[i - 1].schedule.length > 0
+        ) {
+          // 이전 날 마지막 방문 장소 (숙소가 없는 경우)
+          const lastSchedule = itinerary[i - 1].schedule[itinerary[i - 1].schedule.length - 1];
+          actualStartId = lastSchedule.placeId;
+          const lastNode = nodeMap.get(lastSchedule.placeId);
+          if (lastNode) {
+            dayOriginInfo = {
+              name: lastNode.name,
+              address: "",
+              lat: lastNode.coordinate.lat,
+              lng: lastNode.coordinate.lng,
+              type: "lastPlace", // 전날 마지막 장소에서 시작
+            };
+          }
+        } else {
+          // 이전 날 방문 장소가 없으면 출발지 사용
+          actualStartId = originNode.id;
+          dayOriginInfo = {
+            name: trip.origin.name,
+            address: trip.origin.address,
+            lat: trip.origin.lat,
+            lng: trip.origin.lng,
+            type: "origin",
+          };
+        }
+      }
+
+      // 끝점 결정
+      let actualEndId: string;
+      let skipTransportToDestination = false;
+      let dayDestinationInfo: DayEndpoint | undefined;
+
+      if (isLastDay) {
+        // 마지막 날: 무조건 도착지
+        actualEndId = destinationNode.id;
+        dayDestinationInfo = {
+          name: trip.destination.name,
+          address: trip.destination.address,
+          lat: trip.destination.lat,
+          lng: trip.destination.lng,
+          type: "destination",
+        };
+      } else {
+        // 중간 날: 숙소가 있으면 숙소, 없으면 마지막 장소에서 종료
+        // 연속 일정 지원: date가 startDate <= date < endDate 범위에 있는 숙소 찾기
+        const todayAccomData = tripAccommodations.find(
+          (a) => a.startDate <= date && date < a.endDate
+        );
+        const todayAccomNode = accommodationNodes.get(date);
+
+        if (todayAccomNode && todayAccomData) {
+          actualEndId = todayAccomNode.id;
+          dayDestinationInfo = {
+            name: todayAccomData.location.name,
+            address: todayAccomData.location.address,
+            lat: todayAccomData.location.lat,
+            lng: todayAccomData.location.lng,
+            type: "accommodation",
+          };
+        } else {
+          // 숙소 없음: 마지막 장소에서 종료 (transportToDestination 생략)
+          // 실제 끝점은 없지만 dummy ID 사용
+          actualEndId = "__no_destination__";
+          skipTransportToDestination = true;
+          // dayDestinationInfo는 undefined로 유지 (끝점 없음 = 마지막 장소에서 종료)
+        }
+      }
 
       if (actualPlaceIds.length === 0) {
         // 빈 날은 기본 정보만
@@ -574,6 +786,8 @@ export async function optimizeRoute(
           endTime: trip.dailyStartTime,
           dailyStartTime: trip.dailyStartTime,
           dailyEndTime: trip.dailyEndTime,
+          dayOrigin: dayOriginInfo,
+          dayDestination: dayDestinationInfo,
         });
         continue;
       }
@@ -587,8 +801,11 @@ export async function optimizeRoute(
         trip.dailyStartTime,
         trip.dailyEndTime,
         transportMode,
-        originNode.id,
-        destinationNode.id
+        actualStartId,
+        actualEndId,
+        skipTransportToDestination,
+        dayOriginInfo,
+        dayDestinationInfo
       );
 
       itinerary.push(dailyItinerary);

@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Clock, MapPin } from "lucide-react";
+import { Clock, Hotel, MapPin } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -71,15 +71,15 @@ export function DayContent({
         <DayContentEmpty />
       ) : (
         <div className="space-y-1">
-          {/* 출발지 출발 */}
-          {origin && (
+          {/* 시작점 (출발지 또는 전날 숙소) - dayOrigin 우선 사용 */}
+          {(itinerary.dayOrigin || origin) && (
             <>
               <OriginDestinationItem
-                type="origin"
-                name={origin.name}
+                type={itinerary.dayOrigin?.type ?? "origin"}
+                name={itinerary.dayOrigin?.name ?? origin?.name ?? ""}
                 time={itinerary.dailyStartTime || itinerary.startTime}
               />
-              {/* 출발지 → 첫 장소 이동 */}
+              {/* 시작점 → 첫 장소 이동 */}
               {itinerary.transportFromOrigin && (
                 <RouteSegmentConnector segment={itinerary.transportFromOrigin} />
               )}
@@ -103,15 +103,15 @@ export function DayContent({
             </React.Fragment>
           ))}
 
-          {/* 마지막 장소 → 도착지 이동 */}
-          {destination && (
+          {/* 끝점 (도착지 또는 숙소) - dayDestination 우선 사용 */}
+          {(itinerary.dayDestination || destination) && (
             <>
               {itinerary.transportToDestination && (
                 <RouteSegmentConnector segment={itinerary.transportToDestination} />
               )}
               <OriginDestinationItem
-                type="destination"
-                name={destination.name}
+                type={itinerary.dayDestination?.type ?? "destination"}
+                name={itinerary.dayDestination?.name ?? destination?.name ?? ""}
                 time={calculateDestinationArrivalTime(itinerary)}
               />
             </>
@@ -202,32 +202,41 @@ function minutesToTime(minutes: number): string {
 }
 
 interface OriginDestinationItemProps {
-  type: "origin" | "destination";
+  type: "origin" | "destination" | "accommodation" | "lastPlace";
   name: string;
   time: string;
 }
 
 /**
- * 출발지/도착지 표시 컴포넌트
+ * 출발지/도착지/숙소/전날 마지막 장소 표시 컴포넌트
  */
 function OriginDestinationItem({ type, name, time }: OriginDestinationItemProps) {
-  const isOrigin = type === "origin";
+  const isOrigin = type === "origin" || type === "lastPlace";
+  const isAccommodation = type === "accommodation";
+
+  // 타입별 스타일 및 라벨
+  const styles = isOrigin
+    ? "bg-green-100 text-green-600"
+    : isAccommodation
+      ? "bg-purple-100 text-purple-600"
+      : "bg-red-100 text-red-600";
+
+  const label = type === "origin" ? "출발" : type === "lastPlace" ? "시작" : isAccommodation ? "숙소" : "도착";
+  const Icon = isAccommodation ? Hotel : MapPin;
 
   return (
     <div className="flex items-center gap-3 p-3 rounded-lg border border-dashed bg-muted/30">
       <div
         className={cn(
           "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-          isOrigin ? "bg-green-100 text-green-600" : "bg-red-100 text-red-600"
+          styles
         )}
       >
-        <MapPin className="h-4 w-4" />
+        <Icon className="h-4 w-4" />
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-medium text-sm truncate">{name}</p>
-        <p className="text-xs text-muted-foreground">
-          {isOrigin ? "출발" : "도착"}
-        </p>
+        <p className="text-xs text-muted-foreground">{label}</p>
       </div>
       <div className="text-right shrink-0">
         <p className="text-sm font-medium">{time}</p>

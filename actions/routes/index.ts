@@ -19,7 +19,8 @@
  * - 다중 경로 제공
  *
  * ### 3. 도보 경로 (get-walking-route.ts)
- * - Haversine 공식 기반 거리 계산
+ * - TMAP API 사용 (실제 도보 경로, 폴리라인 포함)
+ * - TMAP 실패 시 Haversine 공식 기반 fallback
  * - 최대 10km 제한
  * - 도보 가능 여부 확인 함수 제공
  *

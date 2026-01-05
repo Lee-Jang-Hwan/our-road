@@ -5,6 +5,7 @@
 import type { Coordinate, Place } from "./place";
 import type { TransportMode } from "./route";
 import type { DailyItinerary, FixedSchedule } from "./schedule";
+import type { DailyAccommodation } from "./accommodation";
 
 /**
  * 여행 계획 상태
@@ -47,6 +48,8 @@ export interface Trip {
   transportModes: TransportMode[];
   /** 상태 */
   status: TripStatus;
+  /** 숙소 정보 배열 */
+  accommodations?: DailyAccommodation[];
   /** 생성일시 */
   createdAt: string;
   /** 수정일시 */
@@ -109,6 +112,7 @@ export interface TripRow {
   daily_end_time: string;
   transport_mode: TransportMode[];
   status: TripStatus;
+  accommodations: DailyAccommodation[] | null;
   created_at: string;
   updated_at: string;
 }
@@ -175,6 +179,7 @@ export function convertTripRowToTrip(row: TripRow): Trip {
     dailyEndTime: row.daily_end_time,
     transportModes: row.transport_mode,
     status: row.status,
+    accommodations: row.accommodations ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

@@ -8,7 +8,7 @@ import { LuChevronLeft } from "react-icons/lu";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TripForm } from "@/components/trip/trip-form";
+import { TripFormWizard } from "@/components/trip/trip-form-wizard";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { useTripDraft } from "@/hooks/use-trip-draft";
 import { createTrip } from "@/actions/trips";
@@ -116,10 +116,9 @@ export default function NewTripPage() {
 
       {/* 폼 */}
       <div className="flex-1 px-4 py-6">
-        <TripForm
+        <TripFormWizard
           onSubmit={handleSubmit}
           isLoading={isSubmitting}
-          submitText="여행 만들기"
         />
       </div>
     </main>

@@ -6,7 +6,6 @@ import { usePathname } from "next/navigation";
 import {
   AlertCircle,
   BarChart3,
-  ChevronLeft,
   Home,
   LayoutDashboard,
   LogOut,
@@ -14,7 +13,6 @@ import {
   Settings,
   Shield,
   Users,
-  X,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -23,7 +21,6 @@ import { Badge } from "@/components/ui/badge";
 import {
   Sheet,
   SheetContent,
-  SheetHeader,
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
@@ -296,11 +293,11 @@ export function AdminSidebar({
         />
       </aside>
 
-      {/* 모바일 햄버거 메뉴 */}
-      <div className="fixed left-4 top-4 z-50 md:hidden">
+      {/* 모바일 헤더 바 */}
+      <header className="fixed inset-x-0 top-0 z-50 flex h-16 items-center gap-4 border-b bg-background px-4 md:hidden">
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
-            <Button variant="outline" size="icon" className="size-10">
+            <Button variant="outline" size="icon" className="relative size-10">
               <Menu className="size-5" />
               <span className="sr-only">메뉴 열기</span>
               {unresolvedErrorCount > 0 && (
@@ -313,7 +310,9 @@ export function AdminSidebar({
               )}
             </Button>
           </SheetTrigger>
-          <SheetContent side="left" className="w-72 p-0">
+          <SheetContent side="left" className="w-[280px] p-0 sm:w-72">
+            {/* 접근성을 위한 숨겨진 제목 */}
+            <SheetTitle className="sr-only">관리자 메뉴</SheetTitle>
             <SidebarContent
               navItems={navItems}
               pathname={pathname}
@@ -324,7 +323,13 @@ export function AdminSidebar({
             />
           </SheetContent>
         </Sheet>
-      </div>
+
+        {/* 로고 */}
+        <Link href="/admin" className="flex items-center gap-2">
+          <Shield className="size-5 text-primary" />
+          <span className="font-semibold">OurRoad Admin</span>
+        </Link>
+      </header>
     </>
   );
 }
@@ -467,6 +472,8 @@ export function AdminLayout({
         onLogout={onLogout}
       />
       <main className="flex-1 overflow-y-auto">
+        {/* 모바일 헤더 영역 공간 확보 */}
+        <div className="h-16 md:hidden" />
         {children}
       </main>
     </div>

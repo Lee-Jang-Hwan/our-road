@@ -123,7 +123,8 @@ export const distributeByDaySchema = z.object({
     .array(uuidSchema)
     .min(1, "최소 1개 이상의 장소가 필요합니다")
     .max(30, "최대 30개까지 장소를 추가할 수 있습니다"),
-  maxDailyMinutes: z.number().int().min(120).max(720).default(480),
+  // maxDailyMinutes가 지정되지 않으면 trip의 dailyStartTime~dailyEndTime 사용
+  maxDailyMinutes: z.number().int().min(120).max(720).optional(),
 });
 
 /**

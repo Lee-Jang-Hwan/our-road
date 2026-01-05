@@ -10,7 +10,7 @@ import {
   LuLoader,
   LuSparkles,
 } from "react-icons/lu";
-import { AlertCircle, MapPin, Clock, ArrowRight } from "lucide-react";
+import { AlertCircle, AlertTriangle, MapPin, Clock, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -48,6 +48,8 @@ export default function ResultPage({ params }: ResultPageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasPlaces, setHasPlaces] = useState(true);
+  const [unassignedPlaces, setUnassignedPlaces] = useState<string[]>([]);
+  const [showUnassigned, setShowUnassigned] = useState(false);
 
   // 최적화 실행
   const runOptimization = useCallback(async () => {
@@ -64,6 +66,17 @@ export default function ResultPage({ params }: ResultPageProps) {
 
       if (result.data?.itinerary) {
         setItineraries(result.data.itinerary);
+
+        // 누락된 장소 확인
+        const unassignedError = result.data.errors?.find(
+          (e) => e.code === "EXCEEDS_DAILY_LIMIT"
+        );
+        if (unassignedError?.details?.unassignedPlaces) {
+          setUnassignedPlaces(unassignedError.details.unassignedPlaces as string[]);
+        } else {
+          setUnassignedPlaces([]);
+        }
+
         showSuccessToast("일정이 최적화되었습니다!");
       }
     } catch (err) {
@@ -193,6 +206,33 @@ export default function ResultPage({ params }: ResultPageProps) {
     (it) => it.dayNumber === selectedDay
   );
 
+  // 누락된 장소 정보 (이름 포함)
+  const unassignedPlaceInfos = useMemo(() => {
+    return unassignedPlaces
+      .map((placeId) => {
+        const place = places.find((p) => p.id === placeId);
+        return place ? { id: placeId, name: place.name } : null;
+      })
+      .filter((p): p is { id: string; name: string } => p !== null);
+  }, [unassignedPlaces, places]);
+
+  // 현재 일자의 시작점/끝점 좌표 계산 (dayOrigin/dayDestination 우선 사용)
+  const dayEndpoints = useMemo(() => {
+    if (!currentItinerary || !trip) return { origin: null, destination: null };
+
+    const dayOrigin = currentItinerary.dayOrigin;
+    const dayDestination = currentItinerary.dayDestination;
+
+    return {
+      origin: dayOrigin
+        ? { lat: dayOrigin.lat, lng: dayOrigin.lng, type: dayOrigin.type }
+        : { lat: trip.origin.lat, lng: trip.origin.lng, type: "origin" as const },
+      destination: dayDestination
+        ? { lat: dayDestination.lat, lng: dayDestination.lng, type: dayDestination.type }
+        : { lat: trip.destination.lat, lng: trip.destination.lng, type: "destination" as const },
+    };
+  }, [currentItinerary, trip]);
+
   // 현재 일자 마커 데이터 (일정 순서대로, 구간별 색상 적용)
   const currentDayMarkers = useMemo(() => {
     if (!currentItinerary) return [];
@@ -211,21 +251,21 @@ export default function ResultPage({ params }: ResultPageProps) {
     });
   }, [currentItinerary, places]);
 
-  // 맵 중심점 계산 (출발지, 장소들, 도착지 모두 포함)
+  // 맵 중심점 계산 (일자별 시작점, 장소들, 일자별 끝점 모두 포함)
   const mapCenter = useMemo<Coordinate>(() => {
     const allCoords: Coordinate[] = [];
 
-    // 출발지 추가
-    if (trip?.origin) {
-      allCoords.push({ lat: trip.origin.lat, lng: trip.origin.lng });
+    // 시작점 추가 (dayOrigin 또는 trip.origin)
+    if (dayEndpoints.origin) {
+      allCoords.push({ lat: dayEndpoints.origin.lat, lng: dayEndpoints.origin.lng });
     }
 
     // 장소들 추가
     currentDayMarkers.forEach((m) => allCoords.push(m.coordinate));
 
-    // 도착지 추가
-    if (trip?.destination) {
-      allCoords.push({ lat: trip.destination.lat, lng: trip.destination.lng });
+    // 끝점 추가 (dayDestination 또는 trip.destination)
+    if (dayEndpoints.destination) {
+      allCoords.push({ lat: dayEndpoints.destination.lat, lng: dayEndpoints.destination.lng });
     }
 
     if (allCoords.length === 0) {
@@ -238,12 +278,12 @@ export default function ResultPage({ params }: ResultPageProps) {
       lat: sumLat / allCoords.length,
       lng: sumLng / allCoords.length,
     };
-  }, [currentDayMarkers, trip?.origin, trip?.destination]);
+  }, [currentDayMarkers, dayEndpoints]);
 
-  // 경로 구간 배열 (출발지 → 장소들 순서대로 → 도착지)
+  // 경로 구간 배열 (시작점 → 장소들 순서대로 → 끝점)
   // 각 구간별 polyline(실제 경로) 또는 직선 연결, 구간별 색상 인덱스 포함
   const routeSegments = useMemo(() => {
-    if (!trip || !currentItinerary) return [];
+    if (!trip || !currentItinerary || !dayEndpoints.origin || !dayEndpoints.destination) return [];
 
     const segments: Array<{
       from: Coordinate;
@@ -254,10 +294,11 @@ export default function ResultPage({ params }: ResultPageProps) {
     }> = [];
 
     const transportMode = trip.transportModes.includes("car") ? "car" as const : "public" as const;
-    const originCoord = { lat: trip.origin.lat, lng: trip.origin.lng };
-    const destCoord = { lat: trip.destination.lat, lng: trip.destination.lng };
+    // 일자별 시작점/끝점 사용 (dayOrigin/dayDestination)
+    const originCoord = { lat: dayEndpoints.origin.lat, lng: dayEndpoints.origin.lng };
+    const destCoord = { lat: dayEndpoints.destination.lat, lng: dayEndpoints.destination.lng };
 
-    // 출발지 → 첫 장소 (첫 번째 장소 색상 사용)
+    // 시작점 → 첫 장소 (첫 번째 장소 색상 사용)
     if (currentItinerary.schedule.length > 0 && currentDayMarkers.length > 0) {
       segments.push({
         from: originCoord,
@@ -282,7 +323,7 @@ export default function ResultPage({ params }: ResultPageProps) {
       }
     }
 
-    // 마지막 장소 → 도착지 (마지막 장소 색상 사용)
+    // 마지막 장소 → 끝점 (마지막 장소 색상 사용)
     if (currentItinerary.schedule.length > 0 && currentDayMarkers.length > 0) {
       const lastIndex = currentDayMarkers.length - 1;
       segments.push({
@@ -295,7 +336,7 @@ export default function ResultPage({ params }: ResultPageProps) {
     }
 
     return segments;
-  }, [currentItinerary, currentDayMarkers, trip]);
+  }, [currentItinerary, currentDayMarkers, trip, dayEndpoints]);
 
   // 로딩 상태
   if (isLoading) {
@@ -379,6 +420,46 @@ export default function ResultPage({ params }: ResultPageProps) {
         </div>
       )}
 
+      {/* 누락된 장소 경고 */}
+      {unassignedPlaceInfos.length > 0 && (
+        <div className="px-4 py-3 border-b bg-amber-50 dark:bg-amber-950/30">
+          <button
+            type="button"
+            className="w-full flex items-center justify-between text-left"
+            onClick={() => setShowUnassigned(!showUnassigned)}
+          >
+            <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span className="text-sm font-medium">
+                {unassignedPlaceInfos.length}개 장소가 일정에 포함되지 못했습니다
+              </span>
+            </div>
+            {showUnassigned ? (
+              <ChevronUp className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+            )}
+          </button>
+          {showUnassigned && (
+            <div className="mt-2 pl-6 space-y-1">
+              <p className="text-xs text-amber-600 dark:text-amber-500 mb-2">
+                일일 활동 시간 내에 모든 장소를 배치할 수 없어 다음 장소들이 제외되었습니다.
+                여행 기간을 늘리거나 장소 수를 줄여보세요.
+              </p>
+              {unassignedPlaceInfos.map((place) => (
+                <div
+                  key={place.id}
+                  className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400"
+                >
+                  <MapPin className="h-3 w-3 shrink-0" />
+                  <span>{place.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 카카오 맵 */}
       {days.length > 0 && trip && (
         <div className="w-full h-48 border-b relative overflow-hidden">
@@ -397,22 +478,26 @@ export default function ResultPage({ params }: ResultPageProps) {
               />
             )}
 
-            {/* 출발지 마커 */}
-            <SingleMarker
-              coordinate={{ lat: trip.origin.lat, lng: trip.origin.lng }}
-              type="origin"
-            />
+            {/* 시작점 마커 (출발지, 숙소, 또는 전날 마지막 장소) */}
+            {dayEndpoints.origin && (
+              <SingleMarker
+                coordinate={{ lat: dayEndpoints.origin.lat, lng: dayEndpoints.origin.lng }}
+                type={dayEndpoints.origin.type}
+              />
+            )}
 
             {/* 장소 마커들 */}
             {currentDayMarkers.length > 0 && (
               <PlaceMarkers markers={currentDayMarkers} size="md" />
             )}
 
-            {/* 도착지 마커 */}
-            <SingleMarker
-              coordinate={{ lat: trip.destination.lat, lng: trip.destination.lng }}
-              type="destination"
-            />
+            {/* 끝점 마커 (도착지 또는 숙소) */}
+            {dayEndpoints.destination && (
+              <SingleMarker
+                coordinate={{ lat: dayEndpoints.destination.lat, lng: dayEndpoints.destination.lng }}
+                type={dayEndpoints.destination.type}
+              />
+            )}
 
             <OffScreenMarkers markers={currentDayMarkers} />
             <FitBoundsButton markers={currentDayMarkers} />

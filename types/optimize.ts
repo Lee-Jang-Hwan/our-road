@@ -18,7 +18,7 @@ export type OptimizeAlgorithm =
  * 최적화 옵션
  */
 export interface OptimizeOptions {
-  /** 일일 최대 활동 시간 (분, 기본: 480 = 8시간) */
+  /** 일일 최대 활동 시간 (분, 미지정 시 trip의 dailyStartTime~dailyEndTime 전체 사용) */
   maxDailyMinutes: number;
   /** 하루 시작 시간 (시, 기본: 9) */
   startHour: number;
@@ -86,6 +86,7 @@ export type OptimizeErrorCode =
   | "TIMEOUT"
   | "INSUFFICIENT_PLACES"
   | "EXCEEDS_DAILY_LIMIT"
+  | "TRANSIT_DETAILS_ERROR"
   | "UNKNOWN";
 
 /**

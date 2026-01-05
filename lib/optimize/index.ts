@@ -27,7 +27,7 @@
  *
  * ### 5. 일자별 분배 (daily-distributor.ts)
  * - 시간 제약에 맞게 경로를 일자별로 분배
- * - 일일 최대 480분 (8시간) 제한
+ * - trip의 dailyStartTime~dailyEndTime 전체 시간 사용
  *
  * ### 6. 제약 처리 (constraint-handler.ts)
  * - 고정 일정 충돌 감지
@@ -209,3 +209,19 @@ export {
   getTotalFixedMinutes,
   getAvailableMinutes,
 } from "./constraint-handler";
+
+// ============================================
+// Enrich Transit Routes Exports
+// ============================================
+
+export type {
+  TransitEnrichmentSegment,
+  EnrichedTransitRoute,
+} from "./enrich-transit-routes";
+
+export {
+  enrichTransitRoutes,
+  enrichDistanceMatrixWithTransit,
+  extractRouteSegments,
+  createSegmentKey,
+} from "./enrich-transit-routes";

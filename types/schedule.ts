@@ -79,6 +79,22 @@ export interface ScheduleItem {
 }
 
 /**
+ * 일자별 시작점/끝점 정보
+ */
+export interface DayEndpoint {
+  /** 장소명 */
+  name: string;
+  /** 주소 */
+  address: string;
+  /** 위도 */
+  lat: number;
+  /** 경도 */
+  lng: number;
+  /** 유형: origin(출발지), destination(도착지), accommodation(숙소), lastPlace(전날 마지막 장소) */
+  type: "origin" | "destination" | "accommodation" | "lastPlace";
+}
+
+/**
  * 일자별 일정
  */
 export interface DailyItinerary {
@@ -108,6 +124,10 @@ export interface DailyItinerary {
   dailyStartTime?: string;
   /** 설정된 일과 종료 시간 (HH:mm) */
   dailyEndTime?: string;
+  /** 이 날의 시작점 정보 (출발지 또는 전날 숙소) */
+  dayOrigin?: DayEndpoint;
+  /** 이 날의 끝점 정보 (도착지 또는 숙소) */
+  dayDestination?: DayEndpoint;
 }
 
 /**

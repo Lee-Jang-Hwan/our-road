@@ -343,7 +343,8 @@ export async function distributeAllPlaces(
     return distributeDays({
       tripId,
       placeIds,
-      maxDailyMinutes: maxDailyMinutes ?? 480,
+      // maxDailyMinutes가 지정되지 않으면 distributeDays에서 trip 시간 범위 사용
+      ...(maxDailyMinutes !== undefined && { maxDailyMinutes }),
     });
   } catch (error) {
     console.error("전체 장소 분배 중 예외 발생:", error);

@@ -31,6 +31,7 @@ function convertRowToTrip(row: TripRow): Trip {
     dailyEndTime: row.daily_end_time,
     transportModes: row.transport_mode,
     status: row.status,
+    accommodations: row.accommodations ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -97,6 +98,7 @@ export async function createTrip(
         daily_start_time: validatedData.dailyStartTime,
         daily_end_time: validatedData.dailyEndTime,
         transport_mode: validatedData.transportModes,
+        accommodations: validatedData.accommodations ?? [],
         status: "draft",
       })
       .select()
