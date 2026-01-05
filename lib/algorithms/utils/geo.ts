@@ -11,6 +11,23 @@ export interface Vector2D {
 
 const EARTH_RADIUS_METERS = 6371000;
 
+// Memoization cache for distance calculations
+const distanceCache = new Map<string, number>();
+const CACHE_SIZE_LIMIT = 10000;
+
+function createDistanceCacheKey(a: LatLng, b: LatLng): string {
+  // Create a consistent key regardless of order
+  const lat1 = Math.round(a.lat * 1000000) / 1000000;
+  const lng1 = Math.round(a.lng * 1000000) / 1000000;
+  const lat2 = Math.round(b.lat * 1000000) / 1000000;
+  const lng2 = Math.round(b.lng * 1000000) / 1000000;
+
+  if (lat1 < lat2 || (lat1 === lat2 && lng1 < lng2)) {
+    return `${lat1},${lng1}:${lat2},${lng2}`;
+  }
+  return `${lat2},${lng2}:${lat1},${lng1}`;
+}
+
 export function calculateDistance(a: LatLng, b: LatLng): number {
   // Validate inputs
   if (
@@ -22,6 +39,13 @@ export function calculateDistance(a: LatLng, b: LatLng): number {
     !Number.isFinite(b.lng)
   ) {
     throw new Error("Invalid coordinates for distance calculation");
+  }
+
+  // Check cache
+  const cacheKey = createDistanceCacheKey(a, b);
+  const cached = distanceCache.get(cacheKey);
+  if (cached !== undefined) {
+    return cached;
   }
 
   const toRad = (value: number) => (value * Math.PI) / 180;
@@ -40,7 +64,43 @@ export function calculateDistance(a: LatLng, b: LatLng): number {
     Math.cos(lat1) * Math.cos(lat2) * sinDLng * sinDLng;
 
   const c = 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
-  return EARTH_RADIUS_METERS * c;
+  const distance = EARTH_RADIUS_METERS * c;
+
+  // Store in cache (with size limit)
+  if (distanceCache.size >= CACHE_SIZE_LIMIT) {
+    // Remove oldest entry (first key)
+    const firstKey = distanceCache.keys().next().value;
+    if (firstKey) {
+      distanceCache.delete(firstKey);
+    }
+  }
+  distanceCache.set(cacheKey, distance);
+
+  return distance;
+}
+
+/**
+ * Clear the distance calculation cache
+ * Useful for testing or memory management
+ */
+export function clearDistanceCache(): void {
+  distanceCache.clear();
+}
+
+// Memoization cache for centroid calculations
+const centroidCache = new Map<string, LatLng>();
+const CENTROID_CACHE_SIZE_LIMIT = 1000;
+
+function createCentroidCacheKey(points: LatLng[]): string {
+  // Create a hash of the points array
+  return points
+    .map((p) => {
+      const lat = Math.round(p.lat * 1000000) / 1000000;
+      const lng = Math.round(p.lng * 1000000) / 1000000;
+      return `${lat},${lng}`;
+    })
+    .sort()
+    .join('|');
 }
 
 export function calculateCentroid(points: LatLng[]): LatLng {
@@ -61,6 +121,13 @@ export function calculateCentroid(points: LatLng[]): LatLng {
     throw new Error("No valid points to calculate centroid");
   }
 
+  // Check cache
+  const cacheKey = createCentroidCacheKey(validPoints);
+  const cached = centroidCache.get(cacheKey);
+  if (cached !== undefined) {
+    return cached;
+  }
+
   const sum = validPoints.reduce(
     (acc, point) => {
       acc.lat += point.lat;
@@ -70,10 +137,29 @@ export function calculateCentroid(points: LatLng[]): LatLng {
     { lat: 0, lng: 0 }
   );
 
-  return {
+  const centroid = {
     lat: sum.lat / validPoints.length,
     lng: sum.lng / validPoints.length,
   };
+
+  // Store in cache (with size limit)
+  if (centroidCache.size >= CENTROID_CACHE_SIZE_LIMIT) {
+    const firstKey = centroidCache.keys().next().value;
+    if (firstKey) {
+      centroidCache.delete(firstKey);
+    }
+  }
+  centroidCache.set(cacheKey, centroid);
+
+  return centroid;
+}
+
+/**
+ * Clear the centroid calculation cache
+ * Useful for testing or memory management
+ */
+export function clearCentroidCache(): void {
+  centroidCache.clear();
 }
 
 export function calculateDirectionVector(from: LatLng, to: LatLng): Vector2D {

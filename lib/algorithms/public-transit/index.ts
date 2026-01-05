@@ -76,8 +76,8 @@ export async function generatePublicTransitRoute(
   const waypointMap = new Map<string, Waypoint>();
   waypoints.forEach((wp) => waypointMap.set(wp.id, wp));
 
-  // Generate day plans
-  const dayPlans = generateDayPlans(
+  // Generate day plans (parallel within-cluster ordering)
+  const dayPlans = await generateDayPlans(
     orderedClusters,
     waypointMap,
     endAnchor,

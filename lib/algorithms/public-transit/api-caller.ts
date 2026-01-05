@@ -5,6 +5,7 @@
 import type { DayPlan, LatLng, SegmentCost, SegmentKey, Waypoint } from "@/types";
 import { getBestTransitRouteWithDetails } from "@/lib/api/odsay";
 import { calculateDistance } from "../utils/geo";
+import pLimit from "p-limit";
 
 export interface SegmentRequest {
   key: SegmentKey;
@@ -157,6 +158,10 @@ function recordFailure(): void {
   }
 }
 
+// Concurrency limit for API calls
+const API_CONCURRENCY_LIMIT = 3; // Maximum 3 concurrent API requests
+const apiLimit = pLimit(API_CONCURRENCY_LIMIT);
+
 export async function callRoutingAPIForSegments(
   segments: SegmentRequest[]
 ): Promise<SegmentCost[]> {
@@ -164,15 +169,12 @@ export async function callRoutingAPIForSegments(
     return [];
   }
 
-  const results: SegmentCost[] = [];
-  const batchSize = 3;
-  const maxRetries = 3; // Increased from 2 to 3
+  const maxRetries = 3;
 
-  for (let i = 0; i < segments.length; i += batchSize) {
-    const batch = segments.slice(i, i + batchSize);
-
-    const batchResults = await Promise.all(
-      batch.map(async (segment) => {
+  // Use p-limit to control concurrency instead of manual batching
+  const results = await Promise.all(
+    segments.map((segment) =>
+      apiLimit(async () => {
         // Check circuit breaker
         if (!checkCircuitBreaker()) {
           console.warn(
@@ -235,15 +237,8 @@ export async function callRoutingAPIForSegments(
         recordFailure();
         return fallbackSegmentCost(segment);
       })
-    );
-
-    results.push(...batchResults);
-
-    // Small delay between batches to avoid rate limiting
-    if (i + batchSize < segments.length) {
-      await new Promise((resolve) => setTimeout(resolve, 300));
-    }
-  }
+    )
+  );
 
   return results;
 }

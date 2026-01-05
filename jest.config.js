@@ -24,7 +24,11 @@ const config = {
         esModuleInterop: true,
       },
     }],
+    '^.+\\.js$': ['babel-jest'],
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(p-limit|yocto-queue)/)',
+  ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
 }
 
