@@ -522,8 +522,8 @@
 - [x] API 기준 시간 초과 후 재최적화 (재호출, 3회 제한)
 - [x] API 실패 처리 및 재시도 (Exponential Backoff + Circuit Breaker)
 - [x] Unit 테스트 (31개 테스트 통과)
-- [ ] Integration 테스트
-- [ ] 성능 최적화
+- [x] Integration 테스트 (12개 테스트 통과)
+- [x] 성능 최적화 (메모이제이션 + 병렬 처리)
 
 ## 🟢 Nice-to-Have (Phase 3 - 고도화)
 - [ ] 사용자 선호도 반영
