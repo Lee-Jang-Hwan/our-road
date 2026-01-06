@@ -10,9 +10,9 @@ import {
   LuCalendar,
   LuEllipsisVertical,
   LuTrash2,
-  LuPencil,
   LuLoader,
   LuMap,
+  LuChevronLeft,
 } from "react-icons/lu";
 
 import { Button } from "@/components/ui/button";
@@ -94,12 +94,10 @@ function formatDate(dateStr: string): string {
  */
 function TripCard({
   trip,
-  onEdit,
   onDelete,
   onView,
 }: {
   trip: TripListItem;
-  onEdit: () => void;
   onDelete: () => void;
   onView: () => void;
 }) {
@@ -150,10 +148,6 @@ function TripCard({
               <DropdownMenuItem onClick={onView} className="touch-target">
                 <LuMap className="w-4 h-4 mr-2" />
                 상세 보기
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={onEdit} className="touch-target">
-                <LuPencil className="w-4 h-4 mr-2" />
-                편집하기
               </DropdownMenuItem>
               <DropdownMenuItem onClick={onDelete} className="text-destructive touch-target">
                 <LuTrash2 className="w-4 h-4 mr-2" />
@@ -291,7 +285,17 @@ export default function MyTripsPage() {
     <main className="flex flex-col min-h-[calc(100dvh-64px)]">
       {/* 헤더 */}
       <header className="flex items-center justify-between px-4 py-3 border-b">
-        <h1 className="font-semibold text-lg">내 여행</h1>
+        <div className="flex items-center gap-2">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="touch-target"
+            onClick={() => router.back()}
+          >
+            <LuChevronLeft className="w-5 h-5" />
+          </Button>
+          <h1 className="font-semibold text-lg">내 여행</h1>
+        </div>
         <Link href="/plan">
           <Button size="icon" variant="ghost" className="touch-target">
             <LuPlus className="w-5 h-5" />
@@ -314,7 +318,6 @@ export default function MyTripsPage() {
                   key={trip.id}
                   trip={trip}
                   onView={() => router.push(`/my/trips/${trip.id}`)}
-                  onEdit={() => router.push(`/plan/${trip.id}`)}
                   onDelete={() => handleDeleteClick(trip)}
                 />
               ))}
