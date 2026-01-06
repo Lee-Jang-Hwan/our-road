@@ -73,8 +73,8 @@ export function TripFormStep2({
   // 숙소 추가
   const handleAddAccommodation = () => {
     append({
-      startDate: "", // 사용자가 캘린더에서 선택
-      endDate: "", // 사용자가 캘린더에서 선택
+      startDate: startDateValue || "",
+      endDate: endDateValue || "",
       location: undefined as unknown as TripLocation,
       checkInTime: "15:00",
       checkOutTime: "11:00",
