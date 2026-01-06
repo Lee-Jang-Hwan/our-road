@@ -3,6 +3,7 @@
 // ============================================
 
 import { createClient } from "@supabase/supabase-js";
+import { logRateLimit } from "@/lib/utils/api-logger";
 
 // ============================================
 // Configuration
@@ -202,6 +203,11 @@ export async function incrementApiCallCount(apiName: string): Promise<number> {
       lastUpdated: Date.now(),
     });
 
+    // Rate limit 로깅
+    const limit = API_DAILY_LIMITS[apiName] || 0;
+    const remaining = Math.max(0, limit - newCount);
+    logRateLimit(apiName, newCount, limit, remaining);
+
     return newCount;
   } catch (error) {
     // DB 오류 시 캐시만 증가
@@ -209,6 +215,12 @@ export async function incrementApiCallCount(apiName: string): Promise<number> {
     if (cached && cached.date === today) {
       cached.count++;
       cached.lastUpdated = Date.now();
+
+      // Rate limit 로깅
+      const limit = API_DAILY_LIMITS[apiName] || 0;
+      const remaining = Math.max(0, limit - cached.count);
+      logRateLimit(apiName, cached.count, limit, remaining);
+
       return cached.count;
     }
 

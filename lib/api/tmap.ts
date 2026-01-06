@@ -3,6 +3,7 @@
 // ============================================
 
 import type { Coordinate, WalkingRoute } from "@/types";
+import { logApiStart, logApiSuccess, logApiError } from "@/lib/utils/api-logger";
 
 // ============================================
 // Configuration
@@ -229,6 +230,12 @@ export async function getTmapWalkingRoute(
   origin: Coordinate,
   destination: Coordinate
 ): Promise<WalkingRoute | null> {
+  const startTime = logApiStart("TMap Walking Route", {
+    api: "TMap",
+    method: "POST",
+    params: { origin, destination },
+  });
+
   if (!TMAP_APP_KEY) {
     console.warn("TMAP_APP_KEY가 설정되지 않았습니다. Fallback 사용.");
     return null;
@@ -258,6 +265,10 @@ export async function getTmapWalkingRoute(
     });
 
     if (!data.features || data.features.length === 0) {
+      logApiSuccess("TMap Walking Route", startTime, {
+        api: "TMap",
+        params: { result: "no features" },
+      });
       return null;
     }
 
@@ -277,12 +288,23 @@ export async function getTmapWalkingRoute(
 
     const polyline = encodePolyline(allCoordinates);
 
-    return {
+    const result = {
       totalDuration: Math.ceil(totalTime / 60), // 초 → 분
       totalDistance: totalDistance, // 미터
       polyline,
     };
+
+    logApiSuccess("TMap Walking Route", startTime, {
+      api: "TMap",
+      params: {
+        duration: result.totalDuration,
+        distance: result.totalDistance,
+      },
+    });
+
+    return result;
   } catch (error) {
+    logApiError("TMap Walking Route", startTime, error);
     if (error instanceof TmapApiError) {
       console.error("TMAP API 오류:", error.message);
     } else {
