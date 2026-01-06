@@ -751,8 +751,6 @@ export default function NavigatePage({ params }: NavigatePageProps) {
         <EmptyState
           type="itinerary"
           description="최적화된 일정이 없습니다. 일정을 최적화한 후 네비게이션을 시작해주세요."
-          actionLabel="일정 편집하기"
-          onAction={() => window.location.href = `/plan/${tripId}`}
         />
       </main>
     );
