@@ -209,19 +209,3 @@ export {
   getTotalFixedMinutes,
   getAvailableMinutes,
 } from "./constraint-handler";
-
-// ============================================
-// Enrich Transit Routes Exports
-// ============================================
-
-export type {
-  TransitEnrichmentSegment,
-  EnrichedTransitRoute,
-} from "./enrich-transit-routes";
-
-export {
-  enrichTransitRoutes,
-  enrichDistanceMatrixWithTransit,
-  extractRouteSegments,
-  createSegmentKey,
-} from "./enrich-transit-routes";

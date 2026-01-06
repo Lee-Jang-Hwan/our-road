@@ -47,6 +47,9 @@ export function TripFormStep2({
   const startDateValue = form.watch("startDate");
   const endDateValue = form.watch("endDate");
   const originValue = form.watch("origin") as TripLocation | undefined;
+  const destinationValue = form.watch("destination") as
+    | TripLocation
+    | undefined;
 
   // 도착지를 출발지와 동일하게 설정하는 상태
   const [sameAsOrigin, setSameAsOrigin] = React.useState(false);
@@ -65,10 +68,18 @@ export function TripFormStep2({
 
   // 출발지 변경 시 도착지도 동기화
   React.useEffect(() => {
-    if (sameAsOrigin && originValue) {
+    if (!sameAsOrigin || !originValue) return;
+
+    const isSame =
+      destinationValue?.name === originValue.name &&
+      destinationValue?.address === originValue.address &&
+      destinationValue?.lat === originValue.lat &&
+      destinationValue?.lng === originValue.lng;
+
+    if (!isSame) {
       form.setValue("destination", originValue, { shouldValidate: true });
     }
-  }, [sameAsOrigin, originValue, form]);
+  }, [sameAsOrigin, originValue, destinationValue, form]);
 
   // 숙소 추가
   const handleAddAccommodation = () => {
