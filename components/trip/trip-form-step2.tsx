@@ -73,7 +73,6 @@ export function TripFormStep2({
   // 숙소 추가
   const handleAddAccommodation = () => {
     append({
- ui수정
       startDate: startDateValue || "",
       endDate: endDateValue || "",
       location: undefined as unknown as TripLocation,
