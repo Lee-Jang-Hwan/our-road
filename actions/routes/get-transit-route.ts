@@ -92,15 +92,14 @@ export async function getTransitRoute(
       };
     }
 
-    const { origin, destination, sortType, searchType, limit } =
-      validationResult.data;
+    const validated = validationResult.data;
 
     // 3. lib/api/odsay.ts의 searchTransitRoute 사용
     const result = await searchTransitRoute({
-      origin,
-      destination,
-      sortType,
-      searchType,
+      origin: validated.origin as Coordinate,
+      destination: validated.destination as Coordinate,
+      sortType: validated.sortType,
+      searchType: validated.searchType,
     });
 
     // 경로가 없는 경우
@@ -116,8 +115,8 @@ export async function getTransitRoute(
 
     // limit 적용
     let routes = result.routes;
-    if (limit && routes.length > limit) {
-      routes = routes.slice(0, limit);
+    if (validated.limit && routes.length > validated.limit) {
+      routes = routes.slice(0, validated.limit);
     }
 
     // 4. 결과 반환
