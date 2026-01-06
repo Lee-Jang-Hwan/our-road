@@ -47,7 +47,7 @@ export async function generateRoute(
   }
 
   try {
-    const route = await generatePublicTransitRoute(validationResult.data);
+    const route = await generatePublicTransitRoute(validationResult.data as import("@/types").TripInput);
     return {
       success: true,
       data: route,

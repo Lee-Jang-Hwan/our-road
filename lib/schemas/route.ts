@@ -83,7 +83,7 @@ export const waypointSchema = z.object({
 });
 
 export const tripInputSchema = z.object({
-  tripId: z.string().min(1),
+  tripId: z.string().min(1).optional(),
   days: z.number().int().min(1).max(30),
   start: latLngSchema,
   end: latLngSchema.optional(),

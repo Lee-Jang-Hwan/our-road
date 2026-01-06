@@ -218,7 +218,7 @@ export interface Waypoint {
 }
 
 export interface TripInput {
-  tripId: string;
+  tripId?: string;
   days: number;
   start: LatLng;
   end?: LatLng;

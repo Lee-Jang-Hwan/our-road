@@ -5,9 +5,7 @@
 // ============================================
 
 import { useState } from 'react';
-import { useAtom } from 'jotai';
 import type { TripOutput, Waypoint } from '@/types';
-import { activeTabAtom, selectedDayAtom } from '@/lib/states/route-view-atoms';
 import RouteMap from './route-map';
 import RouteStatistics from './route-statistics';
 import RouteDetails from './route-details';
@@ -24,8 +22,8 @@ export default function RouteView({
   waypoints,
   dailyMaxMinutes,
 }: RouteViewProps) {
-  const [activeTab, setActiveTab] = useAtom(activeTabAtom);
-  const [selectedDay, setSelectedDay] = useAtom(selectedDayAtom);
+  const [activeTab, setActiveTab] = useState<'map' | 'details' | 'statistics'>('map');
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   return (
     <div className="w-full h-full flex flex-col lg:flex-row gap-4 lg:p-4">
