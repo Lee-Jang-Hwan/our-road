@@ -6,6 +6,7 @@ import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import {
   LuChevronLeft,
+  LuPencil,
   LuTrash2,
   LuShare2,
   LuLoader,
@@ -539,17 +540,31 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
             <LuRoute className="w-8 h-8 text-muted-foreground" />
           </div>
           <h3 className="font-semibold text-lg mb-2">최적화된 일정이 없습니다</h3>
-          <p className="text-muted-foreground text-sm text-center">
+          <p className="text-muted-foreground text-sm text-center mb-6">
             {trip.places.length > 0
               ? "장소가 추가되어 있습니다. 일정을 최적화해보세요."
               : "장소를 추가하고 일정을 최적화해보세요."}
           </p>
+          <Link href={`/plan/${tripId}`}>
+            <Button>
+              <LuPencil className="w-4 h-4 mr-2" />
+              편집하기
+            </Button>
+          </Link>
         </div>
       )}
 
       {/* 하단 버튼 */}
       <div className="sticky bottom-0 p-4 bg-background border-t safe-area-bottom">
         <div className="flex gap-3">
+          <Button
+            variant="outline"
+            className="flex-1 h-12"
+            onClick={() => router.push(`/plan/${tripId}`)}
+          >
+            <LuPencil className="w-4 h-4 mr-2" />
+            편집하기
+          </Button>
           {hasItinerary && (
             <Button
               className="flex-1 h-12"
@@ -559,14 +574,15 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
               네비게이션
             </Button>
           )}
-          <Button
-            variant="destructive"
-            className={hasItinerary ? "h-12" : "flex-1 h-12"}
-            onClick={() => setDeleteDialogOpen(true)}
-          >
-            <LuTrash2 className="w-4 h-4 mr-2" />
-            삭제
-          </Button>
+          {!hasItinerary && (
+            <Button
+              variant="destructive"
+              className="h-12"
+              onClick={() => setDeleteDialogOpen(true)}
+            >
+              <LuTrash2 className="w-4 h-4" />
+            </Button>
+          )}
         </div>
       </div>
 
