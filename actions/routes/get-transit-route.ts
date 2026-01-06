@@ -2,7 +2,8 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { transitRouteSchema, type TransitRouteInput } from "@/lib/schemas";
-import type { TransitRoute, Coordinate, RouteSegment, TransitSegment, PublicTransportMode } from "@/types";
+import type { TransitRoute, Coordinate } from "@/types";
+import { searchTransitRoute, ODsayApiError } from "@/lib/api/odsay";
 
 // ============================================
 // Types
@@ -34,152 +35,6 @@ export interface GetTransitRouteResult {
     code: "ROUTE_NOT_FOUND" | "API_ERROR" | "INVALID_COORDINATES" | "TIMEOUT" | "AUTH_ERROR" | "VALIDATION_ERROR";
     message: string;
     details?: Record<string, unknown>;
-  };
-}
-
-/**
- * ODsay API 응답 타입 (간소화)
- */
-interface ODsaySearchPathResult {
-  pointDistance: number;
-  busCount: number;
-  subwayCount: number;
-  subwayBusCount: number;
-  path: ODsayPath[];
-}
-
-interface ODsayPath {
-  pathType: number;
-  info: {
-    totalTime: number;
-    totalDistance: number;
-    payment: number;
-    busTransitCount: number;
-    subwayTransitCount: number;
-    totalWalk: number;
-    totalWalkTime: number;
-  };
-  subPath: ODsaySubPath[];
-}
-
-interface ODsaySubPath {
-  trafficType: number;
-  distance: number;
-  sectionTime: number;
-  stationCount?: number;
-  startName?: string;
-  endName?: string;
-  lane?: Array<{
-    name?: string;
-    subwayCode?: number;
-    busNo?: string;
-    type?: number;
-  }>;
-}
-
-// ============================================
-// Configuration
-// ============================================
-
-const ODSAY_API_KEY = process.env.ODSAY_API_KEY;
-const ODSAY_BASE_URL = "https://api.odsay.com/v1/api";
-
-// ============================================
-// Helper Functions
-// ============================================
-
-/**
- * 지수 백오프 지연 계산
- */
-function calculateBackoffDelay(attempt: number): number {
-  const baseDelay = 1000;
-  const maxDelay = 10000;
-  const delay = baseDelay * Math.pow(2, attempt);
-  const jitter = Math.random() * 1000;
-  return Math.min(delay + jitter, maxDelay);
-}
-
-/**
- * 지연 함수
- */
-function delay(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-/**
- * ODsay trafficType을 TransportMode로 변환
- */
-function getTransportMode(trafficType: number): "walking" | "public" {
-  // 1: 지하철, 2: 버스, 3: 도보
-  return trafficType === 3 ? "walking" : "public";
-}
-
-/**
- * ODsay 대중교통 타입을 PublicTransportMode로 변환
- */
-function getPublicTransportMode(trafficType: number, subwayCode?: number): PublicTransportMode {
-  if (trafficType === 1) {
-    return "subway";
-  } else if (trafficType === 2) {
-    return "bus";
-  }
-  return "bus"; // 기본값
-}
-
-/**
- * ODsay Path를 TransitRoute로 변환
- */
-function convertODsayPathToTransitRoute(path: ODsayPath): TransitRoute {
-  const segments: (RouteSegment | TransitSegment)[] = [];
-
-  let walkingTime = 0;
-  let walkingDistance = 0;
-
-  for (const subPath of path.subPath) {
-    if (subPath.trafficType === 3) {
-      // 도보 구간
-      walkingTime += subPath.sectionTime;
-      walkingDistance += subPath.distance;
-
-      const segment: RouteSegment = {
-        mode: "walking",
-        distance: subPath.distance,
-        duration: subPath.sectionTime,
-        description: subPath.startName && subPath.endName
-          ? `${subPath.startName} → ${subPath.endName}`
-          : "도보 이동",
-      };
-      segments.push(segment);
-    } else {
-      // 대중교통 구간
-      const mode = getPublicTransportMode(
-        subPath.trafficType,
-        subPath.lane?.[0]?.subwayCode
-      );
-
-      const lineName = subPath.lane?.[0]?.name || subPath.lane?.[0]?.busNo;
-
-      const segment: TransitSegment = {
-        mode,
-        lineName,
-        startStation: subPath.startName ?? "",
-        endStation: subPath.endName ?? "",
-        stationCount: subPath.stationCount,
-        duration: subPath.sectionTime,
-        distance: subPath.distance,
-      };
-      segments.push(segment);
-    }
-  }
-
-  return {
-    totalDuration: path.info.totalTime,
-    totalDistance: path.info.totalDistance,
-    totalFare: path.info.payment,
-    transferCount: path.info.busTransitCount + path.info.subwayTransitCount - 1,
-    segments,
-    walkingTime,
-    walkingDistance,
   };
 }
 
@@ -222,19 +77,7 @@ export async function getTransitRoute(
       };
     }
 
-    // 2. API 키 확인
-    if (!ODSAY_API_KEY) {
-      console.error("ODSAY_API_KEY가 설정되지 않았습니다.");
-      return {
-        success: false,
-        error: {
-          code: "API_ERROR",
-          message: "경로 조회 서비스가 준비되지 않았습니다.",
-        },
-      };
-    }
-
-    // 3. Zod 스키마 검증
+    // 2. Zod 스키마 검증
     const validationResult = transitRouteSchema.safeParse(input);
     if (!validationResult.success) {
       const errorMessage = validationResult.error.errors
@@ -249,132 +92,69 @@ export async function getTransitRoute(
       };
     }
 
-    const { origin, destination, sortType, searchType, limit } =
-      validationResult.data;
+    const validated = validationResult.data;
 
-    // 4. ODsay API 요청 URL 구성
-    // API 키에 특수문자(/)가 있으므로 encodeURIComponent로 직접 인코딩
-    // URLSearchParams는 /를 인코딩하지 않아 문제가 발생함
-    const url = `${ODSAY_BASE_URL}/searchPubTransPathT?apiKey=${encodeURIComponent(ODSAY_API_KEY)}&SX=${origin.lng}&SY=${origin.lat}&EX=${destination.lng}&EY=${destination.lat}&OPT=${sortType ?? 0}&SearchType=${searchType ?? 0}&lang=0&output=json`;
+    // 3. lib/api/odsay.ts의 searchTransitRoute 사용
+    const result = await searchTransitRoute({
+      origin: validated.origin as Coordinate,
+      destination: validated.destination as Coordinate,
+      sortType: validated.sortType,
+      searchType: validated.searchType,
+    });
 
-    // 5. API 호출 (재시도 로직 포함)
-    let lastError: Error | null = null;
-    const maxRetries = 3;
-
-    for (let attempt = 0; attempt <= maxRetries; attempt++) {
-      try {
-        const response = await fetch(url, {
-          method: "GET",
-          headers: {
-            Accept: "application/json",
-          },
-        });
-
-        // 429 (Too Many Requests) - 재시도
-        if (response.status === 429 && attempt < maxRetries) {
-          await delay(calculateBackoffDelay(attempt));
-          continue;
-        }
-
-        // 5xx 에러 - 재시도
-        if (response.status >= 500 && attempt < maxRetries) {
-          await delay(calculateBackoffDelay(attempt));
-          continue;
-        }
-
-        if (!response.ok) {
-          console.error("ODsay API HTTP 오류:", response.status);
-          return {
-            success: false,
-            error: {
-              code: "API_ERROR",
-              message: "경로 조회에 실패했습니다.",
-              details: { status: response.status },
-            },
-          };
-        }
-
-        const data = await response.json();
-
-        // ODsay 자체 에러 응답 확인
-        if (data.error) {
-          const errorCode = data.error.code;
-
-          // 경로 없음 에러 (-98, -99)
-          if (errorCode === -98 || errorCode === -99) {
-            return {
-              success: false,
-              error: {
-                code: "ROUTE_NOT_FOUND",
-                message: "해당 경로를 찾을 수 없습니다. 출발지와 도착지를 확인해주세요.",
-              },
-            };
-          }
-
-          return {
-            success: false,
-            error: {
-              code: "API_ERROR",
-              message: data.error.msg || "경로 조회에 실패했습니다.",
-            },
-          };
-        }
-
-        // 경로가 없는 경우 - ROUTE_NOT_FOUND 반환 (다른 수단으로 전환하지 않음)
-        if (!data.result || !data.result.path || data.result.path.length === 0) {
-          return {
-            success: false,
-            error: {
-              code: "ROUTE_NOT_FOUND",
-              message: "해당 경로를 찾을 수 없습니다. 출발지와 도착지를 확인해주세요.",
-            },
-          };
-        }
-
-        const result: ODsaySearchPathResult = data.result;
-
-        // 경로 변환
-        let routes = result.path.map(convertODsayPathToTransitRoute);
-
-        // limit 적용
-        if (limit && routes.length > limit) {
-          routes = routes.slice(0, limit);
-        }
-
-        // 6. 결과 반환
-        return {
-          success: true,
-          data: {
-            bestRoute: routes[0],
-            alternativeRoutes: routes.slice(1),
-            meta: {
-              pointDistance: result.pointDistance,
-              busCount: result.busCount,
-              subwayCount: result.subwayCount,
-              subwayBusCount: result.subwayBusCount,
-            },
-          },
-        };
-      } catch (error) {
-        lastError = error as Error;
-
-        // 네트워크 에러 - 재시도
-        if (
-          error instanceof TypeError &&
-          error.message.includes("fetch") &&
-          attempt < maxRetries
-        ) {
-          await delay(calculateBackoffDelay(attempt));
-          continue;
-        }
-
-        throw error;
-      }
+    // 경로가 없는 경우
+    if (!result) {
+      return {
+        success: false,
+        error: {
+          code: "ROUTE_NOT_FOUND",
+          message: "해당 경로를 찾을 수 없습니다. 출발지와 도착지를 확인해주세요.",
+        },
+      };
     }
 
-    throw lastError || new Error("알 수 없는 오류");
+    // limit 적용
+    let routes = result.routes;
+    if (validated.limit && routes.length > validated.limit) {
+      routes = routes.slice(0, validated.limit);
+    }
+
+    // 4. 결과 반환
+    return {
+      success: true,
+      data: {
+        bestRoute: routes[0],
+        alternativeRoutes: routes.slice(1),
+        meta: result.meta,
+      },
+    };
   } catch (error) {
-    console.error("대중교통 경로 조회 중 예외 발생:", error);
+    // ODsayApiError 처리
+    if (error instanceof ODsayApiError) {
+      console.error("[Server Action] ODsay API 에러:", error.code, error.message);
+
+      // 경로 없음 에러 (-98, -99)
+      if (error.code === -98 || error.code === -99) {
+        return {
+          success: false,
+          error: {
+            code: "ROUTE_NOT_FOUND",
+            message: "해당 경로를 찾을 수 없습니다. 출발지와 도착지를 확인해주세요.",
+          },
+        };
+      }
+
+      return {
+        success: false,
+        error: {
+          code: "API_ERROR",
+          message: error.message,
+          details: error.details as Record<string, unknown>,
+        },
+      };
+    }
+
+    console.error("[Server Action] 대중교통 경로 조회 중 예외 발생:", error);
     return {
       success: false,
       error: {
@@ -396,6 +176,15 @@ export async function getBestTransitRoute(
   origin: Coordinate,
   destination: Coordinate
 ): Promise<{ success: boolean; route?: TransitRoute; error?: string }> {
+  // 인증 확인
+  const { userId } = await auth();
+  if (!userId) {
+    return {
+      success: false,
+      error: "로그인이 필요합니다.",
+    };
+  }
+
   const result = await getTransitRoute({ origin, destination, limit: 1 });
 
   if (!result.success) {
@@ -422,6 +211,15 @@ export async function getTransitDuration(
   origin: Coordinate,
   destination: Coordinate
 ): Promise<{ success: boolean; duration?: number; error?: string }> {
+  // 인증 확인
+  const { userId } = await auth();
+  if (!userId) {
+    return {
+      success: false,
+      error: "로그인이 필요합니다.",
+    };
+  }
+
   const result = await getTransitRoute({ origin, destination, limit: 1 });
 
   if (!result.success) {
@@ -448,6 +246,15 @@ export async function getTransitFare(
   origin: Coordinate,
   destination: Coordinate
 ): Promise<{ success: boolean; fare?: number; error?: string }> {
+  // 인증 확인
+  const { userId } = await auth();
+  if (!userId) {
+    return {
+      success: false,
+      error: "로그인이 필요합니다.",
+    };
+  }
+
   const result = await getTransitRoute({ origin, destination, limit: 1 });
 
   if (!result.success) {
