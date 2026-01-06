@@ -12,7 +12,6 @@ import type {
 import type { Coordinate, TransitRoute, TransitDetails, TransitSubPath, TransitLane } from "@/types";
 import { convertODsayPathToTransitRoute, ODSAY_BUS_TYPE_MAP, ODSAY_SUBWAY_LINE_MAP, type ODsayBusType, type ODsaySubwayCode } from "@/types/odsay";
 import { withRateLimit } from "./rate-limiter";
-import { logApiCall, logApiError, logRetry } from "@/lib/utils/api-logger";
 
 // ============================================
 // Configuration
@@ -122,25 +121,15 @@ async function fetchWithRetry<T>(
   retries = RETRY_CONFIG.maxRetries
 ): Promise<T> {
   let lastError: Error | null = null;
-  const startTime = Date.now();
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      if (attempt > 0) {
-        logRetry(attempt - 1, retries);
-      }
-
       const response = await fetch(url, {
         method: "GET",
         headers: {
           Accept: "application/json",
         },
       });
-
-      const duration = Date.now() - startTime;
-
-      // API 호출 로깅
-      logApiCall("GET", url, undefined, response, duration);
 
       // 429 (Too Many Requests) - 재시도
       if (response.status === 429 && attempt < retries) {
@@ -173,10 +162,6 @@ async function fetchWithRetry<T>(
       return data as T;
     } catch (error) {
       lastError = error as Error;
-      const duration = Date.now() - startTime;
-
-      // API 에러 로깅
-      logApiError("GET", url, error, duration);
 
       // 네트워크 에러 - 재시도
       if (
