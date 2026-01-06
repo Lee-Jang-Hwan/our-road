@@ -6,6 +6,7 @@ import type { DayPlan, LatLng, SegmentCost, SegmentKey, Waypoint } from "@/types
 import { getBestTransitRouteWithDetails } from "@/lib/api/odsay";
 import { calculateDistance } from "../utils/geo";
 import pLimit from "p-limit";
+import { logCircuitBreaker } from "@/lib/utils/api-logger";
 
 export interface SegmentRequest {
   key: SegmentKey;
@@ -139,6 +140,7 @@ function checkCircuitBreaker(): boolean {
 function recordSuccess(): void {
   if (circuitBreaker.state === "HALF_OPEN") {
     circuitBreaker.state = "CLOSED";
+    logCircuitBreaker("CLOSED", 0, "Circuit recovered from HALF_OPEN");
   }
   circuitBreaker.failureCount = 0;
 }
@@ -149,9 +151,19 @@ function recordFailure(): void {
 
   if (circuitBreaker.state === "HALF_OPEN") {
     circuitBreaker.state = "OPEN";
+    logCircuitBreaker(
+      "OPEN",
+      circuitBreaker.failureCount,
+      "Reopening circuit after failure in HALF_OPEN state"
+    );
     console.warn("[CircuitBreaker] Reopening circuit after failure in HALF_OPEN state");
   } else if (circuitBreaker.failureCount >= CIRCUIT_BREAKER_THRESHOLD) {
     circuitBreaker.state = "OPEN";
+    logCircuitBreaker(
+      "OPEN",
+      circuitBreaker.failureCount,
+      `Opening circuit after ${CIRCUIT_BREAKER_THRESHOLD} failures`
+    );
     console.warn(
       `[CircuitBreaker] Opening circuit after ${CIRCUIT_BREAKER_THRESHOLD} failures`
     );

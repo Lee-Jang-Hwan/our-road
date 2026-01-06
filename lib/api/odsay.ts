@@ -12,6 +12,7 @@ import type {
 import type { Coordinate, TransitRoute, TransitDetails, TransitSubPath, TransitLane } from "@/types";
 import { convertODsayPathToTransitRoute, ODSAY_BUS_TYPE_MAP, ODSAY_SUBWAY_LINE_MAP, type ODsayBusType, type ODsaySubwayCode } from "@/types/odsay";
 import { withRateLimit } from "./rate-limiter";
+import { logApiStart, logApiSuccess, logApiError } from "@/lib/utils/api-logger";
 
 // ============================================
 // Configuration
@@ -240,6 +241,12 @@ export interface TransitSearchResult {
 export async function searchTransitRoute(
   options: TransitRouteOptions
 ): Promise<TransitSearchResult | null> {
+  const startTime = logApiStart("ODsay Transit Search", {
+    api: "ODsay",
+    method: "GET",
+    params: { origin: options.origin, destination: options.destination },
+  });
+
   if (!ODSAY_API_KEY) {
     throw new ODsayApiError(
       "ODSAY_API_KEY가 설정되지 않았습니다",
@@ -263,6 +270,10 @@ export async function searchTransitRoute(
       // 경로가 없는 경우
       if (!data.result || !data.result.path || data.result.path.length === 0) {
         console.log("[ODsay] 경로 없음");
+        logApiSuccess("ODsay Transit Search", startTime, {
+          api: "ODsay",
+          params: { result: "no routes" },
+        });
         return null;
       }
 
@@ -276,6 +287,14 @@ export async function searchTransitRoute(
 
       // 경로 변환
       const routes = result.path.map(convertODsayPathToTransitRoute);
+
+      logApiSuccess("ODsay Transit Search", startTime, {
+        api: "ODsay",
+        params: {
+          routeCount: routes.length,
+          firstRouteDuration: routes[0]?.totalDuration,
+        },
+      });
 
       return {
         routes,
@@ -292,11 +311,17 @@ export async function searchTransitRoute(
         console.error("[ODsay] API 에러:", error.code, error.message);
         // 경로 없음 에러는 null 반환
         if (error.code === -98 || error.code === -99) {
+          logApiSuccess("ODsay Transit Search", startTime, {
+            api: "ODsay",
+            params: { result: "no routes (error code)" },
+          });
           return null;
         }
+        logApiError("ODsay Transit Search", startTime, error);
         throw error;
       }
       console.error("[ODsay] 대중교통 경로 조회 오류:", error);
+      logApiError("ODsay Transit Search", startTime, error);
       return null;
     }
   });

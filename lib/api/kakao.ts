@@ -12,6 +12,7 @@ import type {
 } from "@/types/kakao";
 import type { PlaceSearchResult, Coordinate, CarRoute } from "@/types";
 import { convertKakaoPlaceToSearchResult } from "@/types/kakao";
+import { logApiStart, logApiSuccess, logApiError } from "@/lib/utils/api-logger";
 
 // ============================================
 // Configuration
@@ -179,6 +180,12 @@ export async function searchByKeyword(
     isEnd: boolean;
   };
 }> {
+  const startTime = logApiStart("Kakao Keyword Search", {
+    api: "Kakao Local",
+    method: "GET",
+    params: { query: options.query, page: options.page },
+  });
+
   if (!KAKAO_REST_API_KEY) {
     throw new KakaoApiError(
       "KAKAO_REST_API_KEY가 설정되지 않았습니다",
@@ -186,38 +193,50 @@ export async function searchByKeyword(
     );
   }
 
-  const params = new URLSearchParams({
-    query: options.query,
-    page: String(options.page ?? 1),
-    size: String(options.size ?? 15),
-    sort: options.sort ?? "accuracy",
-  });
+  try {
+    const params = new URLSearchParams({
+      query: options.query,
+      page: String(options.page ?? 1),
+      size: String(options.size ?? 15),
+      sort: options.sort ?? "accuracy",
+    });
 
-  if (options.x !== undefined && options.y !== undefined) {
-    params.append("x", String(options.x));
-    params.append("y", String(options.y));
-    if (options.radius !== undefined) {
-      params.append("radius", String(options.radius));
+    if (options.x !== undefined && options.y !== undefined) {
+      params.append("x", String(options.x));
+      params.append("y", String(options.y));
+      if (options.radius !== undefined) {
+        params.append("radius", String(options.radius));
+      }
     }
+
+    const url = `${KAKAO_LOCAL_BASE_URL}/search/keyword.json?${params.toString()}`;
+
+    const data = await fetchWithRetry<KakaoKeywordSearchResponse>(url, {
+      method: "GET",
+      headers: {
+        Authorization: `KakaoAK ${KAKAO_REST_API_KEY}`,
+      },
+    });
+
+    const result = {
+      places: data.documents.map(convertKakaoPlaceToSearchResult),
+      meta: {
+        totalCount: data.meta.total_count,
+        pageableCount: data.meta.pageable_count,
+        isEnd: data.meta.is_end,
+      },
+    };
+
+    logApiSuccess("Kakao Keyword Search", startTime, {
+      api: "Kakao Local",
+      params: { resultCount: result.places.length },
+    });
+
+    return result;
+  } catch (error) {
+    logApiError("Kakao Keyword Search", startTime, error);
+    throw error;
   }
-
-  const url = `${KAKAO_LOCAL_BASE_URL}/search/keyword.json?${params.toString()}`;
-
-  const data = await fetchWithRetry<KakaoKeywordSearchResponse>(url, {
-    method: "GET",
-    headers: {
-      Authorization: `KakaoAK ${KAKAO_REST_API_KEY}`,
-    },
-  });
-
-  return {
-    places: data.documents.map(convertKakaoPlaceToSearchResult),
-    meta: {
-      totalCount: data.meta.total_count,
-      pageableCount: data.meta.pageable_count,
-      isEnd: data.meta.is_end,
-    },
-  };
 }
 
 /**
@@ -411,6 +430,16 @@ export interface CarRouteOptions {
 export async function getCarRoute(
   options: CarRouteOptions
 ): Promise<CarRoute | null> {
+  const startTime = logApiStart("Kakao Car Route", {
+    api: "Kakao Mobility",
+    method: "GET",
+    params: {
+      origin: options.origin,
+      destination: options.destination,
+      waypoints: options.waypoints?.length,
+    },
+  });
+
   if (!KAKAO_MOBILITY_KEY) {
     throw new KakaoApiError(
       "KAKAO_MOBILITY_KEY가 설정되지 않았습니다",
@@ -418,28 +447,28 @@ export async function getCarRoute(
     );
   }
 
-  // 경유지 처리
-  let url = `${KAKAO_MOBILITY_BASE_URL}/directions`;
-
-  const params = new URLSearchParams({
-    origin: `${options.origin.lng},${options.origin.lat}`,
-    destination: `${options.destination.lng},${options.destination.lat}`,
-    priority: options.priority ?? "RECOMMEND",
-    alternatives: String(options.alternatives ?? false),
-  });
-
-  // 경유지가 있으면 waypoints 파라미터 추가
-  if (options.waypoints && options.waypoints.length > 0) {
-    const waypointsStr = options.waypoints
-      .slice(0, 5) // 최대 5개
-      .map((wp) => `${wp.lng},${wp.lat}`)
-      .join("|");
-    params.append("waypoints", waypointsStr);
-  }
-
-  url = `${url}?${params.toString()}`;
-
   try {
+    // 경유지 처리
+    let url = `${KAKAO_MOBILITY_BASE_URL}/directions`;
+
+    const params = new URLSearchParams({
+      origin: `${options.origin.lng},${options.origin.lat}`,
+      destination: `${options.destination.lng},${options.destination.lat}`,
+      priority: options.priority ?? "RECOMMEND",
+      alternatives: String(options.alternatives ?? false),
+    });
+
+    // 경유지가 있으면 waypoints 파라미터 추가
+    if (options.waypoints && options.waypoints.length > 0) {
+      const waypointsStr = options.waypoints
+        .slice(0, 5) // 최대 5개
+        .map((wp) => `${wp.lng},${wp.lat}`)
+        .join("|");
+      params.append("waypoints", waypointsStr);
+    }
+
+    url = `${url}?${params.toString()}`;
+
     const data = await fetchWithRetry<KakaoDirectionsResponse>(url, {
       method: "GET",
       headers: {
@@ -450,6 +479,10 @@ export async function getCarRoute(
 
     // 경로가 없는 경우
     if (!data.routes || data.routes.length === 0) {
+      logApiSuccess("Kakao Car Route", startTime, {
+        api: "Kakao Mobility",
+        params: { result: "no routes" },
+      });
       return null;
     }
 
@@ -460,6 +493,10 @@ export async function getCarRoute(
     // - result_code 2: 출발지와 도착지가 5m 이내
     // 이 경우 조용히 null 반환하고 fallback 처리
     if (route.result_code !== 0) {
+      logApiSuccess("Kakao Car Route", startTime, {
+        api: "Kakao Mobility",
+        params: { result: `failed with code ${route.result_code}` },
+      });
       return null;
     }
 
@@ -474,7 +511,7 @@ export async function getCarRoute(
     // 폴리라인을 간략화된 문자열로 변환 (위도,경도 쌍)
     const polyline = encodePolyline(polylinePoints);
 
-    return {
+    const result = {
       totalDuration: Math.round(route.summary.duration / 60), // 초 → 분
       totalDistance: route.summary.distance,
       tollFare: route.summary.fare.toll,
@@ -482,7 +519,18 @@ export async function getCarRoute(
       polyline,
       summary: `${route.summary.origin.name} → ${route.summary.destination.name}`,
     };
+
+    logApiSuccess("Kakao Car Route", startTime, {
+      api: "Kakao Mobility",
+      params: {
+        duration: result.totalDuration,
+        distance: result.totalDistance,
+      },
+    });
+
+    return result;
   } catch (error) {
+    logApiError("Kakao Car Route", startTime, error);
     if (error instanceof KakaoApiError) {
       throw error;
     }
