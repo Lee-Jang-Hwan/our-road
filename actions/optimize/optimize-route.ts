@@ -832,13 +832,7 @@ export async function optimizeRoute(
       improvementPercentage: improvedResult.improvementPercentage,
     };
 
-    // 16. 여행 상태 업데이트
-    await supabase
-      .from("trips")
-      .update({ status: "optimized" })
-      .eq("id", tripId);
-
-    // 17. 캐시 무효화
+    // 16. 캐시 무효화
     revalidatePath("/my");
     revalidatePath(`/plan/${tripId}`);
     revalidatePath(`/plan/${tripId}/result`);

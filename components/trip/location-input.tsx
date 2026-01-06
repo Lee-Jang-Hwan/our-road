@@ -1,7 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { MapPin, Navigation, Loader2, X, Clock, Search } from "lucide-react";
+import {
+  MapPin,
+  Navigation,
+  Loader2,
+  X,
+  Clock,
+  Search,
+  Home,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -21,9 +29,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { TripLocation } from "@/types/trip";
-import type { PlaceSearchResult } from "@/types/place";
 import { generateTimeOptions } from "@/lib/schemas";
-import { searchPlaces } from "@/actions/places";
+import {
+  searchLocations,
+  type LocationSearchResult,
+} from "@/actions/places/search-locations";
 
 interface LocationInputProps {
   /** 선택된 위치 */
@@ -68,7 +78,7 @@ export function LocationInput({
 }: LocationInputProps) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
-  const [results, setResults] = React.useState<PlaceSearchResult[]>([]);
+  const [results, setResults] = React.useState<LocationSearchResult[]>([]);
   const [isSearching, setIsSearching] = React.useState(false);
   const [isGettingLocation, setIsGettingLocation] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -85,9 +95,9 @@ export function LocationInput({
     setOpen(true);
 
     try {
-      const result = await searchPlaces({ query, page: 1, size: 10 });
+      const result = await searchLocations({ query, page: 1, size: 10 });
       if (result.success && result.data) {
-        setResults(result.data.places);
+        setResults(result.data.locations);
       } else {
         setResults([]);
         if (result.error) {
@@ -95,7 +105,7 @@ export function LocationInput({
         }
       }
     } catch (err) {
-      console.error("장소 검색 실패:", err);
+      console.error("위치 검색 실패:", err);
       setResults([]);
       setError("검색 중 오류가 발생했습니다.");
     } finally {
@@ -150,7 +160,7 @@ export function LocationInput({
   };
 
   // 검색 결과 선택
-  const handleSelect = (result: PlaceSearchResult) => {
+  const handleSelect = (result: LocationSearchResult) => {
     onChange({
       name: result.name,
       address: result.roadAddress || result.address,
@@ -278,21 +288,54 @@ export function LocationInput({
                 </CommandEmpty>
               ) : (
                 <CommandGroup heading={`검색 결과 (${results.length}건)`}>
-                  {results.map((result) => (
-                    <CommandItem
-                      key={result.id}
-                      value={result.id}
-                      onSelect={() => handleSelect(result)}
-                      className="cursor-pointer py-3"
-                    >
-                      <div className="flex flex-col">
-                        <span className="font-medium">{result.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {result.roadAddress || result.address}
-                        </span>
-                      </div>
-                    </CommandItem>
-                  ))}
+                  {results.map((result) => {
+                    const isAddress = result.resultType === "address";
+                    return (
+                      <CommandItem
+                        key={result.id}
+                        value={result.id}
+                        onSelect={() => handleSelect(result)}
+                        className="cursor-pointer py-3"
+                      >
+                        <div className="flex items-start gap-2 w-full">
+                          {/* 아이콘 - 장소는 MapPin, 주소는 Home */}
+                          {isAddress ? (
+                            <Home className="w-4 h-4 mt-0.5 shrink-0 text-blue-600" />
+                          ) : (
+                            <MapPin className="w-4 h-4 mt-0.5 shrink-0 text-green-600" />
+                          )}
+
+                          <div className="flex flex-col flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium truncate">
+                                {result.name}
+                              </span>
+                              {/* 타입 배지 */}
+                              <span
+                                className={cn(
+                                  "text-[10px] px-1.5 py-0.5 rounded shrink-0",
+                                  isAddress
+                                    ? "bg-blue-100 text-blue-700"
+                                    : "bg-green-100 text-green-700"
+                                )}
+                              >
+                                {isAddress ? "주소" : "장소"}
+                              </span>
+                            </div>
+                            <span className="text-xs text-muted-foreground truncate">
+                              {result.roadAddress || result.address}
+                            </span>
+                            {/* 주소 검색인 경우 추가 정보 표시 */}
+                            {isAddress && result.addressInfo?.zoneNo && (
+                              <span className="text-[10px] text-muted-foreground mt-0.5">
+                                우편번호: {result.addressInfo.zoneNo}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </CommandItem>
+                    );
+                  })}
                 </CommandGroup>
               )}
             </CommandList>
