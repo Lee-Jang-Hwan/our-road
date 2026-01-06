@@ -175,12 +175,23 @@ export async function callRoutingAPIForSegments(
   const results = await Promise.all(
     segments.map((segment) =>
       apiLimit(async () => {
+        const distanceMeters = calculateDistance(segment.fromCoord, segment.toCoord);
+
+        // 500m 미만: 도보로 처리 (API 호출 불필요)
+        if (distanceMeters < 500) {
+          console.log(
+            `[callRoutingAPI] Walking distance (${Math.round(distanceMeters)}m) for ${segment.key.fromId} -> ${segment.key.toId}, skipping API call`
+          );
+          return calculateWalkingSegmentCost(segment, distanceMeters);
+        }
+
+        // 500m 이상: 대중교통 API 호출
         // Check circuit breaker
         if (!checkCircuitBreaker()) {
           console.warn(
             `[callRoutingAPI] Circuit breaker is OPEN, using fallback for ${segment.key.fromId} -> ${segment.key.toId}`
           );
-          return fallbackSegmentCost(segment);
+          return fallbackSegmentCost(segment, distanceMeters);
         }
 
         // Retry logic with exponential backoff
@@ -197,7 +208,7 @@ export async function callRoutingAPIForSegments(
                   `[callRoutingAPI] No route found for ${segment.key.fromId} -> ${segment.key.toId} after ${maxRetries} retries, using fallback`
                 );
                 recordFailure();
-                return fallbackSegmentCost(segment);
+                return fallbackSegmentCost(segment, distanceMeters);
               }
               // Retry with exponential backoff
               await new Promise((resolve) =>
@@ -222,7 +233,7 @@ export async function callRoutingAPIForSegments(
                 error
               );
               recordFailure();
-              return fallbackSegmentCost(segment);
+              return fallbackSegmentCost(segment, distanceMeters);
             }
             // Exponential backoff: 200ms, 400ms, 800ms
             const delay = Math.pow(2, attempt) * 200;
@@ -235,7 +246,7 @@ export async function callRoutingAPIForSegments(
 
         // Fallback (should not reach here)
         recordFailure();
-        return fallbackSegmentCost(segment);
+        return fallbackSegmentCost(segment, distanceMeters);
       })
     )
   );
@@ -244,33 +255,60 @@ export async function callRoutingAPIForSegments(
 }
 
 /**
- * Calculate fallback segment cost using improved estimation
- * - Walking: 4 km/h for distances < 500m
- * - Public transit: 20 km/h average speed + 5 min overhead for transfers/waiting
+ * Calculate walking segment cost for short distances (< 500m)
+ * - Walking speed: 4 km/h (약 67m/분)
+ * - No API call required
  */
-function fallbackSegmentCost(segment: SegmentRequest): SegmentCost {
-  const distanceMeters = calculateDistance(segment.fromCoord, segment.toCoord);
+function calculateWalkingSegmentCost(
+  segment: SegmentRequest,
+  distanceMeters: number
+): SegmentCost {
   const distanceKm = distanceMeters / 1000;
 
-  let durationMinutes: number;
+  // Walking: 4 km/h
+  const durationMinutes = Math.round((distanceKm / 4) * 60);
 
-  if (distanceMeters < 500) {
-    // Short distance: assume walking at 4 km/h
-    durationMinutes = Math.round((distanceKm / 4) * 60);
-  } else {
-    // Longer distance: assume public transit
-    // Average speed: 20 km/h + 5 min overhead for waiting/transfers
-    const travelTimeMinutes = (distanceKm / 20) * 60;
-    const overheadMinutes = 5;
-    durationMinutes = Math.round(travelTimeMinutes + overheadMinutes);
-  }
+  // Ensure minimum duration (1 minute)
+  const finalDuration = Math.max(1, durationMinutes);
 
-  // Ensure minimum duration
-  durationMinutes = Math.max(1, durationMinutes);
+  console.log(
+    `[calculateWalkingSegmentCost] ${segment.key.fromId} -> ${segment.key.toId}: ${Math.round(distanceMeters)}m, ${finalDuration}분 (도보)`
+  );
 
   return {
     key: segment.key,
-    durationMinutes,
+    durationMinutes: finalDuration,
     distanceMeters,
+    // transitDetails 없음 = 도보 구간
+  };
+}
+
+/**
+ * Calculate fallback segment cost when API fails (for distances >= 500m)
+ * - Public transit: 20 km/h average speed + 5 min overhead for waiting/transfers
+ */
+function fallbackSegmentCost(
+  segment: SegmentRequest,
+  distanceMeters: number
+): SegmentCost {
+  const distanceKm = distanceMeters / 1000;
+
+  // Public transit assumption: 20 km/h + 5 min overhead
+  const travelTimeMinutes = (distanceKm / 20) * 60;
+  const overheadMinutes = 5;
+  const durationMinutes = Math.round(travelTimeMinutes + overheadMinutes);
+
+  // Ensure minimum duration
+  const finalDuration = Math.max(1, durationMinutes);
+
+  console.warn(
+    `[fallbackSegmentCost] ${segment.key.fromId} -> ${segment.key.toId}: ${Math.round(distanceMeters)}m, ${finalDuration}분 (추정)`
+  );
+
+  return {
+    key: segment.key,
+    durationMinutes: finalDuration,
+    distanceMeters,
+    // transitDetails 없음 = API 실패 시 fallback
   };
 }
