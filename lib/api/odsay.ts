@@ -2,6 +2,7 @@
 // ODsay API Client (대중교통 API 클라이언트)
 // ============================================
 
+import axios, { type AxiosInstance, type AxiosRequestConfig } from "axios";
 import type {
   ODsayResponse,
   ODsaySearchPathResult,
@@ -12,6 +13,7 @@ import type {
 import type { Coordinate, TransitRoute, TransitDetails, TransitSubPath, TransitLane } from "@/types";
 import { convertODsayPathToTransitRoute, ODSAY_BUS_TYPE_MAP, ODSAY_SUBWAY_LINE_MAP, type ODsayBusType, type ODsaySubwayCode } from "@/types/odsay";
 import { withRateLimit } from "./rate-limiter";
+import { logApiStart, logApiSuccess, logApiError } from "@/lib/utils/api-logger";
 
 // ============================================
 // Configuration
@@ -19,6 +21,7 @@ import { withRateLimit } from "./rate-limiter";
 
 const ODSAY_API_KEY = process.env.ODSAY_API_KEY;
 const ODSAY_BASE_URL = "https://api.odsay.com/v1/api";
+const FIXIE_URL = process.env.FIXIE_URL;
 
 /**
  * 재시도 설정
@@ -28,6 +31,41 @@ const RETRY_CONFIG = {
   baseDelay: 1000, // 1초
   maxDelay: 10000, // 10초
 };
+
+/**
+ * Axios 인스턴스 생성 (Fixie 프록시 포함)
+ */
+function createODsayAxiosInstance(): AxiosInstance {
+  const config: AxiosRequestConfig = {
+    timeout: 15000, // 15초 타임아웃
+    headers: {
+      Accept: "application/json",
+    },
+  };
+
+  // Vercel 환경이고 FIXIE_URL이 있으면 프록시 설정
+  if (FIXIE_URL && typeof window === "undefined") {
+    try {
+      const fixieUrl = new URL(FIXIE_URL);
+      config.proxy = {
+        protocol: "http",
+        host: fixieUrl.hostname,
+        port: parseInt(fixieUrl.port || "80"),
+        auth: fixieUrl.username && fixieUrl.password
+          ? {
+              username: fixieUrl.username,
+              password: fixieUrl.password,
+            }
+          : undefined,
+      };
+      console.log("[ODsay] Using Fixie proxy:", fixieUrl.hostname);
+    } catch (error) {
+      console.error("[ODsay] Failed to parse FIXIE_URL:", error);
+    }
+  }
+
+  return axios.create(config);
+}
 
 // ============================================
 // Error Types
@@ -114,69 +152,75 @@ function extractODsayErrorMessage(data: unknown): { code: string | number; messa
 }
 
 /**
- * 재시도 가능한 fetch
+ * 재시도 가능한 axios 요청
  */
 async function fetchWithRetry<T>(
   url: string,
   retries = RETRY_CONFIG.maxRetries
 ): Promise<T> {
+  const axiosInstance = createODsayAxiosInstance();
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-        },
-      });
-
-      // 429 (Too Many Requests) - 재시도
-      if (response.status === 429 && attempt < retries) {
-        const waitTime = calculateBackoffDelay(attempt);
-        await delay(waitTime);
-        continue;
-      }
-
-      // 5xx 에러 - 재시도
-      if (response.status >= 500 && attempt < retries) {
-        await delay(calculateBackoffDelay(attempt));
-        continue;
-      }
-
-      if (!response.ok) {
-        throw new ODsayApiError(
-          `ODsay API HTTP 오류: ${response.status}`,
-          response.status
-        );
-      }
-
-      const data = await response.json();
+      const response = await axiosInstance.get<T>(url);
 
       // ODsay 자체 에러 응답 확인
-      if (isODsayError(data)) {
-        const { code, message } = extractODsayErrorMessage(data);
-        throw new ODsayApiError(message, code, data);
+      if (isODsayError(response.data)) {
+        const { code, message } = extractODsayErrorMessage(response.data);
+        throw new ODsayApiError(message, code, response.data);
       }
 
-      return data as T;
-    } catch (error) {
-      lastError = error as Error;
+      return response.data;
+    } catch (error: any) {
+      lastError = error;
 
-      // 네트워크 에러 - 재시도
-      if (
-        error instanceof TypeError &&
-        error.message.includes("fetch") &&
-        attempt < retries
-      ) {
-        await delay(calculateBackoffDelay(attempt));
-        continue;
+      // Axios 에러 처리
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+
+        // 429 (Too Many Requests) - 재시도
+        if (status === 429 && attempt < retries) {
+          const waitTime = calculateBackoffDelay(attempt);
+          await delay(waitTime);
+          continue;
+        }
+
+        // 5xx 에러 - 재시도
+        if (status && status >= 500 && attempt < retries) {
+          await delay(calculateBackoffDelay(attempt));
+          continue;
+        }
+
+        // HTTP 에러
+        if (error.response) {
+          throw new ODsayApiError(
+            `ODsay API HTTP 오류: ${status}`,
+            status || "HTTP_ERROR"
+          );
+        }
+
+        // 네트워크 에러 - 재시도
+        if (error.code === "ECONNABORTED" || error.code === "ETIMEDOUT") {
+          if (attempt < retries) {
+            await delay(calculateBackoffDelay(attempt));
+            continue;
+          }
+        }
       }
 
       // ODsayApiError는 바로 throw
       if (error instanceof ODsayApiError) {
         throw error;
       }
+
+      // 마지막 재시도 후에도 실패하면 에러 throw
+      if (attempt === retries) {
+        break;
+      }
+
+      // 일반 에러 - 재시도
+      await delay(calculateBackoffDelay(attempt));
     }
   }
 
@@ -240,6 +284,12 @@ export interface TransitSearchResult {
 export async function searchTransitRoute(
   options: TransitRouteOptions
 ): Promise<TransitSearchResult | null> {
+  const startTime = logApiStart("ODsay Transit Search", {
+    api: "ODsay",
+    method: "GET",
+    params: { origin: options.origin, destination: options.destination },
+  });
+
   if (!ODSAY_API_KEY) {
     throw new ODsayApiError(
       "ODSAY_API_KEY가 설정되지 않았습니다",
@@ -263,6 +313,10 @@ export async function searchTransitRoute(
       // 경로가 없는 경우
       if (!data.result || !data.result.path || data.result.path.length === 0) {
         console.log("[ODsay] 경로 없음");
+        logApiSuccess("ODsay Transit Search", startTime, {
+          api: "ODsay",
+          params: { result: "no routes" },
+        });
         return null;
       }
 
@@ -276,6 +330,14 @@ export async function searchTransitRoute(
 
       // 경로 변환
       const routes = result.path.map(convertODsayPathToTransitRoute);
+
+      logApiSuccess("ODsay Transit Search", startTime, {
+        api: "ODsay",
+        params: {
+          routeCount: routes.length,
+          firstRouteDuration: routes[0]?.totalDuration,
+        },
+      });
 
       return {
         routes,
@@ -292,11 +354,17 @@ export async function searchTransitRoute(
         console.error("[ODsay] API 에러:", error.code, error.message);
         // 경로 없음 에러는 null 반환
         if (error.code === -98 || error.code === -99) {
+          logApiSuccess("ODsay Transit Search", startTime, {
+            api: "ODsay",
+            params: { result: "no routes (error code)" },
+          });
           return null;
         }
+        logApiError("ODsay Transit Search", startTime, error);
         throw error;
       }
       console.error("[ODsay] 대중교통 경로 조회 오류:", error);
+      logApiError("ODsay Transit Search", startTime, error);
       return null;
     }
   });

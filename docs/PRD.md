@@ -1,5 +1,9 @@
 # PRD: 여행 동선 최적화 서비스 (OurRoad)
 
+> **⚠️ 구현 상태 확인**: 실제 구현 현황은 [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md)를 참조하세요.
+>
+> 이 PRD는 초기 기획 문서이며, 실제 구현 과정에서 일부 변경/추가/개선이 있을 수 있습니다.
+
 ## 1. 개요
 
 ### 1.1 서비스 정의

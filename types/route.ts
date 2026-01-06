@@ -193,3 +193,78 @@ export interface RouteError {
   message: string;
   details?: Record<string, unknown>;
 }
+
+// ============================================
+// Public Transit Algorithm Types
+// ============================================
+
+export type TripMode = "OPEN" | "LOOP";
+
+export interface LatLng {
+  lat: number;
+  lng: number;
+}
+
+export interface Waypoint {
+  id: string;
+  name: string;
+  coord: LatLng;
+  isFixed: boolean;
+  dayLock?: number;
+  importance?: number;
+  stayMinutes?: number;
+  fixedDate?: string; // "YYYY-MM-DD" format
+  fixedStartTime?: string; // "HH:mm" format
+}
+
+export interface TripInput {
+  tripId?: string;
+  days: number;
+  start: LatLng;
+  end?: LatLng;
+  lodging?: LatLng;
+  dailyMaxMinutes?: number;
+  waypoints: Waypoint[];
+}
+
+export interface Cluster {
+  clusterId: string;
+  dayIndex?: number;
+  waypointIds: string[];
+  centroid: LatLng;
+}
+
+export interface DayPlan {
+  dayIndex: number;
+  waypointOrder: string[];
+  excludedWaypointIds: string[];
+}
+
+export interface SegmentKey {
+  fromId: string;
+  toId: string;
+}
+
+export interface SegmentCost {
+  key: SegmentKey;
+  durationMinutes: number;
+  distanceMeters?: number;
+  transfers?: number;
+  waitTimeMinutes?: number;
+  polyline?: string | LatLng[]; // String for encoded polyline or array of coordinates
+  transitDetails?: {
+    transportMode: 'subway' | 'bus' | 'walking';
+    lineName?: string;
+    startStation?: string;
+    endStation?: string;
+    stationCount?: number;
+  };
+}
+
+export interface TripOutput {
+  tripId: string;
+  mode: TripMode;
+  clusters: Cluster[];
+  dayPlans: DayPlan[];
+  segmentCosts: SegmentCost[];
+}

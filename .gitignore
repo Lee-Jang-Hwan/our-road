@@ -62,3 +62,6 @@ repomix-output.xml
 
 # clerk configuration (can include secrets)
 /.clerk/
+
+# claude local settings
+.claude/settings.local.json

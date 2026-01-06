@@ -111,3 +111,10 @@ export {
 } from "./get-walking-route";
 
 export type { GetWalkingRouteResult } from "./get-walking-route";
+
+// ============================================
+// Public Transit Algorithm Route Generation
+// ============================================
+
+export { generateRoute } from "./generate-route";
+export type { GenerateRouteResult } from "./generate-route";
