@@ -6,14 +6,12 @@ import type {
   KakaoKeywordSearchResponse,
   KakaoCategorySearchResponse,
   KakaoCoord2AddressResponse,
-  KakaoSearchAddressResponse,
   KakaoDirectionsResponse,
   KakaoCategoryCode,
   KakaoPlaceDocument,
 } from "@/types/kakao";
 import type { PlaceSearchResult, Coordinate, CarRoute } from "@/types";
 import { convertKakaoPlaceToSearchResult } from "@/types/kakao";
-import { logApiCall, logApiError, logRetry } from "@/lib/utils/api-logger";
 
 // ============================================
 // Configuration
@@ -78,19 +76,10 @@ async function fetchWithRetry<T>(
   retries = RETRY_CONFIG.maxRetries
 ): Promise<T> {
   let lastError: Error | null = null;
-  const startTime = Date.now();
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      if (attempt > 0) {
-        logRetry(attempt - 1, retries);
-      }
-
       const response = await fetch(url, options);
-      const duration = Date.now() - startTime;
-
-      // API 호출 로깅
-      logApiCall(options.method || "GET", url, options, response, duration);
 
       // 429 (Too Many Requests) - 재시도
       if (response.status === 429 && attempt < retries) {
@@ -120,10 +109,6 @@ async function fetchWithRetry<T>(
       return (await response.json()) as T;
     } catch (error) {
       lastError = error as Error;
-      const duration = Date.now() - startTime;
-
-      // API 에러 로깅
-      logApiError(options.method || "GET", url, error, duration);
 
       // 네트워크 에러 - 재시도
       if (
@@ -384,136 +369,6 @@ export async function coordToAddress(
       region1: doc.address.region_1depth_name,
       region2: doc.address.region_2depth_name,
       region3: doc.address.region_3depth_name,
-    },
-  };
-}
-
-/**
- * 주소 검색 결과
- */
-export interface AddressSearchResult {
-  /** 주소명 */
-  addressName: string;
-  /** 주소 타입 */
-  addressType: "REGION" | "ROAD" | "REGION_ADDR" | "ROAD_ADDR";
-  /** 좌표 */
-  coordinate: Coordinate;
-  /** 지번 주소 상세 */
-  address?: {
-    addressName: string;
-    region1: string; // 시/도
-    region2: string; // 구/군
-    region3: string; // 동/읍/면
-  };
-  /** 도로명 주소 상세 */
-  roadAddress?: {
-    addressName: string;
-    region1: string; // 시/도
-    region2: string; // 구/군
-    region3: string; // 동/읍/면
-    roadName: string; // 도로명
-    buildingName: string; // 건물명
-    zoneNo: string; // 우편번호
-  };
-}
-
-/**
- * 주소 검색 옵션
- */
-export interface AddressSearchOptions {
-  /** 검색할 주소 (도로명 또는 지번) */
-  query: string;
-  /** 결과 개수 (1~30) */
-  size?: number;
-  /** 페이지 번호 (1~45) */
-  page?: number;
-}
-
-/**
- * 주소로 좌표 검색
- *
- * @param options - 검색 옵션
- * @returns 주소 검색 결과
- *
- * @example
- * ```ts
- * // 도로명 주소 검색
- * const result = await searchByAddress({
- *   query: "서울 강남구 테헤란로 152",
- * });
- *
- * // 지번 주소 검색
- * const result = await searchByAddress({
- *   query: "서울 강남구 역삼동 737",
- * });
- * ```
- */
-export async function searchByAddress(
-  options: AddressSearchOptions
-): Promise<{
-  results: AddressSearchResult[];
-  meta: {
-    totalCount: number;
-    pageableCount: number;
-    isEnd: boolean;
-  };
-}> {
-  if (!KAKAO_REST_API_KEY) {
-    throw new KakaoApiError(
-      "KAKAO_REST_API_KEY가 설정되지 않았습니다",
-      "CONFIG_ERROR"
-    );
-  }
-
-  const params = new URLSearchParams({
-    query: options.query,
-    page: String(options.page ?? 1),
-    size: String(options.size ?? 10),
-  });
-
-  const url = `${KAKAO_LOCAL_BASE_URL}/search/address.json?${params.toString()}`;
-
-  const data = await fetchWithRetry<KakaoSearchAddressResponse>(url, {
-    method: "GET",
-    headers: {
-      Authorization: `KakaoAK ${KAKAO_REST_API_KEY}`,
-    },
-  });
-
-  const results: AddressSearchResult[] = data.documents.map((doc) => ({
-    addressName: doc.address_name,
-    addressType: doc.address_type,
-    coordinate: {
-      lat: parseFloat(doc.y),
-      lng: parseFloat(doc.x),
-    },
-    address: doc.address
-      ? {
-          addressName: doc.address.address_name,
-          region1: doc.address.region_1depth_name,
-          region2: doc.address.region_2depth_name,
-          region3: doc.address.region_3depth_name,
-        }
-      : undefined,
-    roadAddress: doc.road_address
-      ? {
-          addressName: doc.road_address.address_name,
-          region1: doc.road_address.region_1depth_name,
-          region2: doc.road_address.region_2depth_name,
-          region3: doc.road_address.region_3depth_name,
-          roadName: doc.road_address.road_name,
-          buildingName: doc.road_address.building_name,
-          zoneNo: doc.road_address.zone_no,
-        }
-      : undefined,
-  }));
-
-  return {
-    results,
-    meta: {
-      totalCount: data.meta.total_count,
-      pageableCount: data.meta.pageable_count,
-      isEnd: data.meta.is_end,
     },
   };
 }
