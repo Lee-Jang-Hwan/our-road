@@ -4,6 +4,7 @@
 
 import type { DayPlan, LatLng, SegmentCost, SegmentKey, Waypoint } from "@/types";
 import { getBestTransitRouteWithDetails } from "@/lib/api/odsay";
+import { getTmapWalkingRoute } from "@/lib/api/tmap";
 import { calculateDistance } from "../utils/geo";
 import pLimit from "p-limit";
 import { logCircuitBreaker } from "@/lib/utils/api-logger";
@@ -189,11 +190,34 @@ export async function callRoutingAPIForSegments(
       apiLimit(async () => {
         const distanceMeters = calculateDistance(segment.fromCoord, segment.toCoord);
 
-        // 500m 미만: 도보로 처리 (API 호출 불필요)
+        // 500m 미만: 도보 API 호출
         if (distanceMeters < 500) {
           console.log(
-            `[callRoutingAPI] Walking distance (${Math.round(distanceMeters)}m) for ${segment.key.fromId} -> ${segment.key.toId}, skipping API call`
+            `[callRoutingAPI] Walking distance (${Math.round(distanceMeters)}m) for ${segment.key.fromId} -> ${segment.key.toId}, calling TMAP API`
           );
+
+          try {
+            const walkingRoute = await getTmapWalkingRoute(
+              segment.fromCoord,
+              segment.toCoord
+            );
+
+            if (walkingRoute) {
+              return {
+                key: segment.key,
+                durationMinutes: walkingRoute.totalDuration,
+                distanceMeters: walkingRoute.totalDistance,
+                polyline: walkingRoute.polyline,
+              } satisfies SegmentCost;
+            }
+          } catch (error) {
+            console.warn(
+              `[callRoutingAPI] TMAP API failed for ${segment.key.fromId} -> ${segment.key.toId}, using fallback calculation`,
+              error
+            );
+          }
+
+          // TMAP API 실패 시 fallback
           return calculateWalkingSegmentCost(segment, distanceMeters);
         }
 
