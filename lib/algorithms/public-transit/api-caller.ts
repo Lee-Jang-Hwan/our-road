@@ -59,22 +59,33 @@ export function extractSegments(
     const lastWaypointId =
       dayPlan.waypointOrder[dayPlan.waypointOrder.length - 1];
 
-    const startCoord =
-      isFirstDay
-        ? start
-        : lodging ??
-          getWaypointCoord(dayPlans[dayIndex - 1].waypointOrder.slice(-1)[0]) ??
-          start;
+    // 출발지 좌표 및 ID 결정
+    let startCoord: LatLng;
+    let startId: string;
 
+    if (isFirstDay) {
+      startCoord = start;
+      startId = "__origin__";
+    } else if (lodging) {
+      startCoord = lodging;
+      startId = "__accommodation_0__";
+    } else {
+      const prevLastWaypoint = getWaypointCoord(dayPlans[dayIndex - 1].waypointOrder.slice(-1)[0]);
+      startCoord = prevLastWaypoint ?? start;
+      startId = prevLastWaypoint ? dayPlans[dayIndex - 1].waypointOrder.slice(-1)[0] : "__origin__";
+    }
+
+    // 첫 경유지로 가는 구간
     const firstCoord = getWaypointCoord(firstWaypointId);
     if (firstCoord) {
       segments.push({
-        key: { fromId: "__start__", toId: firstWaypointId },
+        key: { fromId: startId, toId: firstWaypointId },
         fromCoord: startCoord,
         toCoord: firstCoord,
       });
     }
 
+    // 경유지 간 구간
     for (let i = 0; i < dayPlan.waypointOrder.length - 1; i++) {
       const fromId = dayPlan.waypointOrder[i];
       const toId = dayPlan.waypointOrder[i + 1];
@@ -90,12 +101,28 @@ export function extractSegments(
       }
     }
 
-    const endCoord = isLastDay ? end ?? lodging : lodging;
-    const lastCoord = getWaypointCoord(lastWaypointId);
+    // 도착지 좌표 및 ID 결정
+    let endCoord: LatLng | undefined;
+    let endId: string | undefined;
 
-    if (endCoord && lastCoord) {
+    if (isLastDay) {
+      if (end) {
+        endCoord = end;
+        endId = "__destination__";
+      } else if (lodging) {
+        endCoord = lodging;
+        endId = "__accommodation_0__";
+      }
+    } else if (lodging) {
+      endCoord = lodging;
+      endId = "__accommodation_0__";
+    }
+
+    // 마지막 경유지에서 도착지로 가는 구간
+    const lastCoord = getWaypointCoord(lastWaypointId);
+    if (endCoord && endId && lastCoord) {
       segments.push({
-        key: { fromId: lastWaypointId, toId: "__end__" },
+        key: { fromId: lastWaypointId, toId: endId },
         fromCoord: lastCoord,
         toCoord: endCoord,
       });
