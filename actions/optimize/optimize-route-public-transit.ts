@@ -159,20 +159,17 @@ function convertTripOutputToOptimizeResult(
       const segment = segmentMap.get(segmentKey);
 
       if (segment) {
+        // transitDetails가 있으면 대중교통, 없으면 도보로 간주
+        const isWalking = !segment.transitDetails ||
+                         (segment.transitDetails.subPaths.length === 1 &&
+                          segment.transitDetails.subPaths[0].trafficType === 3);
+
         transportFromOrigin = {
-          mode: segment.transitDetails?.transportMode === "subway" ? "public" :
-                segment.transitDetails?.transportMode === "bus" ? "public" :
-                segment.transitDetails?.transportMode === "walking" ? "walking" : "public",
+          mode: isWalking ? "walking" : "public",
           distance: segment.distanceMeters || 0,
           duration: segment.durationMinutes,
           polyline: typeof segment.polyline === "string" ? segment.polyline : undefined,
-          transitDetails: segment.transitDetails ? {
-            totalFare: 0, // segmentCost에는 요금 정보 없음
-            transferCount: segment.transfers || 0,
-            walkingTime: segment.transitDetails.transportMode === "walking" ? segment.durationMinutes : 0,
-            walkingDistance: segment.transitDetails.transportMode === "walking" ? (segment.distanceMeters || 0) : 0,
-            subPaths: [], // 상세 subPath 정보는 segmentCost에 없음
-          } : undefined,
+          transitDetails: segment.transitDetails,
         };
         currentTime += segment.durationMinutes;
         totalDistance += segment.distanceMeters || 0;
@@ -200,20 +197,17 @@ function convertTripOutputToOptimizeResult(
         const segment = segmentMap.get(segmentKey);
 
         if (segment) {
+          // transitDetails가 있으면 대중교통, 없으면 도보로 간주
+          const isWalking = !segment.transitDetails ||
+                           (segment.transitDetails.subPaths.length === 1 &&
+                            segment.transitDetails.subPaths[0].trafficType === 3);
+
           transportToNext = {
-            mode: segment.transitDetails?.transportMode === "subway" ? "public" :
-                  segment.transitDetails?.transportMode === "bus" ? "public" :
-                  segment.transitDetails?.transportMode === "walking" ? "walking" : "public",
+            mode: isWalking ? "walking" : "public",
             distance: segment.distanceMeters || 0,
             duration: segment.durationMinutes,
             polyline: typeof segment.polyline === "string" ? segment.polyline : undefined,
-            transitDetails: segment.transitDetails ? {
-              totalFare: 0,
-              transferCount: segment.transfers || 0,
-              walkingTime: segment.transitDetails.transportMode === "walking" ? segment.durationMinutes : 0,
-              walkingDistance: segment.transitDetails.transportMode === "walking" ? (segment.distanceMeters || 0) : 0,
-              subPaths: [],
-            } : undefined,
+            transitDetails: segment.transitDetails,
           };
           currentTime = timeToMinutes(departureTime) + segment.durationMinutes;
           totalDistance += segment.distanceMeters || 0;
@@ -242,20 +236,17 @@ function convertTripOutputToOptimizeResult(
       const segment = segmentMap.get(segmentKey);
 
       if (segment) {
+        // transitDetails가 있으면 대중교통, 없으면 도보로 간주
+        const isWalking = !segment.transitDetails ||
+                         (segment.transitDetails.subPaths.length === 1 &&
+                          segment.transitDetails.subPaths[0].trafficType === 3);
+
         transportToDestination = {
-          mode: segment.transitDetails?.transportMode === "subway" ? "public" :
-                segment.transitDetails?.transportMode === "bus" ? "public" :
-                segment.transitDetails?.transportMode === "walking" ? "walking" : "public",
+          mode: isWalking ? "walking" : "public",
           distance: segment.distanceMeters || 0,
           duration: segment.durationMinutes,
           polyline: typeof segment.polyline === "string" ? segment.polyline : undefined,
-          transitDetails: segment.transitDetails ? {
-            totalFare: 0,
-            transferCount: segment.transfers || 0,
-            walkingTime: segment.transitDetails.transportMode === "walking" ? segment.durationMinutes : 0,
-            walkingDistance: segment.transitDetails.transportMode === "walking" ? (segment.distanceMeters || 0) : 0,
-            subPaths: [],
-          } : undefined,
+          transitDetails: segment.transitDetails,
         };
         totalDistance += segment.distanceMeters || 0;
         totalDuration += segment.durationMinutes;
