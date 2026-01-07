@@ -120,7 +120,7 @@ export async function generatePublicTransitRoute(
     }
   }
 
-  const segments = extractSegments(
+  let segments = extractSegments(
     dayPlans,
     waypointMap,
     input.start,
@@ -129,10 +129,17 @@ export async function generatePublicTransitRoute(
   );
   let segmentCosts = await callRoutingAPIForSegments(segments);
 
+  console.log(`[generatePublicTransitRoute] Initial API calls: ${segments.length} segments`);
+
   // API-based time optimization (Phase 2)
   if (input.dailyMaxMinutes) {
     const maxReoptimizationRounds = 3;
     let roundCount = 0;
+
+    // Segment cache to avoid duplicate API calls
+    const segmentCache = new Map(
+      segmentCosts.map((c) => [`${c.key.fromId}:${c.key.toId}`, c])
+    );
 
     while (roundCount < maxReoptimizationRounds) {
       const dayTimeInfos = calculateActualDailyTimes(
@@ -147,6 +154,7 @@ export async function generatePublicTransitRoute(
 
       if (overloadedDays.length === 0) {
         // All days are within limit
+        console.log(`[generatePublicTransitRoute] All days within time limit after ${roundCount} rounds`);
         break;
       }
 
@@ -169,12 +177,16 @@ export async function generatePublicTransitRoute(
         break;
       }
 
+      console.log(
+        `[generatePublicTransitRoute] Round ${roundCount + 1}: Removing ${toRemove.length} waypoints from day ${mostOverloaded.dayIndex + 1}`
+      );
+
       // Remove waypoints
       for (const waypointId of toRemove) {
         removeWaypoint(dayPlans, waypointId);
       }
 
-      // Recalculate segments and API costs
+      // Recalculate segments
       const newSegments = extractSegments(
         dayPlans,
         waypointMap,
@@ -183,28 +195,36 @@ export async function generatePublicTransitRoute(
         input.lodging
       );
 
-      // Only call API for changed segments (optimization)
-      const changedSegments = newSegments.filter((seg) => {
-        return !segments.some(
-          (oldSeg) =>
-            oldSeg.key.fromId === seg.key.fromId &&
-            oldSeg.key.toId === seg.key.toId
-        );
+      // Only call API for segments NOT in cache
+      const uncachedSegments = newSegments.filter((seg) => {
+        const key = `${seg.key.fromId}:${seg.key.toId}`;
+        return !segmentCache.has(key);
       });
 
-      if (changedSegments.length > 0) {
-        const newCosts = await callRoutingAPIForSegments(changedSegments);
+      console.log(
+        `[generatePublicTransitRoute] Round ${roundCount + 1}: ${uncachedSegments.length} new segments to call API (${newSegments.length} total segments)`
+      );
 
-        // Merge new costs with existing costs
-        const costMap = new Map(
-          segmentCosts.map((c) => [`${c.key.fromId}:${c.key.toId}`, c])
-        );
+      if (uncachedSegments.length > 0) {
+        const newCosts = await callRoutingAPIForSegments(uncachedSegments);
+
+        // Add new costs to cache
         for (const cost of newCosts) {
-          costMap.set(`${cost.key.fromId}:${cost.key.toId}`, cost);
+          const key = `${cost.key.fromId}:${cost.key.toId}`;
+          segmentCache.set(key, cost);
         }
-
-        segmentCosts = Array.from(costMap.values());
       }
+
+      // Build segmentCosts from current segments using cache
+      segmentCosts = newSegments
+        .map((seg) => {
+          const key = `${seg.key.fromId}:${seg.key.toId}`;
+          return segmentCache.get(key);
+        })
+        .filter((cost): cost is NonNullable<typeof cost> => cost !== undefined);
+
+      // Update segments reference for next iteration
+      segments = newSegments;
 
       roundCount++;
     }
