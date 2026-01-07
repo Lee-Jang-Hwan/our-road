@@ -23,7 +23,7 @@ import {
 import type { TripLocation } from "@/types/trip";
 import type { PlaceSearchResult } from "@/types/place";
 import { generateTimeOptions } from "@/lib/schemas";
-import { searchPlaces } from "@/actions/places";
+import { searchLocations, type LocationSearchResult } from "@/actions/places/search-locations";
 
 interface LocationInputProps {
   /** 선택된 위치 */
@@ -68,7 +68,7 @@ export function LocationInput({
 }: LocationInputProps) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
-  const [results, setResults] = React.useState<PlaceSearchResult[]>([]);
+  const [results, setResults] = React.useState<LocationSearchResult[]>([]);
   const [isSearching, setIsSearching] = React.useState(false);
   const [isGettingLocation, setIsGettingLocation] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
@@ -85,9 +85,9 @@ export function LocationInput({
     setOpen(true);
 
     try {
-      const result = await searchPlaces({ query, page: 1, size: 10 });
+      const result = await searchLocations({ query, page: 1, size: 10 });
       if (result.success && result.data) {
-        setResults(result.data.places);
+        setResults(result.data.locations);
       } else {
         setResults([]);
         if (result.error) {
