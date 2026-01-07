@@ -57,7 +57,8 @@ export function resolveDayEndAnchor(params: {
 
 export function orderClustersOneDirection(
   clusters: Cluster[],
-  endAnchor: LatLng
+  endAnchor: LatLng,
+  startAnchor?: LatLng
 ): Cluster[] {
   if (!Array.isArray(clusters) || clusters.length === 0) {
     throw new Error("Cannot order empty clusters");
@@ -67,18 +68,54 @@ export function orderClustersOneDirection(
     throw new Error("Invalid end anchor coordinates");
   }
 
-  const sorted = [...clusters].sort(
-    (a, b) =>
-      calculateDistance(a.centroid, endAnchor) -
-      calculateDistance(b.centroid, endAnchor)
-  );
+  // If we have a start anchor, sort by progression from start to end
+  // Otherwise, fallback to sorting by distance to end anchor
+  let sorted: Cluster[];
 
-  return smoothClusterOrder(sorted, endAnchor);
+  if (startAnchor && Number.isFinite(startAnchor.lat) && Number.isFinite(startAnchor.lng)) {
+    // Calculate direction vector from start to end
+    const direction = calculateDirectionVector(startAnchor, endAnchor);
+
+    // Sort by projection onto start->end axis (progressive ordering)
+    sorted = [...clusters].sort((a, b) => {
+      const projA = dotProduct(
+        calculateDirectionVector(startAnchor, a.centroid),
+        direction
+      );
+      const projB = dotProduct(
+        calculateDirectionVector(startAnchor, b.centroid),
+        direction
+      );
+      return projA - projB;
+    });
+
+    console.log("[orderClustersOneDirection] Ordered by start->end progression");
+  } else {
+    // Fallback: sort by distance to end anchor
+    sorted = [...clusters].sort(
+      (a, b) =>
+        calculateDistance(a.centroid, endAnchor) -
+        calculateDistance(b.centroid, endAnchor)
+    );
+
+    console.log("[orderClustersOneDirection] Ordered by distance to end anchor (no start anchor)");
+  }
+
+  const smoothed = smoothClusterOrder(sorted, endAnchor, startAnchor);
+
+  // Validate monotonic progression
+  const isValid = validateMonotonicProgression(smoothed, endAnchor, startAnchor);
+  if (!isValid) {
+    console.warn("[orderClustersOneDirection] Warning: Cluster order may have backtracking");
+  }
+
+  return smoothed;
 }
 
 export function smoothClusterOrder(
   sorted: Cluster[],
-  endAnchor: LatLng
+  endAnchor: LatLng,
+  startAnchor?: LatLng
 ): Cluster[] {
   if (sorted.length < 3) {
     return sorted;
@@ -92,20 +129,28 @@ export function smoothClusterOrder(
 
     for (let i = 1; i < ordered.length - 1; i++) {
       for (let j = i + 1; j < ordered.length; j++) {
+        // Calculate cost considering connections
         const currentCost =
           calculateDistance(ordered[i - 1].centroid, ordered[i].centroid) +
-          calculateDistance(ordered[j].centroid, ordered[j - 1].centroid);
+          calculateDistance(ordered[i].centroid, ordered[i + 1]?.centroid ?? endAnchor) +
+          (ordered[j - 1] ? calculateDistance(ordered[j - 1].centroid, ordered[j].centroid) : 0) +
+          (ordered[j + 1] ? calculateDistance(ordered[j].centroid, ordered[j + 1].centroid) : 0);
 
         const swappedCost =
           calculateDistance(ordered[i - 1].centroid, ordered[j].centroid) +
-          calculateDistance(ordered[i].centroid, ordered[j - 1].centroid);
+          calculateDistance(ordered[j].centroid, ordered[i + 1]?.centroid ?? endAnchor) +
+          (ordered[j - 1] ? calculateDistance(ordered[j - 1].centroid, ordered[i].centroid) : 0) +
+          (ordered[j + 1] ? calculateDistance(ordered[i].centroid, ordered[j + 1].centroid) : 0);
 
-        if (swappedCost < currentCost) {
+        // Only swap if it significantly improves (avoid oscillation)
+        if (swappedCost < currentCost - 100) { // 100m threshold
           const [removed] = ordered.splice(j, 1);
           ordered.splice(i, 0, removed);
           improved = true;
+          break; // Re-evaluate after each swap
         }
       }
+      if (improved) break;
     }
 
     if (!improved) {
@@ -118,26 +163,41 @@ export function smoothClusterOrder(
 
 export function validateMonotonicProgression(
   orderedClusters: Cluster[],
-  endAnchor: LatLng
+  endAnchor: LatLng,
+  startAnchor?: LatLng
 ): boolean {
   if (orderedClusters.length < 2) {
     return true;
   }
 
-  const direction = calculateDirectionVector(
-    orderedClusters[0].centroid,
-    endAnchor
-  );
+  // Use start->end direction if available, otherwise use first cluster->end
+  const referenceStart = startAnchor ?? orderedClusters[0].centroid;
+  const direction = calculateDirectionVector(referenceStart, endAnchor);
+
+  let backtrackCount = 0;
 
   for (let i = 0; i < orderedClusters.length - 1; i++) {
     const current = orderedClusters[i].centroid;
     const next = orderedClusters[i + 1].centroid;
     const step = calculateDirectionVector(current, next);
 
-    if (dotProduct(step, direction) < 0) {
-      return false;
+    const progression = dotProduct(step, direction);
+
+    if (progression < -0.1) { // Allow small tolerance for perpendicular movement
+      backtrackCount++;
+      console.warn(
+        `[validateMonotonicProgression] Backtracking detected at cluster ${i} -> ${i + 1} (progression: ${progression.toFixed(3)})`
+      );
     }
   }
 
-  return true;
+  const isValid = backtrackCount === 0;
+
+  if (isValid) {
+    console.log("[validateMonotonicProgression] ✓ All clusters progress toward destination");
+  } else {
+    console.warn(`[validateMonotonicProgression] ✗ ${backtrackCount} backtracking segments detected`);
+  }
+
+  return isValid;
 }
