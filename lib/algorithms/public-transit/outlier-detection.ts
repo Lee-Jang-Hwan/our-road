@@ -30,22 +30,58 @@ export function detectOutliers(
   for (let i = 0; i < clusters.length; i++) {
     const cluster = clusters[i];
 
-    // Skip clusters with 1-2 waypoints (can't have outliers)
-    if (cluster.waypointIds.length <= 2) {
-      continue;
-    }
-
     const clusterWaypoints = cluster.waypointIds
       .map((id) => waypoints.get(id))
       .filter((wp): wp is Waypoint => Boolean(wp));
 
-    // Calculate cluster statistics
+    // Skip empty clusters
+    if (clusterWaypoints.length === 0) {
+      continue;
+    }
+
+    // For clusters with only 1 waypoint, check distance to other clusters
+    if (clusterWaypoints.length === 1) {
+      const wp = clusterWaypoints[0];
+
+      // Find nearest waypoint in OTHER clusters
+      const otherClusterWaypoints = clusters
+        .filter((_, idx) => idx !== i)
+        .flatMap((c) => c.waypointIds.map((id) => waypoints.get(id)))
+        .filter((w): w is Waypoint => Boolean(w));
+
+      if (otherClusterWaypoints.length === 0) {
+        continue; // Only one cluster total
+      }
+
+      const nearestDistance = Math.min(
+        ...otherClusterWaypoints.map((other) =>
+          calculateDistance(wp.coord, other.coord)
+        )
+      );
+
+      // If singleton is >10km from nearest waypoint in other clusters
+      if (nearestDistance > 10000) {
+        const estimatedExtraTime = Math.round((nearestDistance / 1000 / 20) * 60) + 15;
+
+        warnings.push({
+          waypointId: wp.id,
+          waypointName: wp.name,
+          reason: "isolated",
+          clusterIndex: i,
+          distanceFromClusterCenter: 0,
+          distanceFromNearestWaypoint: nearestDistance,
+          estimatedExtraTime,
+        });
+      }
+      continue;
+    }
+
+    // For clusters with 2+ waypoints, use statistical approach
     const clusterCentroid = calculateCentroid(clusterWaypoints.map((wp) => wp.coord));
     const distances = clusterWaypoints.map((wp) =>
       calculateDistance(wp.coord, clusterCentroid)
     );
     const avgDistance = distances.reduce((sum, d) => sum + d, 0) / distances.length;
-    const maxDistance = Math.max(...distances);
 
     // Threshold: 2.5x average distance from centroid
     const outlierThreshold = avgDistance * 2.5;
@@ -73,36 +109,6 @@ export function detectOutliers(
           clusterIndex: i,
           distanceFromClusterCenter: distanceFromCenter,
           distanceFromNearestWaypoint: nearestDistance,
-          estimatedExtraTime,
-        });
-      }
-    }
-
-    // Check for singleton cluster that's far from all other clusters
-    if (cluster.waypointIds.length === 1 && clusters.length > 1) {
-      const wp = waypoints.get(cluster.waypointIds[0]);
-      if (!wp) continue;
-
-      // Find nearest other cluster
-      const nearestClusterDistance = Math.min(
-        ...clusters
-          .filter((_, idx) => idx !== i)
-          .map((otherCluster) =>
-            calculateDistance(cluster.centroid, otherCluster.centroid)
-          )
-      );
-
-      // If this singleton cluster is >10km from nearest cluster, warn user
-      if (nearestClusterDistance > 10000) {
-        const estimatedExtraTime = Math.round((nearestClusterDistance / 1000 / 20) * 60) + 15;
-
-        warnings.push({
-          waypointId: wp.id,
-          waypointName: wp.name,
-          reason: "isolated",
-          clusterIndex: i,
-          distanceFromClusterCenter: 0,
-          distanceFromNearestWaypoint: nearestClusterDistance,
           estimatedExtraTime,
         });
       }
