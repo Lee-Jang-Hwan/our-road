@@ -13,6 +13,7 @@ import {
   FixedScheduleCard,
 } from "@/components/schedule/fixed-schedule-form";
 import { useTripDraft } from "@/hooks/use-trip-draft";
+import { useSafeBack } from "@/hooks/use-safe-back";
 import { getPlaces } from "@/actions/places";
 import {
   addFixedSchedule,
@@ -33,6 +34,7 @@ interface SchedulePageProps {
 export default function SchedulePage({ params }: SchedulePageProps) {
   const { tripId } = use(params);
   const { getDraftByTripId, saveFixedSchedules, isLoaded } = useTripDraft();
+  const handleBack = useSafeBack(`/plan/${tripId}`);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSchedule, setEditingSchedule] = useState<FixedSchedule | undefined>();
   const [schedules, setSchedules] = useState<FixedSchedule[]>([]);
@@ -245,11 +247,14 @@ export default function SchedulePage({ params }: SchedulePageProps) {
     <main className="flex flex-col min-h-[calc(100dvh-64px)]">
       {/* 헤더 */}
       <header className="flex items-center gap-3 px-4 py-3 border-b">
-        <Link href={`/plan/${tripId}`}>
-          <Button variant="ghost" size="icon" className="shrink-0">
-            <LuChevronLeft className="w-5 h-5" />
-          </Button>
-        </Link>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0"
+          onClick={handleBack}
+        >
+          <LuChevronLeft className="w-5 h-5" />
+        </Button>
         <h1 className="font-semibold text-lg flex-1">고정 일정 설정</h1>
         <Button size="sm" onClick={handleAddNew} disabled={!canAddSchedule}>
           <LuPlus className="w-4 h-4 mr-1" />

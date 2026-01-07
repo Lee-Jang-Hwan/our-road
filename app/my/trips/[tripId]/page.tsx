@@ -17,6 +17,8 @@ import {
   LuNavigation,
 } from "react-icons/lu";
 
+import { useSafeBack } from "@/hooks/use-safe-back";
+
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -117,6 +119,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
   const { tripId } = use(params);
   const router = useRouter();
   const { user, isLoaded } = useUser();
+  const handleBack = useSafeBack("/my");
   const [trip, setTrip] = useState<TripWithDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -376,18 +379,21 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
     return (
       <main className="flex flex-col min-h-[calc(100dvh-64px)]">
         <header className="flex items-center gap-3 px-4 py-3 border-b">
-          <Link href="/my">
-            <Button variant="ghost" size="icon" className="shrink-0">
-              <LuChevronLeft className="w-5 h-5" />
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0"
+            onClick={handleBack}
+          >
+            <LuChevronLeft className="w-5 h-5" />
+          </Button>
           <h1 className="font-semibold text-lg">여행 상세</h1>
         </header>
         <div className="flex-1 flex flex-col items-center justify-center px-4 gap-4">
           <p className="text-destructive">{error}</p>
-          <Link href="/my">
-            <Button variant="outline">목록으로 돌아가기</Button>
-          </Link>
+          <Button variant="outline" onClick={handleBack}>
+            목록으로 돌아가기
+          </Button>
         </div>
       </main>
     );
@@ -404,11 +410,14 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
     <main className="flex flex-col min-h-[calc(100dvh-64px)]">
       {/* 헤더 */}
       <header className="flex items-center gap-3 px-4 py-3 border-b">
-        <Link href="/my">
-          <Button variant="ghost" size="icon" className="shrink-0">
-            <LuChevronLeft className="w-5 h-5" />
-          </Button>
-        </Link>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0"
+          onClick={handleBack}
+        >
+          <LuChevronLeft className="w-5 h-5" />
+        </Button>
         <h1 className="font-semibold text-lg flex-1 line-clamp-1">{trip.title}</h1>
         <Button variant="ghost" size="icon" onClick={handleShare}>
           <LuShare2 className="w-5 h-5" />
