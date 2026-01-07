@@ -18,6 +18,7 @@ import {
 import { extractSegments, callRoutingAPIForSegments } from "./api-caller";
 import { detectAnomalousSegments, applyLocalFixes } from "./anomaly-detection";
 import { buildOutput } from "./output-builder";
+import { detectOutliers } from "./outlier-detection";
 
 export async function generatePublicTransitRoute(
   input: TripInput
@@ -75,6 +76,18 @@ export async function generatePublicTransitRoute(
   // Build waypoint map
   const waypointMap = new Map<string, Waypoint>();
   waypoints.forEach((wp) => waypointMap.set(wp.id, wp));
+
+  // Detect outliers BEFORE making any API calls
+  const outlierWarnings = detectOutliers(orderedClusters, waypointMap);
+
+  if (outlierWarnings.length > 0) {
+    console.warn(`[generatePublicTransitRoute] Found ${outlierWarnings.length} inefficient waypoints:`);
+    outlierWarnings.forEach((warning) => {
+      console.warn(
+        `  - ${warning.waypointName} (${warning.reason}): ${Math.round(warning.distanceFromClusterCenter / 1000)}km from cluster center, estimated +${warning.estimatedExtraTime}min`
+      );
+    });
+  }
 
   // Generate day plans (parallel within-cluster ordering)
   const dayPlans = await generateDayPlans(
@@ -247,5 +260,6 @@ export async function generatePublicTransitRoute(
     clusters: orderedClusters,
     dayPlans,
     segmentCosts,
+    outlierWarnings: outlierWarnings.length > 0 ? outlierWarnings : undefined,
   });
 }

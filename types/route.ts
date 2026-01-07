@@ -255,10 +255,21 @@ export interface SegmentCost {
   transitDetails?: TransitDetails; // 전체 대중교통 상세 정보 (subPaths 포함)
 }
 
+export interface OutlierWarning {
+  waypointId: string;
+  waypointName: string;
+  reason: "isolated" | "far_from_cluster" | "creates_long_detour";
+  clusterIndex: number;
+  distanceFromClusterCenter: number;
+  distanceFromNearestWaypoint: number;
+  estimatedExtraTime?: number; // minutes
+}
+
 export interface TripOutput {
   tripId: string;
   mode: TripMode;
   clusters: Cluster[];
   dayPlans: DayPlan[];
   segmentCosts: SegmentCost[];
+  outlierWarnings?: OutlierWarning[];
 }

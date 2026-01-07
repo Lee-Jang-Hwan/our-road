@@ -2,7 +2,7 @@
 // Output Builder
 // ============================================
 
-import type { Cluster, DayPlan, SegmentCost, TripMode, TripOutput } from "@/types";
+import type { Cluster, DayPlan, SegmentCost, TripMode, TripOutput, OutlierWarning } from "@/types";
 
 export function buildOutput(params: {
   tripId: string;
@@ -10,6 +10,7 @@ export function buildOutput(params: {
   clusters: Cluster[];
   dayPlans: DayPlan[];
   segmentCosts: SegmentCost[];
+  outlierWarnings?: OutlierWarning[];
 }): TripOutput {
   return {
     tripId: params.tripId,
@@ -17,5 +18,6 @@ export function buildOutput(params: {
     clusters: params.clusters,
     dayPlans: params.dayPlans,
     segmentCosts: params.segmentCosts,
+    outlierWarnings: params.outlierWarnings,
   };
 }
