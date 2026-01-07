@@ -1,6 +1,12 @@
 // ============================================
 // Outlier Detection for Inefficient Waypoints
 // ============================================
+//
+// ⚠️ DEPRECATED: This file is no longer used in the algorithm
+// All waypoints are now processed without outlier filtering
+// Kept for reference only
+//
+// ============================================
 
 import type { Cluster, Waypoint } from "@/types";
 import { calculateDistance, calculateCentroid } from "../utils/geo";
@@ -17,6 +23,10 @@ export interface OutlierWarning {
 
 /**
  * Detect waypoints that are outliers and may cause inefficient routes
+ * Uses a two-stage approach to avoid centroid contamination:
+ * 1. Pairwise distance analysis to identify potential outliers
+ * 2. Centroid-based validation using only non-outlier waypoints
+ *
  * @param clusters - The clusters after balancing
  * @param waypoints - Map of all waypoints
  * @returns Array of warnings for outlier waypoints
@@ -26,6 +36,8 @@ export function detectOutliers(
   waypoints: Map<string, Waypoint>
 ): OutlierWarning[] {
   const warnings: OutlierWarning[] = [];
+
+  console.log(`[detectOutliers] Checking ${clusters.length} clusters`);
 
   for (let i = 0; i < clusters.length; i++) {
     const cluster = clusters[i];
@@ -63,6 +75,10 @@ export function detectOutliers(
       if (nearestDistance > 10000) {
         const estimatedExtraTime = Math.round((nearestDistance / 1000 / 20) * 60) + 15;
 
+        console.log(
+          `[detectOutliers] Singleton outlier detected: ${wp.name} (${Math.round(nearestDistance / 1000)}km from nearest)`
+        );
+
         warnings.push({
           waypointId: wp.id,
           waypointName: wp.name,
@@ -76,36 +92,79 @@ export function detectOutliers(
       continue;
     }
 
-    // For clusters with 2+ waypoints, use statistical approach
-    const clusterCentroid = calculateCentroid(clusterWaypoints.map((wp) => wp.coord));
-    const distances = clusterWaypoints.map((wp) =>
-      calculateDistance(wp.coord, clusterCentroid)
-    );
-    const avgDistance = distances.reduce((sum, d) => sum + d, 0) / distances.length;
-
-    // Threshold: 2.5x average distance from centroid
-    const outlierThreshold = avgDistance * 2.5;
+    // For clusters with 2+ waypoints, use TWO-STAGE approach
+    // Stage 1: Pairwise distance analysis to identify outliers
+    const pairwiseOutliers = new Set<string>();
 
     for (const wp of clusterWaypoints) {
-      const distanceFromCenter = calculateDistance(wp.coord, clusterCentroid);
+      // Calculate distances to all other waypoints in the cluster
+      const distancesToOthers = clusterWaypoints
+        .filter((other) => other.id !== wp.id)
+        .map((other) => calculateDistance(wp.coord, other.coord));
 
-      // Check if this waypoint is too far from cluster center
-      if (distanceFromCenter > outlierThreshold && distanceFromCenter > 3000) {
-        // >3km and >2.5x avg
-        // Find nearest waypoint in the same cluster
+      // Find nearest and median distances
+      const nearestDistance = Math.min(...distancesToOthers);
+      distancesToOthers.sort((a, b) => a - b);
+      const medianDistance =
+        distancesToOthers.length % 2 === 0
+          ? (distancesToOthers[distancesToOthers.length / 2 - 1] +
+              distancesToOthers[distancesToOthers.length / 2]) /
+            2
+          : distancesToOthers[Math.floor(distancesToOthers.length / 2)];
+
+      // Outlier criteria:
+      // - Nearest waypoint is >20km away (very isolated)
+      // - OR median distance to others is >50km (far from the group)
+      if (nearestDistance > 20000 || medianDistance > 50000) {
+        pairwiseOutliers.add(wp.id);
+        console.log(
+          `[detectOutliers] Pairwise outlier detected: ${wp.name} (nearest: ${Math.round(nearestDistance / 1000)}km, median: ${Math.round(medianDistance / 1000)}km)`
+        );
+      }
+    }
+
+    // Stage 2: Centroid-based validation (excluding pairwise outliers)
+    const nonOutlierWaypoints = clusterWaypoints.filter(
+      (wp) => !pairwiseOutliers.has(wp.id)
+    );
+
+    // If all waypoints were marked as outliers, revert to using all
+    // (This prevents false positives when all waypoints are far apart)
+    const waypointsForCentroid =
+      nonOutlierWaypoints.length > 0 ? nonOutlierWaypoints : clusterWaypoints;
+
+    const clusterCentroid = calculateCentroid(
+      waypointsForCentroid.map((wp) => wp.coord)
+    );
+    const centroidDistances = waypointsForCentroid.map((wp) =>
+      calculateDistance(wp.coord, clusterCentroid)
+    );
+    const avgCentroidDistance =
+      centroidDistances.reduce((sum, d) => sum + d, 0) / centroidDistances.length;
+
+    console.log(
+      `[detectOutliers] Cluster ${i}: ${clusterWaypoints.length} waypoints, ${pairwiseOutliers.size} pairwise outliers, avg centroid distance: ${Math.round(avgCentroidDistance / 1000)}km`
+    );
+
+    // Validate and create warnings
+    for (const wp of clusterWaypoints) {
+      const isPairwiseOutlier = pairwiseOutliers.has(wp.id);
+
+      if (isPairwiseOutlier) {
+        // Calculate distances for the warning
+        const distanceFromCenter = calculateDistance(wp.coord, clusterCentroid);
         const nearestDistance = Math.min(
           ...clusterWaypoints
             .filter((other) => other.id !== wp.id)
             .map((other) => calculateDistance(wp.coord, other.coord))
         );
 
-        // Estimate extra time (assume 20 km/h average speed + overhead)
         const estimatedExtraTime = Math.round((distanceFromCenter / 1000 / 20) * 60) + 10;
 
         warnings.push({
           waypointId: wp.id,
           waypointName: wp.name,
-          reason: nearestDistance > 5000 ? "isolated" : "far_from_cluster",
+          reason: nearestDistance > 20000 ? "isolated" : "far_from_cluster",
           clusterIndex: i,
           distanceFromClusterCenter: distanceFromCenter,
           distanceFromNearestWaypoint: nearestDistance,
@@ -114,6 +173,8 @@ export function detectOutliers(
       }
     }
   }
+
+  console.log(`[detectOutliers] Total warnings: ${warnings.length}`);
 
   return warnings;
 }

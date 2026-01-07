@@ -8,6 +8,7 @@ import { getTmapWalkingRoute } from "@/lib/api/tmap";
 import { calculateDistance } from "../utils/geo";
 import pLimit from "p-limit";
 import { logCircuitBreaker } from "@/lib/utils/api-logger";
+import { segmentCache } from "./segment-cache";
 
 export interface SegmentRequest {
   key: SegmentKey;
@@ -202,6 +203,135 @@ function recordFailure(): void {
 const API_CONCURRENCY_LIMIT = 3; // Maximum 3 concurrent API requests
 const apiLimit = pLimit(API_CONCURRENCY_LIMIT);
 
+/**
+ * Fetch single segment with caching
+ */
+async function fetchSingleSegment(
+  segment: SegmentRequest,
+  maxRetries = 3
+): Promise<SegmentCost> {
+  // Check cache first
+  const cached = segmentCache.get(segment.fromCoord, segment.toCoord);
+  if (cached) {
+    console.log(
+      `[Cache HIT] ${segment.key.fromId} -> ${segment.key.toId}`
+    );
+    // Return cached data with original segment key
+    return { ...cached, key: segment.key };
+  }
+
+  console.log(`[Cache MISS] ${segment.key.fromId} -> ${segment.key.toId}`);
+
+  const distanceMeters = calculateDistance(segment.fromCoord, segment.toCoord);
+
+  // 500m 미만: 도보 API 호출
+  if (distanceMeters < 500) {
+    console.log(
+      `[callRoutingAPI] Walking distance (${Math.round(distanceMeters)}m) for ${segment.key.fromId} -> ${segment.key.toId}, calling TMAP API`
+    );
+
+    try {
+      const walkingRoute = await getTmapWalkingRoute(
+        segment.fromCoord,
+        segment.toCoord
+      );
+
+      if (walkingRoute) {
+        const result: SegmentCost = {
+          key: segment.key,
+          durationMinutes: walkingRoute.totalDuration,
+          distanceMeters: walkingRoute.totalDistance,
+          polyline: walkingRoute.polyline,
+        };
+        // Cache the result
+        segmentCache.set(segment.fromCoord, segment.toCoord, result);
+        return result;
+      }
+    } catch (error) {
+      console.warn(
+        `[callRoutingAPI] TMAP API failed for ${segment.key.fromId} -> ${segment.key.toId}, using fallback calculation`,
+        error
+      );
+    }
+
+    // TMAP API 실패 시 fallback
+    return calculateWalkingSegmentCost(segment, distanceMeters);
+  }
+
+  // 500m 이상: 대중교통 API 호출
+  // Check circuit breaker
+  if (!checkCircuitBreaker()) {
+    console.warn(
+      `[callRoutingAPI] Circuit breaker is OPEN, using fallback for ${segment.key.fromId} -> ${segment.key.toId}`
+    );
+    return fallbackSegmentCost(segment, distanceMeters);
+  }
+
+  // Retry logic with exponential backoff
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const route = await getBestTransitRouteWithDetails(
+        segment.fromCoord,
+        segment.toCoord
+      );
+
+      if (!route) {
+        if (attempt === maxRetries) {
+          console.warn(
+            `[callRoutingAPI] No route found for ${segment.key.fromId} -> ${segment.key.toId} after ${maxRetries} retries, using fallback`
+          );
+          recordFailure();
+          return fallbackSegmentCost(segment, distanceMeters);
+        }
+        // Retry with exponential backoff
+        await new Promise((resolve) =>
+          setTimeout(resolve, Math.pow(2, attempt) * 200)
+        );
+        continue;
+      }
+
+      // Success
+      recordSuccess();
+      const result: SegmentCost = {
+        key: segment.key,
+        durationMinutes: route.totalDuration,
+        distanceMeters: route.totalDistance,
+        transfers: route.details?.transferCount ?? route.transferCount,
+        polyline: route.polyline,
+        transitDetails: route.details,
+      };
+
+      // Cache the successful result
+      segmentCache.set(segment.fromCoord, segment.toCoord, result);
+
+      return result;
+    } catch (error) {
+      if (attempt === maxRetries) {
+        console.error(
+          `[callRoutingAPI] Error fetching route for ${segment.key.fromId} -> ${segment.key.toId} after ${maxRetries} retries:`,
+          error
+        );
+        recordFailure();
+        return fallbackSegmentCost(segment, distanceMeters);
+      }
+      // Exponential backoff: 200ms, 400ms, 800ms
+      const delay = Math.pow(2, attempt) * 200;
+      console.log(
+        `[callRoutingAPI] Retry ${attempt + 1}/${maxRetries} for ${segment.key.fromId} -> ${segment.key.toId} after ${delay}ms`
+      );
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+
+  // Fallback (should not reach here)
+  recordFailure();
+  return fallbackSegmentCost(segment, distanceMeters);
+}
+
+/**
+ * Call routing API for multiple segments with smart caching and retry
+ * Only retries failed segments, not the entire batch
+ */
 export async function callRoutingAPIForSegments(
   segments: SegmentRequest[]
 ): Promise<SegmentCost[]> {
@@ -209,110 +339,17 @@ export async function callRoutingAPIForSegments(
     return [];
   }
 
-  const maxRetries = 3;
+  console.log(`[callRoutingAPIForSegments] Processing ${segments.length} segments`);
 
-  // Use p-limit to control concurrency instead of manual batching
+  // Fetch all segments with concurrency limit
   const results = await Promise.all(
-    segments.map((segment) =>
-      apiLimit(async () => {
-        const distanceMeters = calculateDistance(segment.fromCoord, segment.toCoord);
+    segments.map((segment) => apiLimit(() => fetchSingleSegment(segment)))
+  );
 
-        // 500m 미만: 도보 API 호출
-        if (distanceMeters < 500) {
-          console.log(
-            `[callRoutingAPI] Walking distance (${Math.round(distanceMeters)}m) for ${segment.key.fromId} -> ${segment.key.toId}, calling TMAP API`
-          );
-
-          try {
-            const walkingRoute = await getTmapWalkingRoute(
-              segment.fromCoord,
-              segment.toCoord
-            );
-
-            if (walkingRoute) {
-              return {
-                key: segment.key,
-                durationMinutes: walkingRoute.totalDuration,
-                distanceMeters: walkingRoute.totalDistance,
-                polyline: walkingRoute.polyline,
-              } satisfies SegmentCost;
-            }
-          } catch (error) {
-            console.warn(
-              `[callRoutingAPI] TMAP API failed for ${segment.key.fromId} -> ${segment.key.toId}, using fallback calculation`,
-              error
-            );
-          }
-
-          // TMAP API 실패 시 fallback
-          return calculateWalkingSegmentCost(segment, distanceMeters);
-        }
-
-        // 500m 이상: 대중교통 API 호출
-        // Check circuit breaker
-        if (!checkCircuitBreaker()) {
-          console.warn(
-            `[callRoutingAPI] Circuit breaker is OPEN, using fallback for ${segment.key.fromId} -> ${segment.key.toId}`
-          );
-          return fallbackSegmentCost(segment, distanceMeters);
-        }
-
-        // Retry logic with exponential backoff
-        for (let attempt = 0; attempt <= maxRetries; attempt++) {
-          try {
-            const route = await getBestTransitRouteWithDetails(
-              segment.fromCoord,
-              segment.toCoord
-            );
-
-            if (!route) {
-              if (attempt === maxRetries) {
-                console.warn(
-                  `[callRoutingAPI] No route found for ${segment.key.fromId} -> ${segment.key.toId} after ${maxRetries} retries, using fallback`
-                );
-                recordFailure();
-                return fallbackSegmentCost(segment, distanceMeters);
-              }
-              // Retry with exponential backoff
-              await new Promise((resolve) =>
-                setTimeout(resolve, Math.pow(2, attempt) * 200)
-              );
-              continue;
-            }
-
-            // Success
-            recordSuccess();
-            return {
-              key: segment.key,
-              durationMinutes: route.totalDuration,
-              distanceMeters: route.totalDistance,
-              transfers: route.details?.transferCount ?? route.transferCount,
-              polyline: route.polyline,
-              transitDetails: route.details, // 전체 대중교통 상세 정보 포함
-            } satisfies SegmentCost;
-          } catch (error) {
-            if (attempt === maxRetries) {
-              console.error(
-                `[callRoutingAPI] Error fetching route for ${segment.key.fromId} -> ${segment.key.toId} after ${maxRetries} retries:`,
-                error
-              );
-              recordFailure();
-              return fallbackSegmentCost(segment, distanceMeters);
-            }
-            // Exponential backoff: 200ms, 400ms, 800ms
-            const delay = Math.pow(2, attempt) * 200;
-            console.log(
-              `[callRoutingAPI] Retry ${attempt + 1}/${maxRetries} for ${segment.key.fromId} -> ${segment.key.toId} after ${delay}ms`
-            );
-            await new Promise((resolve) => setTimeout(resolve, delay));
-          }
-        }
-
-        // Fallback (should not reach here)
-        recordFailure();
-        return fallbackSegmentCost(segment, distanceMeters);
-      })
-    )
+  // Log cache statistics
+  const stats = segmentCache.getStats();
+  console.log(
+    `[SegmentCache] Size: ${stats.size}/${stats.maxSize} entries`
   );
 
   return results;

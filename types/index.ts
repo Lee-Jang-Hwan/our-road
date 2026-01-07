@@ -41,7 +41,6 @@ export type {
   SegmentKey,
   SegmentCost,
   TripOutput,
-  OutlierWarning,
 } from "./route";
 
 // ============================================
