@@ -252,13 +252,7 @@ export interface SegmentCost {
   transfers?: number;
   waitTimeMinutes?: number;
   polyline?: string | LatLng[]; // String for encoded polyline or array of coordinates
-  transitDetails?: {
-    transportMode: 'subway' | 'bus' | 'walking';
-    lineName?: string;
-    startStation?: string;
-    endStation?: string;
-    stationCount?: number;
-  };
+  transitDetails?: TransitDetails; // 전체 대중교통 상세 정보 (subPaths 포함)
 }
 
 export interface TripOutput {

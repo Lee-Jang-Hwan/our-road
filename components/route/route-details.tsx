@@ -152,22 +152,35 @@ export default function RouteDetails({ tripOutput, waypoints }: RouteDetailsProp
                                 <span>· 환승 {segment.transfers}회</span>
                               )}
                             </div>
-                            {/* Transit details */}
-                            {segment.transitDetails && (
-                              <div className="mt-1 ml-5 text-xs text-blue-600 flex items-center gap-1">
-                                <span className="px-2 py-0.5 bg-blue-100 rounded">
-                                  {segment.transitDetails.lineName}
-                                </span>
-                                {segment.transitDetails.startStation && segment.transitDetails.endStation && (
-                                  <span className="text-gray-600">
-                                    {segment.transitDetails.startStation} → {segment.transitDetails.endStation}
-                                  </span>
-                                )}
-                                {segment.transitDetails.stationCount && (
-                                  <span className="text-gray-600">
-                                    ({segment.transitDetails.stationCount}개 역)
-                                  </span>
-                                )}
+                            {/* Transit details - subPaths 표시 */}
+                            {segment.transitDetails && segment.transitDetails.subPaths && (
+                              <div className="mt-1 ml-5 space-y-1">
+                                {segment.transitDetails.subPaths.map((subPath, idx) => (
+                                  <div key={idx} className="text-xs flex items-center gap-1">
+                                    {subPath.trafficType !== 3 && subPath.lane && (
+                                      <>
+                                        <span className="px-2 py-0.5 bg-blue-100 text-blue-600 rounded">
+                                          {subPath.lane.name || subPath.lane.busNo}
+                                        </span>
+                                        {subPath.startName && subPath.endName && (
+                                          <span className="text-gray-600">
+                                            {subPath.startName} → {subPath.endName}
+                                          </span>
+                                        )}
+                                        {subPath.stationCount && (
+                                          <span className="text-gray-600">
+                                            ({subPath.stationCount}개 역)
+                                          </span>
+                                        )}
+                                      </>
+                                    )}
+                                    {subPath.trafficType === 3 && (
+                                      <span className="text-gray-500">
+                                        도보 {Math.round(subPath.distance)}m ({subPath.sectionTime}분)
+                                      </span>
+                                    )}
+                                  </div>
+                                ))}
                               </div>
                             )}
                           </div>

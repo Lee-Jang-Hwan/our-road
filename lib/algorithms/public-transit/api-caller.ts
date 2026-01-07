@@ -261,6 +261,7 @@ export async function callRoutingAPIForSegments(
               distanceMeters: route.totalDistance,
               transfers: route.details?.transferCount ?? route.transferCount,
               polyline: route.polyline,
+              transitDetails: route.details, // 전체 대중교통 상세 정보 포함
             } satisfies SegmentCost;
           } catch (error) {
             if (attempt === maxRetries) {
