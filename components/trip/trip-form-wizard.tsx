@@ -51,64 +51,22 @@ export function TripFormWizard({
 
   const form = useForm<CreateTripInput>({
     resolver: zodResolver(createTripSchema),
-    defaultValues: (() => {
-      console.group("🔍 [TripFormWizard] useForm defaultValues");
-      console.log("initialData:", initialData);
-      console.log(
-        "initialData?.dailyStartTime:",
-        initialData?.dailyStartTime,
-        "타입:",
-        typeof initialData?.dailyStartTime,
-      );
-      console.log(
-        "initialData?.dailyEndTime:",
-        initialData?.dailyEndTime,
-        "타입:",
-        typeof initialData?.dailyEndTime,
-      );
-
-      const defaultValues = {
-        title: initialData?.title || "",
-        startDate: initialData?.startDate || "",
-        endDate: initialData?.endDate || "",
-        origin: initialData?.origin || undefined,
-        destination: initialData?.destination || undefined,
-        dailyStartTime: initialData?.dailyStartTime || "10:00",
-        dailyEndTime: initialData?.dailyEndTime || "22:00",
-        transportModes: initialData?.transportModes || ["public"],
-        accommodations: initialData?.accommodations || [],
-      };
-
-      console.log("설정된 defaultValues:", defaultValues);
-      console.log(
-        "defaultValues.dailyStartTime:",
-        defaultValues.dailyStartTime,
-      );
-      console.log("defaultValues.dailyEndTime:", defaultValues.dailyEndTime);
-      console.groupEnd();
-
-      return defaultValues;
-    })(),
+    defaultValues: {
+      title: initialData?.title || "",
+      startDate: initialData?.startDate || "",
+      endDate: initialData?.endDate || "",
+      origin: initialData?.origin || undefined,
+      destination: initialData?.destination || undefined,
+      dailyStartTime: initialData?.dailyStartTime || "10:00",
+      dailyEndTime: initialData?.dailyEndTime || "22:00",
+      transportModes: initialData?.transportModes || ["public"],
+      accommodations: initialData?.accommodations || [],
+    },
   });
 
   // initialData가 변경될 때 폼 값 업데이트
   React.useEffect(() => {
-    console.group("🔍 [TripFormWizard] useEffect - initialData 변경");
-    console.log("initialData:", initialData);
     if (initialData) {
-      console.log(
-        "initialData.dailyStartTime:",
-        initialData.dailyStartTime,
-        "타입:",
-        typeof initialData.dailyStartTime,
-      );
-      console.log(
-        "initialData.dailyEndTime:",
-        initialData.dailyEndTime,
-        "타입:",
-        typeof initialData.dailyEndTime,
-      );
-
       const resetData = {
         title: initialData.title || "",
         startDate: initialData.startDate || "",
@@ -121,23 +79,8 @@ export function TripFormWizard({
         accommodations: initialData.accommodations || [],
       };
 
-      console.log("form.reset 호출 전, resetData:", resetData);
-      console.log("resetData.dailyStartTime:", resetData.dailyStartTime);
-      console.log("resetData.dailyEndTime:", resetData.dailyEndTime);
-
       form.reset(resetData);
-
-      // reset 후 폼 값 확인
-      setTimeout(() => {
-        const currentValues = form.getValues();
-        console.log("form.reset 호출 후, 현재 폼 값:", currentValues);
-        console.log("현재 dailyStartTime:", currentValues.dailyStartTime);
-        console.log("현재 dailyEndTime:", currentValues.dailyEndTime);
-      }, 0);
-    } else {
-      console.log("initialData가 없습니다 (null 또는 undefined)");
     }
-    console.groupEnd();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialData]); // form은 안정적이므로 의도적으로 제외
 

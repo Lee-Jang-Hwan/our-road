@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { MapPin, Navigation, Loader2, X, Clock, Search } from "lucide-react";
+import { MapPin, Crosshair, Loader2, X, Clock, Search } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,7 @@ import {
 import type { TripLocation } from "@/types/trip";
 import type { PlaceSearchResult } from "@/types/place";
 import { generateTimeOptions } from "@/lib/schemas";
-import { searchLocations, type LocationSearchResult } from "@/actions/places/search-locations";
+import { searchLocations, type LocationSearchResult } from "@/actions/places";
 
 interface LocationInputProps {
   /** 선택된 위치 */
@@ -128,7 +128,7 @@ export function LocationInput({
             timeout: 10000,
             maximumAge: 0,
           });
-        }
+        },
       );
 
       const { latitude, longitude } = position.coords;
@@ -158,7 +158,7 @@ export function LocationInput({
       lng: result.coordinate.lng,
     });
     setOpen(false);
-    setQuery("");
+    // 검색어는 유지하고 결과만 초기화
     setResults([]);
     setError(null);
   };
@@ -187,9 +187,15 @@ export function LocationInput({
           <Button
             variant="outline"
             disabled={disabled}
-            onClick={() => setOpen(true)}
+            onClick={() => {
+              setOpen(true);
+              // 이전 검색어가 있으면 자동으로 다시 검색
+              if (query && query.length >= 2) {
+                handleSearch();
+              }
+            }}
             className={cn(
-              "flex-1 justify-start text-left font-normal touch-target"
+              "flex-1 justify-start text-left font-normal touch-target",
             )}
           >
             <MapPin className="mr-2 h-4 w-4 shrink-0" />
@@ -253,7 +259,7 @@ export function LocationInput({
           {isGettingLocation ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <Navigation className="h-4 w-4" />
+            <Crosshair className="size-5" />
           )}
         </Button>
       </div>

@@ -79,17 +79,9 @@ export function TripFormStep1({ onNext, onCancel }: TripFormStep1Props) {
             })
           }
           maxDays={30}
+          startDateError={form.formState.errors.startDate?.message}
+          endDateError={form.formState.errors.endDate?.message}
         />
-        {form.formState.errors.startDate && (
-          <p className="text-sm font-medium text-destructive">
-            {form.formState.errors.startDate.message}
-          </p>
-        )}
-        {form.formState.errors.endDate && (
-          <p className="text-sm font-medium text-destructive">
-            {form.formState.errors.endDate.message}
-          </p>
-        )}
       </div>
 
       {/* 이동 수단 */}

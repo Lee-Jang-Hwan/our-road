@@ -3,7 +3,12 @@
 // ============================================
 
 import { z } from "zod";
-import { dateSchema, timeSchema, uuidSchema } from "./common";
+import {
+  dateSchema,
+  timeSchema,
+  uuidSchema,
+  dateFormatValidator,
+} from "./common";
 
 /**
  * 여행 상태 스키마
@@ -67,10 +72,25 @@ export const createTripSchema = z
       .string()
       .min(1, "여행 제목은 필수입니다")
       .max(50, "여행 제목은 50자 이하여야 합니다"),
-    startDate: dateSchema,
-    endDate: dateSchema,
-    origin: tripLocationSchema,
-    destination: tripLocationSchema,
+
+    startDate: z
+      .string()
+      .min(1, "시작일을 선택해주세요")
+      .refine(dateFormatValidator),
+    endDate: z
+      .string()
+      .min(1, "종료일을 선택해주세요")
+      .refine(dateFormatValidator),
+      origin: tripLocationSchema
+      .optional()
+      .refine((val) => val !== undefined && val !== null, {
+        message: "출발지를 입력해주세요",
+      }),
+    destination: tripLocationSchema
+      .optional()
+      .refine((val) => val !== undefined && val !== null, {
+        message: "도착지를 입력해주세요",
+      }),
     dailyStartTime: timeSchema.default("10:00"),
     dailyEndTime: timeSchema.default("22:00"),
     transportModes: z

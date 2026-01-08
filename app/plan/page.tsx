@@ -63,10 +63,11 @@ export default function NewTripPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const { saveTripInfo } = useTripDraft();
-  
+
   // 확인 다이얼로그 상태
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
-  const [pendingSubmitData, setPendingSubmitData] = useState<CreateTripInput | null>(null);
+  const [pendingSubmitData, setPendingSubmitData] =
+    useState<CreateTripInput | null>(null);
 
   const handleBack = () => {
     if (currentStep === 2) {
@@ -90,7 +91,7 @@ export default function NewTripPage() {
 
     setIsConfirmDialogOpen(false);
     setIsSubmitting(true);
-    
+
     try {
       // Server Action으로 여행 생성
       const result = await createTrip(pendingSubmitData);

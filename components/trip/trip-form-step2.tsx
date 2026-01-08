@@ -57,6 +57,22 @@ export function TripFormStep2({
   // 도착지를 출발지와 동일하게 설정하는 상태
   const [sameAsOrigin, setSameAsOrigin] = React.useState(false);
 
+  // 초기값 로드 시 출발지와 도착지가 같으면 체크박스 체크
+  React.useEffect(() => {
+    if (!originValue || !destinationValue) {
+      setSameAsOrigin(false);
+      return;
+    }
+
+    const isSame =
+      originValue.name === destinationValue.name &&
+      originValue.address === destinationValue.address &&
+      originValue.lat === destinationValue.lat &&
+      originValue.lng === destinationValue.lng;
+
+    setSameAsOrigin(isSame);
+  }, [originValue, destinationValue]);
+
   // 출발지와 동일 체크박스 변경 시
   const handleSameAsOriginChange = (checked: boolean) => {
     setSameAsOrigin(checked);
@@ -99,7 +115,23 @@ export function TripFormStep2({
     <div className="space-y-6">
       {/* 출발지 - 여행 시작 장소 */}
       <div className="space-y-2">
-        <FormLabel>여행 시작 (출발지)</FormLabel>
+        <div className="flex items-center justify-between">
+          <FormLabel>여행 시작 (출발지)</FormLabel>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="sameAsOrigin"
+              checked={sameAsOrigin}
+              onCheckedChange={handleSameAsOriginChange}
+              disabled={!originValue}
+            />
+            <label
+              htmlFor="sameAsOrigin"
+              className="text-sm text-muted-foreground cursor-pointer select-none"
+            >
+              출발지와 동일
+            </label>
+          </div>
+        </div>
         <p className="text-xs text-muted-foreground -mt-1">
           여행을 시작하는 장소와 출발 시간을 설정하세요
         </p>
@@ -178,23 +210,7 @@ export function TripFormStep2({
 
       {/* 도착지 - 여행 마지막 도착 장소 */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <FormLabel>여행 종료 (도착지)</FormLabel>
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="sameAsOrigin"
-              checked={sameAsOrigin}
-              onCheckedChange={handleSameAsOriginChange}
-              disabled={!originValue}
-            />
-            <label
-              htmlFor="sameAsOrigin"
-              className="text-sm text-muted-foreground cursor-pointer select-none"
-            >
-              출발지와 동일
-            </label>
-          </div>
-        </div>
+        <FormLabel>여행 종료 (도착지)</FormLabel>
         <p className="text-xs text-muted-foreground -mt-1">
           여행을 마치는 최종 도착 장소와 시간을 설정하세요
         </p>

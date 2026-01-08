@@ -109,6 +109,10 @@ interface DateRangePickerProps {
   disabled?: boolean;
   /** 최대 여행 기간 (일) */
   maxDays?: number;
+  /** 시작일 에러 메시지 */
+  startDateError?: string;
+  /** 종료일 에러 메시지 */
+  endDateError?: string;
   /** 추가 클래스 */
   className?: string;
 }
@@ -120,6 +124,8 @@ export function DateRangePicker({
   onEndDateChange,
   disabled = false,
   maxDays = 30,
+  startDateError,
+  endDateError,
   className,
 }: DateRangePickerProps) {
   // 종료일 최소/최대 날짜 계산
@@ -160,6 +166,11 @@ export function DateRangePicker({
           placeholder="시작일 선택"
           disabled={disabled}
         />
+        {startDateError && (
+          <p className="text-sm font-medium text-destructive mt-1">
+            {startDateError}
+          </p>
+        )}
       </div>
       <div className="flex-1">
         <label className="text-sm font-medium text-muted-foreground mb-1.5 block">
@@ -173,6 +184,11 @@ export function DateRangePicker({
           minDate={endDateMin}
           maxDate={endDateMax}
         />
+        {endDateError && (
+          <p className="text-sm font-medium text-destructive mt-1">
+            {endDateError}
+          </p>
+        )}
       </div>
     </div>
   );
