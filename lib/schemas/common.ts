@@ -11,15 +11,18 @@ export const timeSchema = z
   .string()
   .regex(
     /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
-    "올바른 시간 형식이 아닙니다 (HH:mm)"
+    "올바른 시간 형식이 아닙니다 (HH:mm)",
   );
 
 /**
  * 날짜 검증 스키마 (YYYY-MM-DD 형식)
  */
-export const dateSchema = z
-  .string()
-  .regex(/^\d{4}-\d{2}-\d{2}$/, "올바른 날짜 형식이 아닙니다 (YYYY-MM-DD)");
+export const dateFormatValidator = (val: string) => {
+  if (val === "") return true;
+  return /^\d{4}-\d{2}-\d{2}$/.test(val);
+};
+
+export const dateSchema = z.string().refine(dateFormatValidator);
 
 /**
  * 체류 시간 검증 스키마 (30분 ~ 12시간, 30분 단위)
@@ -90,7 +93,7 @@ export function generateDurationOptions(): Array<{
  */
 export function generateTimeOptions(
   startHour = 0,
-  endHour = 24
+  endHour = 24,
 ): Array<{ value: string; label: string }> {
   const options: Array<{ value: string; label: string }> = [];
 

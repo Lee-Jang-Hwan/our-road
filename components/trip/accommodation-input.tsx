@@ -262,7 +262,7 @@ export function AccommodationInput({
               });
             }
           }}
-          placeholder="숙소 검색 (호텔, 펜션 등)"
+          placeholder="숙소 검색"
         />
       </div>
 

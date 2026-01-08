@@ -76,6 +76,26 @@ function calculateNightsBetween(startDate: string, endDate: string): number {
 }
 
 /**
+ * 두 날짜 범위가 겹치는지 확인
+ * 연속 숙박은 허용 (예: 1월 8일~9일, 1월 9일~11일)
+ */
+function datesOverlap(
+  start1: string,
+  end1: string,
+  start2: string,
+  end2: string,
+): boolean {
+  const s1 = new Date(start1).getTime();
+  const e1 = new Date(end1).getTime();
+  const s2 = new Date(start2).getTime();
+  const e2 = new Date(end2).getTime();
+
+  // 겹치는 조건: start1 < end2 && start2 < end1
+  // (같은 날짜는 겹치지 않는 것으로 처리: end1 === start2인 경우 허용)
+  return s1 < e2 && s2 < e1;
+}
+
+/**
  * 숙박 기간의 총 박수 계산
  */
 function calculateTotalAccommodationNights(
@@ -92,6 +112,41 @@ function calculateTotalAccommodationNights(
 }
 
 /**
+ * 숙소 간 날짜 겹침 검증
+ * 모든 숙소 쌍을 확인하여 하나라도 겹치면 true 반환
+ */
+function validateAccommodationOverlaps(
+  accommodations: CreateTripInput["accommodations"],
+): boolean {
+  if (!accommodations || accommodations.length < 2) {
+    return false;
+  }
+
+  // 모든 숙소 쌍을 확인
+  for (let i = 0; i < accommodations.length; i++) {
+    for (let j = i + 1; j < accommodations.length; j++) {
+      const acc1 = accommodations[i];
+      const acc2 = accommodations[j];
+
+      if (acc1.startDate && acc1.endDate && acc2.startDate && acc2.endDate) {
+        if (
+          datesOverlap(
+            acc1.startDate,
+            acc1.endDate,
+            acc2.startDate,
+            acc2.endDate,
+          )
+        ) {
+          return true; // 하나라도 겹침 발견하면 즉시 true 반환
+        }
+      }
+    }
+  }
+
+  return false; // 겹침 없음
+}
+
+/**
  * 숙박 기간 검증
  * 숙소가 없을 때는 경고 표시 안 함 (숙소는 선택사항)
  */
@@ -105,6 +160,16 @@ function validateAccommodationPeriod(
     return { isValid: true };
   }
 
+  // 1. 숙소 간 날짜 겹침 확인 (우선순위 높음)
+  const hasOverlap = validateAccommodationOverlaps(accommodations);
+  if (hasOverlap) {
+    return {
+      isValid: false,
+      message: "숙박 기간이 겹치는 숙소가 있습니다. 숙박 기간을 확인해주세요.",
+    };
+  }
+
+  // 2. 숙박 기간이 여행 기간과 일치하는지 확인
   const tripNights = calculateNightsBetween(startDate, endDate);
   const accommodationNights = calculateTotalAccommodationNights(accommodations);
 
@@ -132,6 +197,9 @@ export function TripConfirmDialog({
         data.accommodations,
       )
     : { isValid: true };
+
+  // 확인 버튼 비활성화 조건: 로딩 중이거나 검증 실패
+  const isConfirmDisabled = isLoading || !accommodationValidation.isValid;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -193,7 +261,8 @@ export function TripConfirmDialog({
                       <div className="text-xs text-muted-foreground">
                         숙박 기간: {formatDate(acc.startDate)} ~{" "}
                         {formatDate(acc.endDate)} (
-                        {calculateDaysBetween(acc.startDate, acc.endDate)}일)
+                        {calculateDaysBetween(acc.startDate, acc.endDate) - 1}
+                        박)
                       </div>
                     </div>
                   ))}
@@ -225,7 +294,7 @@ export function TripConfirmDialog({
           >
             취소
           </Button>
-          <Button onClick={onConfirm} disabled={isLoading}>
+          <Button onClick={onConfirm} disabled={isConfirmDisabled}>
             {isLoading ? "처리 중..." : "확인"}
           </Button>
         </DialogFooter>

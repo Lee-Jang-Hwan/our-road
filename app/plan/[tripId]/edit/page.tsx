@@ -62,21 +62,6 @@ function PageSkeleton() {
  * Trip 타입을 CreateTripInput 타입으로 변환
  */
 function convertTripToCreateInput(trip: Trip): CreateTripInput {
-  console.group("🔍 [Edit Page] convertTripToCreateInput");
-  console.log("DB에서 가져온 trip 객체:", trip);
-  console.log(
-    "trip.dailyStartTime:",
-    trip.dailyStartTime,
-    "타입:",
-    typeof trip.dailyStartTime,
-  );
-  console.log(
-    "trip.dailyEndTime:",
-    trip.dailyEndTime,
-    "타입:",
-    typeof trip.dailyEndTime,
-  );
-
   // HH:mm:ss 형식을 HH:mm 형식으로 변환하는 헬퍼 함수
   const formatTime = (time: string | null | undefined): string => {
     if (!time) return "10:00"; // 기본값
@@ -95,11 +80,6 @@ function convertTripToCreateInput(trip: Trip): CreateTripInput {
     transportModes: trip.transportModes,
     accommodations: trip.accommodations || [],
   };
-
-  console.log("변환된 CreateTripInput:", result);
-  console.log("result.dailyStartTime:", result.dailyStartTime);
-  console.log("result.dailyEndTime:", result.dailyEndTime);
-  console.groupEnd();
 
   return result;
 }
@@ -137,19 +117,12 @@ export default function EditTripPage({ params }: EditTripPageProps) {
 
       const result = await getTrip(tripId);
 
-      console.group("🔍 [Edit Page] loadTrip");
-      console.log("getTrip 결과:", result);
       if (result.success && result.data) {
-        console.log("result.data:", result.data);
         const createInput = convertTripToCreateInput(result.data);
-        console.log("setInitialData 호출 전, createInput:", createInput);
         setInitialData(createInput);
-        console.log("setInitialData 호출 완료");
       } else {
-        console.error("getTrip 실패:", result.error);
         setError(result.error || "여행 정보를 불러오는데 실패했습니다.");
       }
-      console.groupEnd();
 
       setIsLoading(false);
     }
@@ -236,7 +209,7 @@ export default function EditTripPage({ params }: EditTripPageProps) {
   return (
     <main className="flex flex-col min-h-[calc(100dvh-64px)]">
       {/* 헤더 */}
-      <header className="flex items-center gap-3 px-4 py-3 border-b">
+      <header className="flex items-center gap-3 px-4 border-b">
         <Button
           variant="ghost"
           size="icon"
@@ -249,7 +222,7 @@ export default function EditTripPage({ params }: EditTripPageProps) {
       </header>
 
       {/* 폼 */}
-      <div className="flex-1 px-4 py-6">
+      <div className="flex-1 px-4 py-2">
         <TripFormWizard
           currentStep={currentStep}
           onStepChange={setCurrentStep}

@@ -313,7 +313,7 @@ export default function MyTripsPage() {
       </header>
 
       {/* 여행 목록 with Pull-to-refresh */}
-      <PullToRefresh onRefresh={handleRefresh} className="flex-1" >
+      <PullToRefresh onRefresh={handleRefresh} className="flex-1">
         <div className="px-4 py-4">
           {trips.length === 0 ? (
             <EmptyState type="trips" onAction={() => router.push("/plan")} />

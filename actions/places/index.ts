@@ -26,6 +26,13 @@ export type { ReorderPlacesResult } from "./reorder-places";
 export { searchPlaces, autocompletePlace } from "./search-places";
 export type { SearchPlacesResult } from "./search-places";
 
+// Search Locations (Kakao API - 장소 + 주소 통합 검색)
+export { searchLocations, autocompleteLocation } from "./search-locations";
+export type {
+  SearchLocationsResult,
+  LocationSearchResult,
+} from "./search-locations";
+
 // Nearby (Kakao Category Search)
 export { getNearby, getNearbyMultiCategory } from "./get-nearby";
 export type { GetNearbyResult } from "./get-nearby";

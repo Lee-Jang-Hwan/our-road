@@ -37,7 +37,10 @@ import { DaySummary } from "@/components/itinerary/day-summary";
 import { KakaoMap } from "@/components/map/kakao-map";
 import { PlaceMarkers, SingleMarker, type SingleMarkerProps } from "@/components/map/place-markers";
 import { RealRoutePolyline } from "@/components/map/route-polyline";
-import { OffScreenMarkers, FitBoundsButton } from "@/components/map/off-screen-markers";
+import {
+  OffScreenMarkers,
+  FitBoundsButton,
+} from "@/components/map/off-screen-markers";
 import { useSwipe } from "@/hooks/use-swipe";
 
 import { getTripWithDetails } from "@/actions/trips/get-trip";
@@ -64,7 +67,10 @@ function getStatusBadge(status: TripStatus) {
       );
     case "optimizing":
       return (
-        <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800">
+        <Badge
+          variant="secondary"
+          className="text-xs bg-yellow-100 text-yellow-800"
+        >
           최적화 중
         </Badge>
       );
@@ -399,7 +405,11 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
       segmentIndex: number;
     }> = [];
 
-    const transportMode = trip.transportModes.includes("car") ? "car" as const : "public" as const;
+    const transportMode = trip.transportModes.includes("car")
+      ? ("car" as const)
+      : ("public" as const);
+    const originCoord = { lat: trip.origin.lat, lng: trip.origin.lng };
+    const destCoord = { lat: trip.destination.lat, lng: trip.destination.lng };
 
     // 출발지 → 첫 장소 (dayOrigin이 있고 transportFromOrigin이 있을 때만)
     if (currentItinerary.dayOrigin && currentItinerary.transportFromOrigin && currentDayMarkers.length > 0) {
@@ -443,7 +453,6 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
 
   // 일정 항목 클릭
   const handleItemClick = (item: ScheduleItem) => {
-    console.log("Item clicked:", item);
     // TODO: 지도에서 해당 장소 표시
   };
 
@@ -571,7 +580,9 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
         >
           <LuChevronLeft className="w-5 h-5" />
         </Button>
-        <h1 className="font-semibold text-lg flex-1 line-clamp-1">{trip.title}</h1>
+        <h1 className="font-semibold text-lg flex-1 line-clamp-1">
+          {trip.title}
+        </h1>
         <Button variant="ghost" size="icon" onClick={handleShare}>
           <LuShare2 className="w-5 h-5" />
         </Button>
@@ -606,7 +617,11 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
           </div>
           {!hasItinerary && (
             <Link href={`/plan/${tripId}`}>
-              <Button variant="default" size="sm" className="bg-black text-white hover:bg-gray-900">
+              <Button
+                variant="default"
+                size="sm"
+                className="bg-black text-white hover:bg-gray-900"
+              >
                 <LuPencil className="w-4 h-4 mr-2" />
                 편집하기
               </Button>
@@ -617,7 +632,10 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
               <LuClock className="w-4 h-4 shrink-0" />
               <span>
                 {formatDuration(
-                  trip.itinerary!.reduce((acc, it) => acc + it.totalDuration, 0)
+                  trip.itinerary!.reduce(
+                    (acc, it) => acc + it.totalDuration,
+                    0,
+                  ),
                 )}
               </span>
             </div>
@@ -627,7 +645,10 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
               <LuRoute className="w-4 h-4 shrink-0" />
               <span>
                 {formatDistance(
-                  trip.itinerary!.reduce((acc, it) => acc + it.totalDistance, 0)
+                  trip.itinerary!.reduce(
+                    (acc, it) => acc + it.totalDistance,
+                    0,
+                  ),
                 )}
               </span>
             </div>
@@ -699,10 +720,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
           <div className="px-4 py-4" {...swipeHandlers}>
             {/* 일일 요약 */}
             {currentItinerary && (
-              <DaySummary
-                itinerary={currentItinerary}
-                className="mb-4"
-              />
+              <DaySummary itinerary={currentItinerary} className="mb-4" />
             )}
 
             {/* 일정 타임라인 */}
@@ -719,7 +737,9 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
           <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
             <LuRoute className="w-8 h-8 text-muted-foreground" />
           </div>
-          <h3 className="font-semibold text-lg mb-2">최적화된 일정이 없습니다</h3>
+          <h3 className="font-semibold text-lg mb-2">
+            최적화된 일정이 없습니다
+          </h3>
           <p className="text-muted-foreground text-sm text-center mb-6">
             {trip.places.length > 0
               ? "장소가 추가되어 있습니다. 일정을 최적화해보세요."
@@ -730,7 +750,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
 
       {/* 하단 버튼 */}
       <div className="sticky bottom-0 p-4 bg-background border-t safe-area-bottom">
-        <div className="flex gap-3">
+        <div className="flex gap-3 pb-4">
           <Button
             variant="outline"
             className="flex-1 h-12"
@@ -740,10 +760,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
             편집하기
           </Button>
           {hasItinerary && (
-            <Button
-              className="flex-1 h-12"
-              onClick={handleStartNavigation}
-            >
+            <Button className="flex-1 h-12" onClick={handleStartNavigation}>
               <LuNavigation className="w-4 h-4 mr-2" />
               네비게이션
             </Button>

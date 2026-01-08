@@ -167,7 +167,6 @@ export default function ResultPage({ params }: ResultPageProps) {
 
   // 일정 항목 클릭
   const handleItemClick = (item: ScheduleItem) => {
-    console.log("Item clicked:", item);
   };
 
   // 재최적화

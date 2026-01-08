@@ -63,10 +63,11 @@ export default function NewTripPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const { saveTripInfo } = useTripDraft();
-  
+
   // 확인 다이얼로그 상태
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
-  const [pendingSubmitData, setPendingSubmitData] = useState<CreateTripInput | null>(null);
+  const [pendingSubmitData, setPendingSubmitData] =
+    useState<CreateTripInput | null>(null);
 
   const handleBack = () => {
     if (currentStep === 2) {
@@ -90,7 +91,7 @@ export default function NewTripPage() {
 
     setIsConfirmDialogOpen(false);
     setIsSubmitting(true);
-    
+
     try {
       // Server Action으로 여행 생성
       const result = await createTrip(pendingSubmitData);
@@ -131,7 +132,7 @@ export default function NewTripPage() {
   return (
     <main className="flex flex-col min-h-[calc(100dvh-64px)]">
       {/* 헤더 */}
-      <header className="flex items-center gap-3 px-4 py-3 border-b">
+      <header className="flex items-center gap-3 px-4 border-b">
         <Button
           variant="ghost"
           size="icon"
@@ -144,7 +145,7 @@ export default function NewTripPage() {
       </header>
 
       {/* 폼 */}
-      <div className="flex-1 px-4 py-6">
+      <div className="flex-1 px-4 py-2">
         <TripFormWizard
           currentStep={currentStep}
           onStepChange={setCurrentStep}
