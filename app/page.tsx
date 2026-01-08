@@ -73,7 +73,7 @@ export default function Home() {
         </SignedOut>
 
         <SignedIn>
-          <Link href="/plan" className="block">
+          <Link href="/plan" className="block" replace>
             <Button className="w-full h-14 text-lg font-semibold">
               새 여행 계획하기
               <LuChevronRight className="w-5 h-5 ml-1" />
