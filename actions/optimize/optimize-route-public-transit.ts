@@ -88,6 +88,36 @@ function convertTripOutputToOptimizeResult(
   // Place ID로 매핑
   const placeMap = new Map(places.map((p) => [p.id, p]));
 
+  // 제외된 장소 수집 (excludedWaypointIds)
+  const allExcludedIds = output.dayPlans.flatMap(
+    (dayPlan) => dayPlan.excludedWaypointIds || []
+  );
+  const uniqueExcludedIds = [...new Set(allExcludedIds)];
+
+  if (uniqueExcludedIds.length > 0) {
+    const unassignedPlaceDetails = uniqueExcludedIds.map((placeId) => {
+      const place = placeMap.get(placeId);
+      return {
+        placeId,
+        placeName: place?.name || placeId,
+        reasonCode: "TIME_EXCEEDED" as const,
+        reasonMessage: "일일 활동 시간이 부족하여 일정에 포함하지 못했습니다.",
+        details: {
+          estimatedDuration: place?.estimatedDuration,
+        },
+      };
+    });
+
+    errors.push({
+      code: "EXCEEDS_DAILY_LIMIT",
+      message: `${uniqueExcludedIds.length}개 장소가 일정에 포함되지 못했습니다.`,
+      details: {
+        unassignedPlaces: uniqueExcludedIds,
+        unassignedPlaceDetails,
+      },
+    });
+  }
+
   // SegmentCost를 key로 매핑
   const segmentMap = new Map(
     output.segmentCosts.map((s) => [`${s.key.fromId}:${s.key.toId}`, s])
