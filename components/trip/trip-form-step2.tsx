@@ -30,12 +30,15 @@ interface TripFormStep2Props {
   nights: number;
   /** 로딩 상태 */
   isLoading?: boolean;
+  /** 제출 버튼 텍스트 */
+  submitButtonText?: string;
 }
 
 export function TripFormStep2({
   onBack,
   nights,
   isLoading,
+  submitButtonText = "여행 만들기",
 }: TripFormStep2Props) {
   const form = useFormContext<CreateTripInput>();
 
@@ -157,8 +160,6 @@ export function TripFormStep2({
                   key={field.id}
                   index={index}
                   onRemove={() => remove(index)}
-                  tripStartDate={startDateValue}
-                  tripEndDate={endDateValue}
                 />
               ))}
             </div>
@@ -213,9 +214,13 @@ export function TripFormStep2({
             value={form.watch("destination") as TripLocation | undefined}
             onChange={(location) => {
               if (location === undefined) {
-                form.setValue("destination", undefined as unknown as TripLocation, {
-                  shouldValidate: true,
-                });
+                form.setValue(
+                  "destination",
+                  undefined as unknown as TripLocation,
+                  {
+                    shouldValidate: true,
+                  },
+                );
               } else {
                 form.setValue("destination", location, {
                   shouldValidate: true,
@@ -269,14 +274,18 @@ export function TripFormStep2({
           <ChevronLeft className="h-4 w-4 mr-1" />
           이전
         </Button>
-        <Button type="submit" disabled={isLoading} className="flex-1 touch-target">
+        <Button
+          type="submit"
+          disabled={isLoading}
+          className="flex-1 touch-target"
+        >
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               처리 중...
             </>
           ) : (
-            "여행 만들기"
+            submitButtonText
           )}
         </Button>
       </div>

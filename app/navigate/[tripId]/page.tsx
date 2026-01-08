@@ -15,7 +15,7 @@ import {
   LuChevronDown,
   LuLocate,
 } from "react-icons/lu";
-import { Train, Bus, Footprints, ArrowRight } from "lucide-react";
+import { Train, Bus, Footprints, ArrowRight, Ship } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,7 @@ import { CurrentLocationTracker, useCurrentLocation } from "@/components/map/cur
 
 import { getTripWithDetails } from "@/actions/trips/get-trip";
 import { getSegmentColor } from "@/lib/utils";
+import { useSafeBack } from "@/hooks/use-safe-back";
 import type { TripWithDetails, Coordinate } from "@/types";
 import type { ScheduleItem, DailyItinerary } from "@/types/schedule";
 
@@ -176,6 +177,43 @@ function openGoogleMapNavigation(
   } else {
     const url = `https://www.google.com/maps/search/?api=1&query=${destination.coordinate.lat},${destination.coordinate.lng}`;
     window.open(url, "_blank");
+  }
+}
+
+/**
+ * 구간 타입에 따른 아이콘 반환
+ */
+function getTrafficIcon(trafficType: number) {
+  switch (trafficType) {
+    case 1: // 지하철
+    case 10: // 열차
+      return <Train className="w-3 h-3" />;
+    case 2: // 버스
+    case 11: // 고속버스
+    case 12: // 시외버스
+      return <Bus className="w-3 h-3" />;
+    case 3: // 도보
+      return <Footprints className="w-3 h-3" />;
+    case 14: // 해운
+      return <Ship className="w-3 h-3" />;
+    default:
+      return <Train className="w-3 h-3" />;
+  }
+}
+
+/**
+ * 구간 타입에 따른 라벨 반환
+ */
+function getTrafficLabel(trafficType: number) {
+  switch (trafficType) {
+    case 1: return "지하철";
+    case 2: return "버스";
+    case 3: return "도보";
+    case 10: return "열차";
+    case 11: return "고속버스";
+    case 12: return "시외버스";
+    case 14: return "해운";
+    default: return "대중교통";
   }
 }
 
@@ -345,13 +383,8 @@ function NavigationBottomPanel({
                                   backgroundColor: subPath.lane?.lineColor || "#6b7280",
                                 }}
                               >
-                                {subPath.trafficType === 1 ? (
-                                  <Train className="w-3 h-3" />
-                                ) : (
-                                  <Bus className="w-3 h-3" />
-                                )}
-                                {subPath.lane?.name ||
-                                  (subPath.trafficType === 1 ? "지하철" : "버스")}
+                                {getTrafficIcon(subPath.trafficType)}
+                                {subPath.lane?.name || getTrafficLabel(subPath.trafficType)}
                               </span>
                             </div>
                           ))}
@@ -631,6 +664,7 @@ function NavigationMapContent({
 export default function NavigatePage({ params }: NavigatePageProps) {
   const { tripId } = use(params);
   const { user, isLoaded } = useUser();
+  const handleBack = useSafeBack(`/my/trips/${tripId}`);
   const [trip, setTrip] = useState<TripWithDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -886,11 +920,14 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     return (
       <main className="flex flex-col h-[calc(100dvh-64px)]">
         <header className="flex items-center gap-3 px-4 py-3 border-b">
-          <Link href={`/my/trips/${tripId}`}>
-            <Button variant="ghost" size="icon" className="shrink-0 touch-target">
-              <LuChevronLeft className="w-5 h-5" />
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 touch-target"
+            onClick={handleBack}
+          >
+            <LuChevronLeft className="w-5 h-5" />
+          </Button>
           <h1 className="font-semibold text-lg">네비게이션</h1>
         </header>
         <ErrorState
@@ -907,11 +944,14 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     return (
       <main className="flex flex-col h-[calc(100dvh-64px)]">
         <header className="flex items-center gap-3 px-4 py-3 border-b">
-          <Link href={`/my/trips/${tripId}`}>
-            <Button variant="ghost" size="icon" className="shrink-0 touch-target">
-              <LuChevronLeft className="w-5 h-5" />
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 touch-target"
+            onClick={handleBack}
+          >
+            <LuChevronLeft className="w-5 h-5" />
+          </Button>
           <h1 className="font-semibold text-lg">{trip.title}</h1>
         </header>
         <EmptyState
@@ -929,11 +969,14 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     return (
       <main className="flex flex-col h-[calc(100dvh-64px)]">
         <header className="flex items-center gap-3 px-4 py-3 border-b">
-          <Link href={`/my/trips/${tripId}`}>
-            <Button variant="ghost" size="icon" className="shrink-0 touch-target">
-              <LuChevronLeft className="w-5 h-5" />
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 touch-target"
+            onClick={handleBack}
+          >
+            <LuChevronLeft className="w-5 h-5" />
+          </Button>
           <h1 className="font-semibold text-lg">{trip.title}</h1>
         </header>
         <EmptyState
@@ -956,11 +999,14 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     <main className="flex flex-col h-[calc(100dvh-64px)]">
       {/* 헤더 */}
       <header className="flex items-center gap-3 px-4 py-3 border-b bg-background z-10">
-        <Link href={`/my/trips/${tripId}`}>
-          <Button variant="ghost" size="icon" className="shrink-0 touch-target">
-            <LuChevronLeft className="w-5 h-5" />
-          </Button>
-        </Link>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0 touch-target"
+          onClick={handleBack}
+        >
+          <LuChevronLeft className="w-5 h-5" />
+        </Button>
         <div className="flex-1 min-w-0">
           <h1 className="font-semibold text-lg truncate">{trip.title}</h1>
         </div>

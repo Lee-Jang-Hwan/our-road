@@ -70,7 +70,7 @@ function convertTransportFromRow(transport: {
     walking_time: number;
     walking_distance: number;
     sub_paths: Array<{
-      traffic_type: 1 | 2 | 3;
+      traffic_type: 1 | 2 | 3 | 10 | 11 | 12 | 14;
       distance: number;
       section_time: number;
       station_count?: number;

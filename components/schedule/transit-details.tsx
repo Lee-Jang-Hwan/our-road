@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Bus, Train, Footprints, Clock, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
+import { Bus, Train, Footprints, Clock, ArrowRight, ChevronDown, ChevronUp, Ship } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TransitDetails, TransitSubPath } from "@/types/route";
 
@@ -17,21 +17,28 @@ interface TransitDetailsCardProps {
 /**
  * 구간 타입에 따른 아이콘 반환
  */
-function getTrafficIcon(trafficType: 1 | 2 | 3) {
+function getTrafficIcon(trafficType: number) {
   switch (trafficType) {
     case 1: // 지하철
+    case 10: // 열차
       return <Train className="w-4 h-4" />;
     case 2: // 버스
+    case 11: // 고속버스
+    case 12: // 시외버스
       return <Bus className="w-4 h-4" />;
     case 3: // 도보
       return <Footprints className="w-4 h-4" />;
+    case 14: // 해운
+      return <Ship className="w-4 h-4" />;
+    default:
+      return <Train className="w-4 h-4" />;
   }
 }
 
 /**
  * 구간 타입에 따른 라벨 반환
  */
-function getTrafficLabel(trafficType: 1 | 2 | 3) {
+function getTrafficLabel(trafficType: number) {
   switch (trafficType) {
     case 1:
       return "지하철";
@@ -39,6 +46,16 @@ function getTrafficLabel(trafficType: 1 | 2 | 3) {
       return "버스";
     case 3:
       return "도보";
+    case 10:
+      return "열차";
+    case 11:
+      return "고속버스";
+    case 12:
+      return "시외버스";
+    case 14:
+      return "해운";
+    default:
+      return "대중교통";
   }
 }
 

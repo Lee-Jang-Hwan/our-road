@@ -15,6 +15,7 @@ import {
 import { PlaceSearch } from "@/components/places/place-search";
 import { PlaceList, PlaceListHeader } from "@/components/places/place-list";
 import { useTripDraft } from "@/hooks/use-trip-draft";
+import { useSafeBack } from "@/hooks/use-safe-back";
 import { addPlace, removePlace, removePlaces, updatePlaceDuration, getPlaces, reorderPlaces } from "@/actions/places";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import type { Place, PlaceSearchResult } from "@/types/place";
@@ -39,6 +40,7 @@ const DURATION_OPTIONS = [
 export default function PlacesPage({ params }: PlacesPageProps) {
   const { tripId } = use(params);
   const { getDraftByTripId, savePlaces, isLoaded } = useTripDraft();
+  const handleBack = useSafeBack(`/plan/${tripId}`);
   const [places, setPlaces] = useState<Place[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -203,11 +205,14 @@ export default function PlacesPage({ params }: PlacesPageProps) {
     <main className="flex flex-col min-h-[calc(100dvh-64px)]">
       {/* 헤더 */}
       <header className="flex items-center gap-3 px-4 py-3 border-b">
-        <Link href={`/plan/${tripId}`}>
-          <Button variant="ghost" size="icon" className="shrink-0">
-            <LuChevronLeft className="w-5 h-5" />
-          </Button>
-        </Link>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0"
+          onClick={handleBack}
+        >
+          <LuChevronLeft className="w-5 h-5" />
+        </Button>
         <h1 className="font-semibold text-lg flex-1">장소 관리</h1>
         <Button
           size="sm"

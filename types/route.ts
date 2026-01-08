@@ -38,8 +38,8 @@ export interface TransitLane {
  * 대중교통 하위 구간 정보
  */
 export interface TransitSubPath {
-  /** 구간 타입 (1: 지하철, 2: 버스, 3: 도보) */
-  trafficType: 1 | 2 | 3;
+  /** 구간 타입 (1: 지하철, 2: 버스, 3: 도보, 10: 열차, 11: 고속버스, 12: 시외버스, 14: 해운) */
+  trafficType: 1 | 2 | 3 | 10 | 11 | 12 | 14;
   /** 거리 (미터) */
   distance: number;
   /** 소요 시간 (분) */

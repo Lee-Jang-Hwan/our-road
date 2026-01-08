@@ -57,8 +57,8 @@ export interface ODsaySearchPathResult {
  * ODsay 경로 정보
  */
 export interface ODsayPath {
-  /** 경로 유형 (1: 지하철, 2: 버스, 3: 버스+지하철) */
-  pathType: 1 | 2 | 3;
+  /** 경로 유형 (1: 지하철, 2: 버스, 3: 버스+지하철, 11: 열차, 12: 고속/시외, 20: 복합) */
+  pathType: 1 | 2 | 3 | 11 | 12 | 20;
   /** 경로 정보 */
   info: ODsayPathInfo;
   /** 구간 정보 */
@@ -101,8 +101,8 @@ export interface ODsayPathInfo {
  * ODsay 구간 정보
  */
 export interface ODsaySubPath {
-  /** 이동 수단 유형 (1: 지하철, 2: 버스, 3: 도보) */
-  trafficType: 1 | 2 | 3;
+  /** 이동 수단 유형 (1: 지하철, 2: 버스, 3: 도보, 10: 열차, 11: 고속, 12: 시외, 14: 해운) */
+  trafficType: 1 | 2 | 3 | 10 | 11 | 12 | 14;
   /** 거리 (미터) */
   distance: number;
   /** 소요 시간 (분) */
@@ -352,9 +352,28 @@ export function convertODsaySubPathToSegment(
   }
 
   // 버스
+  if (subPath.trafficType === 2) {
+    return {
+      mode: "bus",
+      lineName: lane?.busNo || lane?.name,
+      startStation: subPath.startName || "",
+      endStation: subPath.endName || "",
+      stationCount: subPath.stationCount,
+      duration: subPath.sectionTime,
+      distance: subPath.distance,
+    };
+  }
+
+  // 도시간 교통수단 (열차, 고속버스, 시외버스, 해운)
+  let mode: import("./route").PublicTransportMode = "bus"; // fallback
+  if (subPath.trafficType === 10) mode = "train";
+  else if (subPath.trafficType === 11) mode = "express_bus";
+  else if (subPath.trafficType === 12) mode = "intercity_bus";
+  else if (subPath.trafficType === 14) mode = "ferry";
+
   return {
-    mode: "bus",
-    lineName: lane?.busNo || lane?.name,
+    mode,
+    lineName: lane?.name, // 도시간 교통은 lane.name에 정보가 있음 (예: "KTX", "고속버스")
     startStation: subPath.startName || "",
     endStation: subPath.endName || "",
     stationCount: subPath.stationCount,

@@ -10,18 +10,20 @@ import {
   LuLoader,
   LuSparkles,
 } from "react-icons/lu";
-import { AlertCircle, AlertTriangle, MapPin, Clock, ArrowRight, ChevronDown, ChevronUp } from "lucide-react";
+import { AlertCircle, MapPin, Clock, ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DayTabs, DayTabsContainer } from "@/components/itinerary/day-tabs";
 import { DayContentPanel } from "@/components/itinerary/day-content";
 import { DaySummary } from "@/components/itinerary/day-summary";
+import { UnassignedPlaces } from "@/components/itinerary/unassigned-places";
 import { KakaoMap } from "@/components/map/kakao-map";
 import { PlaceMarkers, SingleMarker, type SingleMarkerProps } from "@/components/map/place-markers";
 import { RealRoutePolyline } from "@/components/map/route-polyline";
 import { OffScreenMarkers, FitBoundsButton } from "@/components/map/off-screen-markers";
 import { useSwipe } from "@/hooks/use-swipe";
+import { useSafeBack } from "@/hooks/use-safe-back";
 import { optimizeRoute } from "@/actions/optimize/optimize-route";
 import { saveItinerary } from "@/actions/optimize/save-itinerary";
 import { getPlaces } from "@/actions/places";
@@ -31,6 +33,7 @@ import { getSegmentColor } from "@/lib/utils";
 import type { DailyItinerary, ScheduleItem } from "@/types/schedule";
 import type { Coordinate, Place } from "@/types/place";
 import type { Trip } from "@/types/trip";
+import type { UnassignedPlaceInfo } from "@/types/optimize";
 
 interface ResultPageProps {
   params: Promise<{ tripId: string }>;
@@ -39,6 +42,7 @@ interface ResultPageProps {
 export default function ResultPage({ params }: ResultPageProps) {
   const { tripId } = use(params);
   const router = useRouter();
+  const handleBack = useSafeBack(`/plan/${tripId}`);
   const [selectedDay, setSelectedDay] = useState(1);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -48,8 +52,7 @@ export default function ResultPage({ params }: ResultPageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasPlaces, setHasPlaces] = useState(true);
-  const [unassignedPlaces, setUnassignedPlaces] = useState<string[]>([]);
-  const [showUnassigned, setShowUnassigned] = useState(false);
+  const [unassignedPlaceInfos, setUnassignedPlaceInfos] = useState<UnassignedPlaceInfo[]>([]);
 
   // 최적화 실행
   const runOptimization = useCallback(async () => {
@@ -67,14 +70,34 @@ export default function ResultPage({ params }: ResultPageProps) {
       if (result.data?.itinerary) {
         setItineraries(result.data.itinerary);
 
-        // 누락된 장소 확인
+        // 누락된 장소 확인 (상세 정보 포함)
         const unassignedError = result.data.errors?.find(
           (e) => e.code === "EXCEEDS_DAILY_LIMIT"
         );
-        if (unassignedError?.details?.unassignedPlaces) {
-          setUnassignedPlaces(unassignedError.details.unassignedPlaces as string[]);
+
+        if (unassignedError?.details?.unassignedPlaceDetails) {
+          // 상세 정보가 있는 경우
+          setUnassignedPlaceInfos(unassignedError.details.unassignedPlaceDetails as UnassignedPlaceInfo[]);
+        } else if (unassignedError?.details?.unassignedPlaces) {
+          // 기존 방식: 장소 ID만 있는 경우 (후방 호환)
+          const placeIds = unassignedError.details.unassignedPlaces as string[];
+          // places 로드 후 처리될 수 있도록 ID만 저장
+          const placesResult = await getPlaces(tripId);
+          const loadedPlaces = placesResult.data || [];
+
+          const infos: UnassignedPlaceInfo[] = placeIds.map((placeId) => {
+            const place = loadedPlaces.find((p) => p.id === placeId);
+            return {
+              placeId,
+              placeName: place?.name || "알 수 없는 장소",
+              reasonCode: "TIME_EXCEEDED" as const,
+              reasonMessage: "일일 활동 시간이 부족하여 일정에 포함하지 못했습니다.",
+              details: place ? { estimatedDuration: place.estimatedDuration } : undefined,
+            };
+          });
+          setUnassignedPlaceInfos(infos);
         } else {
-          setUnassignedPlaces([]);
+          setUnassignedPlaceInfos([]);
         }
 
         showSuccessToast("일정이 최적화되었습니다!");
@@ -392,11 +415,14 @@ export default function ResultPage({ params }: ResultPageProps) {
     <main className="flex flex-col min-h-[calc(100dvh-64px)]">
       {/* 헤더 */}
       <header className="flex items-center gap-3 px-4 py-3 border-b">
-        <Link href={`/plan/${tripId}`}>
-          <Button variant="ghost" size="icon" className="shrink-0">
-            <LuChevronLeft className="w-5 h-5" />
-          </Button>
-        </Link>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0"
+          onClick={handleBack}
+        >
+          <LuChevronLeft className="w-5 h-5" />
+        </Button>
         <h1 className="font-semibold text-lg flex-1">최적화 결과</h1>
         <Button variant="ghost" size="icon" onClick={handleShare}>
           <LuShare2 className="w-5 h-5" />
@@ -421,45 +447,8 @@ export default function ResultPage({ params }: ResultPageProps) {
         </div>
       )}
 
-      {/* 누락된 장소 경고 */}
-      {unassignedPlaceInfos.length > 0 && (
-        <div className="px-4 py-3 border-b bg-amber-50 dark:bg-amber-950/30">
-          <button
-            type="button"
-            className="w-full flex items-center justify-between text-left"
-            onClick={() => setShowUnassigned(!showUnassigned)}
-          >
-            <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
-              <AlertTriangle className="h-4 w-4 shrink-0" />
-              <span className="text-sm font-medium">
-                {unassignedPlaceInfos.length}개 장소가 일정에 포함되지 못했습니다
-              </span>
-            </div>
-            {showUnassigned ? (
-              <ChevronUp className="h-4 w-4 text-amber-600 dark:text-amber-500" />
-            ) : (
-              <ChevronDown className="h-4 w-4 text-amber-600 dark:text-amber-500" />
-            )}
-          </button>
-          {showUnassigned && (
-            <div className="mt-2 pl-6 space-y-1">
-              <p className="text-xs text-amber-600 dark:text-amber-500 mb-2">
-                일일 활동 시간 내에 모든 장소를 배치할 수 없어 다음 장소들이 제외되었습니다.
-                여행 기간을 늘리거나 장소 수를 줄여보세요.
-              </p>
-              {unassignedPlaceInfos.map((place) => (
-                <div
-                  key={place.id}
-                  className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400"
-                >
-                  <MapPin className="h-3 w-3 shrink-0" />
-                  <span>{place.name}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+      {/* 누락된 장소 경고 (호버 시 상세 이유 표시) */}
+      <UnassignedPlaces places={unassignedPlaceInfos} />
 
       {/* 카카오 맵 */}
       {days.length > 0 && trip && (
