@@ -437,6 +437,24 @@ function convertSubPathToTransitSubPath(subPath: ODsaySubPath): TransitSubPath {
         busType: busType ? ODSAY_BUS_TYPE_MAP[busType] : undefined,
         lineColor: busType ? BUS_TYPE_COLORS[busType] : "#52B043",
       };
+    } else if (subPath.trafficType === 10) {
+      // 열차
+      transitLane = {
+        name: lane.name, // KTX, 새마을 등
+        lineColor: "#0052A4", // 코레일 블루
+      };
+    } else if (subPath.trafficType === 11 || subPath.trafficType === 12) {
+      // 고속/시외버스
+      transitLane = {
+        name: lane.name || (subPath.trafficType === 11 ? "고속버스" : "시외버스"),
+        lineColor: "#52B043", // 버스 색상
+      };
+    } else if (subPath.trafficType === 14) {
+      // 해운
+      transitLane = {
+        name: lane.name || "해운",
+        lineColor: "#00A0E9", // 바다색
+      };
     }
   }
 

@@ -61,7 +61,7 @@ function convertTransportToRow(transport: {
     walkingTime: number;
     walkingDistance: number;
     subPaths: Array<{
-      trafficType: 1 | 2 | 3;
+      trafficType: 1 | 2 | 3 | 10 | 11 | 12 | 14;
       distance: number;
       sectionTime: number;
       stationCount?: number;

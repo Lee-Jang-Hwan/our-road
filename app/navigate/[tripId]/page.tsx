@@ -15,7 +15,7 @@ import {
   LuChevronDown,
   LuLocate,
 } from "react-icons/lu";
-import { Train, Bus, Footprints, ArrowRight } from "lucide-react";
+import { Train, Bus, Footprints, ArrowRight, Ship } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -180,6 +180,43 @@ function openGoogleMapNavigation(
 }
 
 /**
+ * 구간 타입에 따른 아이콘 반환
+ */
+function getTrafficIcon(trafficType: number) {
+  switch (trafficType) {
+    case 1: // 지하철
+    case 10: // 열차
+      return <Train className="w-3 h-3" />;
+    case 2: // 버스
+    case 11: // 고속버스
+    case 12: // 시외버스
+      return <Bus className="w-3 h-3" />;
+    case 3: // 도보
+      return <Footprints className="w-3 h-3" />;
+    case 14: // 해운
+      return <Ship className="w-3 h-3" />;
+    default:
+      return <Train className="w-3 h-3" />;
+  }
+}
+
+/**
+ * 구간 타입에 따른 라벨 반환
+ */
+function getTrafficLabel(trafficType: number) {
+  switch (trafficType) {
+    case 1: return "지하철";
+    case 2: return "버스";
+    case 3: return "도보";
+    case 10: return "열차";
+    case 11: return "고속버스";
+    case 12: return "시외버스";
+    case 14: return "해운";
+    default: return "대중교통";
+  }
+}
+
+/**
  * 네비게이션 하단 패널
  */
 function NavigationBottomPanel({
@@ -315,13 +352,8 @@ function NavigationBottomPanel({
                                   backgroundColor: subPath.lane?.lineColor || "#6b7280",
                                 }}
                               >
-                                {subPath.trafficType === 1 ? (
-                                  <Train className="w-3 h-3" />
-                                ) : (
-                                  <Bus className="w-3 h-3" />
-                                )}
-                                {subPath.lane?.name ||
-                                  (subPath.trafficType === 1 ? "지하철" : "버스")}
+                                {getTrafficIcon(subPath.trafficType)}
+                                {subPath.lane?.name || getTrafficLabel(subPath.trafficType)}
                               </span>
                             </div>
                           ))}
