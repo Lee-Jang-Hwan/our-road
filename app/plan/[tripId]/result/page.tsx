@@ -300,6 +300,7 @@ export default function ResultPage({ params }: ResultPageProps) {
 
   // 경로 구간 배열 (dayOrigin/dayDestination 기반)
   // 각 구간별 polyline(실제 경로) 또는 직선 연결, 구간별 색상 인덱스 포함
+  // 대중교통 모드: subPath별로 세분화 (도보 구간 포함)
   const routeSegments = useMemo(() => {
     if (!trip || !currentItinerary) return [];
 
@@ -307,7 +308,7 @@ export default function ResultPage({ params }: ResultPageProps) {
       from: Coordinate;
       to: Coordinate;
       encodedPath?: string;
-      path?: Coordinate[];
+      path?: Coordinate[]; // passStopCoords 기반 경로
       transportMode: "walking" | "public" | "car";
       segmentIndex: number;
     }> = [];
@@ -393,7 +394,7 @@ export default function ResultPage({ params }: ResultPageProps) {
       );
     }
 
-    // 장소들 사이 (도착 장소의 색상 사용)
+    // 장소들 사이
     for (let i = 0; i < currentItinerary.schedule.length - 1; i++) {
       const scheduleItem = currentItinerary.schedule[i];
       if (currentDayMarkers[i] && currentDayMarkers[i + 1]) {

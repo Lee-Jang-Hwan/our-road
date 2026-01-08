@@ -60,6 +60,8 @@ export interface TransitSubPath {
   way?: string;
   /** 경유 정류장/역 좌표 배열 (폴리라인 생성용) */
   passStopCoords?: Array<{ lat: number; lng: number }>;
+  /** 구간별 폴리라인 (도보 구간 등) */
+  polyline?: string;
 }
 
 /**
