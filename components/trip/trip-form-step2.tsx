@@ -112,7 +112,7 @@ export function TripFormStep2({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-12 md:pb-6">
       {/* 출발지 - 여행 시작 장소 */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
@@ -279,31 +279,33 @@ export function TripFormStep2({
       </div>
 
       {/* 버튼 영역 */}
-      <div className="flex gap-3 pt-4">
-        <Button
-          type="button"
-          variant="outline"
-          onClick={onBack}
-          disabled={isLoading}
-          className="touch-target"
-        >
-          <ChevronLeft className="h-4 w-4 mr-1" />
-          이전
-        </Button>
-        <Button
-          type="submit"
-          disabled={isLoading}
-          className="flex-1 touch-target"
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              처리 중...
-            </>
-          ) : (
-            submitButtonText
-          )}
-        </Button>
+      <div className="sticky bottom-0 left-0 right-0 z-50 border-t pt-2 pb-[env(safe-area-inset-bottom)] md:static md:border-t-0 md:pt-4 md:pb-0">
+        <div className="flex gap-3 px-4 pb-3 md:px-0">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onBack}
+            disabled={isLoading}
+            className="touch-target"
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            이전
+          </Button>
+          <Button
+            type="submit"
+            disabled={isLoading}
+            className="flex-1 touch-target"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                처리 중...
+              </>
+            ) : (
+              submitButtonText
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );

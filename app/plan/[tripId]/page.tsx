@@ -146,7 +146,7 @@ export default function TripEditPage({ params }: TripEditPageProps) {
           </Button>
           <div>
             <h1 className="font-semibold text-lg">{trip.title}</h1>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground ">
               {trip.startDate} ~ {trip.endDate}
             </p>
           </div>

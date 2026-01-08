@@ -159,7 +159,7 @@ export function TripFormWizard({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(handleSubmit)}
-        className={cn("relative overflow-hidden", className)}
+        className={cn("relative", className)}
       >
         {/* 진행 표시 */}
         <div className="flex gap-2 mb-6">

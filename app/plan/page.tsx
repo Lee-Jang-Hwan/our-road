@@ -132,7 +132,7 @@ export default function NewTripPage() {
   return (
     <main className="flex flex-col min-h-[calc(100dvh-64px)]">
       {/* 헤더 */}
-      <header className="flex items-center gap-3 px-4 py-3 border-b">
+      <header className="flex items-center gap-3 px-4 border-b">
         <Button
           variant="ghost"
           size="icon"
@@ -145,7 +145,7 @@ export default function NewTripPage() {
       </header>
 
       {/* 폼 */}
-      <div className="flex-1 px-4 py-6">
+      <div className="flex-1 px-4 py-2">
         <TripFormWizard
           currentStep={currentStep}
           onStepChange={setCurrentStep}

@@ -42,7 +42,7 @@ export function TripFormStep1({ onNext, onCancel }: TripFormStep1Props) {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 md:pb-6">
       {/* 여행 제목 */}
       <FormField
         control={form.control}
@@ -101,24 +101,26 @@ export function TripFormStep1({ onNext, onCancel }: TripFormStep1Props) {
       />
 
       {/* 버튼 영역 */}
-      <div className="flex gap-3 pt-4">
-        {onCancel && (
+      <div className="sticky bottom-0 left-0 right-0 z-50 bg-background border-t pt-4 pb-[env(safe-area-inset-bottom)] md:static md:border-t-0 md:pt-4 md:pb-0">
+        <div className="flex gap-3 px-4 md:px-0">
+          {onCancel && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onCancel}
+              className="flex-1 touch-target"
+            >
+              취소
+            </Button>
+          )}
           <Button
             type="button"
-            variant="outline"
-            onClick={onCancel}
+            onClick={onNext}
             className="flex-1 touch-target"
           >
-            취소
+            다음
           </Button>
-        )}
-        <Button
-          type="button"
-          onClick={onNext}
-          className="flex-1 touch-target"
-        >
-          다음
-        </Button>
+        </div>
       </div>
     </div>
   );

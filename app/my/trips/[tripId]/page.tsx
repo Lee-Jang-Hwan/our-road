@@ -588,7 +588,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
 
       {/* 하단 버튼 */}
       <div className="sticky bottom-0 p-4 bg-background border-t safe-area-bottom">
-        <div className="flex gap-3">
+        <div className="flex gap-3 pb-4">
           <Button
             variant="outline"
             className="flex-1 h-12"

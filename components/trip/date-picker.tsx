@@ -71,12 +71,12 @@ export function DatePicker({
           className={cn(
             "w-full justify-start text-left font-normal touch-target",
             !value && "text-muted-foreground",
-            className
+            className,
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
           {value ? (
-            format(value, "yyyy년 M월 d일 (E)", { locale: ko })
+            format(value, " M월 d일 (E)", { locale: ko })
           ) : (
             <span>{placeholder}</span>
           )}
@@ -146,7 +146,7 @@ export function DateRangePicker({
     // 종료일이 최대 기간을 초과하면 초기화
     if (date && endDate) {
       const diffDays = Math.ceil(
-        (endDate.getTime() - date.getTime()) / (1000 * 60 * 60 * 24)
+        (endDate.getTime() - date.getTime()) / (1000 * 60 * 60 * 24),
       );
       if (diffDays >= maxDays) {
         onEndDateChange(undefined);
@@ -155,7 +155,7 @@ export function DateRangePicker({
   };
 
   return (
-    <div className={cn("flex flex-col gap-3 sm:flex-row sm:gap-2", className)}>
+    <div className={cn("flex flex-col gap-2 sm:flex-row sm:gap-2", className)}>
       <div className="flex-1">
         <label className="text-sm font-medium text-muted-foreground mb-1.5 block">
           시작일
