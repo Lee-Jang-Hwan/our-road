@@ -3,15 +3,27 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { LuChevronLeft, LuMapPin, LuCalendarClock, LuSparkles, LuSettings } from "react-icons/lu";
+import {
+  LuChevronLeft,
+  LuMapPin,
+  LuCalendarClock,
+  LuSparkles,
+  LuPencil,
+} from "react-icons/lu";
 import { Clock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTripDraft } from "@/hooks/use-trip-draft";
-import { useSafeBack } from "@/hooks/use-safe-back";
+import { useRouter } from "next/navigation";
 import type { TripStatus } from "@/types/trip";
 import type { FixedSchedule } from "@/types/schedule";
 import type { Place } from "@/types/place";
@@ -22,8 +34,11 @@ interface TripEditPageProps {
 
 export default function TripEditPage({ params }: TripEditPageProps) {
   const { tripId } = use(params);
+  const router = useRouter();
   const { getDraftByTripId, isLoaded } = useTripDraft();
-  const handleBack = useSafeBack("/my");
+  const handleBack = () => {
+    router.push("/my");
+  };
   const [tripData, setTripData] = useState<{
     id: string;
     title: string;
@@ -136,8 +151,13 @@ export default function TripEditPage({ params }: TripEditPageProps) {
             </p>
           </div>
         </div>
-        <Button variant="ghost" size="icon">
-          <LuSettings className="w-5 h-5" />
+        <Button
+          variant="outline"
+          onClick={() => router.push(`/plan/${tripId}/edit`)}
+          className="touch-target"
+        >
+          <LuPencil className="w-4 h-4" />
+          수정하기
         </Button>
       </header>
 
@@ -152,16 +172,12 @@ export default function TripEditPage({ params }: TripEditPageProps) {
           const isPlaceStep = step.title === "장소 추가";
           const isFixedScheduleStep = step.title === "고정 일정 설정";
           const hasPlaces = isPlaceStep && trip.places.length > 0;
-          const hasFixedSchedules = isFixedScheduleStep && trip.fixedSchedules.length > 0;
+          const hasFixedSchedules =
+            isFixedScheduleStep && trip.fixedSchedules.length > 0;
 
           return (
-            <Link
-              key={step.title}
-              href={step.href}
-            >
-              <Card
-                className="transition-all hover:border-primary hover:shadow-sm"
-              >
+            <Link key={step.title} href={step.href}>
+              <Card className="transition-all hover:border-primary hover:shadow-sm">
                 <CardHeader className="flex flex-row items-start gap-4 pb-2">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
@@ -222,7 +238,9 @@ export default function TripEditPage({ params }: TripEditPageProps) {
                   <CardContent className="pt-0 pb-3">
                     <div className="space-y-2">
                       {trip.fixedSchedules.slice(0, 3).map((schedule) => {
-                        const place = trip.places.find((p) => p.id === schedule.placeId);
+                        const place = trip.places.find(
+                          (p) => p.id === schedule.placeId,
+                        );
                         return (
                           <div
                             key={schedule.id}
@@ -236,7 +254,8 @@ export default function TripEditPage({ params }: TripEditPageProps) {
                                 {place?.name || "알 수 없는 장소"}
                               </p>
                               <p className="text-xs text-zinc-400">
-                                {format(new Date(schedule.date), "M월 d일")} {schedule.startTime}
+                                {format(new Date(schedule.date), "M월 d일")}{" "}
+                                {schedule.startTime}
                               </p>
                             </div>
                             <Badge className="bg-white/10 text-white text-xs border-0 shrink-0">
@@ -262,10 +281,7 @@ export default function TripEditPage({ params }: TripEditPageProps) {
       {/* 하단 버튼 */}
       <div className="sticky bottom-0 p-4 bg-background border-t safe-area-bottom">
         <Link href={`/plan/${tripId}/result`}>
-          <Button
-            className="w-full h-12"
-            disabled={trip.placeCount === 0}
-          >
+          <Button className="w-full h-12" disabled={trip.placeCount === 0}>
             <LuSparkles className="w-4 h-4 mr-2" />
             일정 최적화하기
           </Button>

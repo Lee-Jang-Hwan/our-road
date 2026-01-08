@@ -31,6 +31,7 @@ function convertRowToTrip(row: TripRow): Trip {
     dailyEndTime: row.daily_end_time,
     transportModes: row.transport_mode,
     status: row.status,
+    accommodations: row.accommodations ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -131,6 +132,9 @@ export async function updateTrip(
     }
     if (validatedData.transportModes !== undefined) {
       updateData.transport_mode = validatedData.transportModes;
+    }
+    if (validatedData.accommodations !== undefined) {
+      updateData.accommodations = validatedData.accommodations;
     }
     if (validatedData.status !== undefined) {
       updateData.status = validatedData.status;

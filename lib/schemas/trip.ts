@@ -93,7 +93,7 @@ export const createTripSchema = z
     {
       message: "여행 기간은 최대 30일입니다",
       path: ["endDate"],
-    }
+    },
   )
   .refine((data) => data.dailyStartTime < data.dailyEndTime, {
     message: "일과 종료 시간은 시작 시간 이후여야 합니다",
@@ -120,6 +120,7 @@ export const updateTripSchema = z
       .array(transportModeSchema)
       .min(1, "최소 1개의 이동 수단을 선택해주세요")
       .optional(),
+    accommodations: z.array(dailyAccommodationSchema).optional(),
     status: tripStatusSchema.optional(),
   })
   .refine(
@@ -133,7 +134,7 @@ export const updateTripSchema = z
     {
       message: "종료일은 시작일 이후여야 합니다",
       path: ["endDate"],
-    }
+    },
   )
   .refine(
     (data) => {
@@ -150,7 +151,7 @@ export const updateTripSchema = z
     {
       message: "여행 기간은 최대 30일입니다",
       path: ["endDate"],
-    }
+    },
   )
   .refine(
     (data) => {
@@ -163,7 +164,7 @@ export const updateTripSchema = z
     {
       message: "일과 종료 시간은 시작 시간 이후여야 합니다",
       path: ["dailyEndTime"],
-    }
+    },
   );
 
 /**
