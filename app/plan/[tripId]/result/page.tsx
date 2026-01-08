@@ -19,7 +19,7 @@ import { DayContentPanel } from "@/components/itinerary/day-content";
 import { DaySummary } from "@/components/itinerary/day-summary";
 import { UnassignedPlaces } from "@/components/itinerary/unassigned-places";
 import { KakaoMap } from "@/components/map/kakao-map";
-import { PlaceMarkers, SingleMarker } from "@/components/map/place-markers";
+import { PlaceMarkers, SingleMarker, type SingleMarkerProps } from "@/components/map/place-markers";
 import { RealRoutePolyline } from "@/components/map/route-polyline";
 import { OffScreenMarkers, FitBoundsButton } from "@/components/map/off-screen-markers";
 import { useSwipe } from "@/hooks/use-swipe";
@@ -34,6 +34,7 @@ import type { DailyItinerary, ScheduleItem } from "@/types/schedule";
 import type { Coordinate, Place } from "@/types/place";
 import type { Trip } from "@/types/trip";
 import type { UnassignedPlaceInfo } from "@/types/optimize";
+import type { RouteSegment } from "@/types/route";
 
 interface ResultPageProps {
   params: Promise<{ tripId: string }>;
@@ -228,22 +229,26 @@ export default function ResultPage({ params }: ResultPageProps) {
     (it) => it.dayNumber === selectedDay
   );
 
-  // 현재 일자의 시작점/끝점 좌표 계산 (dayOrigin/dayDestination 우선 사용)
+  // 현재 일자의 시작점/끝점 좌표 계산 (dayOrigin/dayDestination만 사용)
   const dayEndpoints = useMemo(() => {
-    if (!currentItinerary || !trip) return { origin: null, destination: null };
+    if (!currentItinerary) return { origin: null, destination: null };
 
     const dayOrigin = currentItinerary.dayOrigin;
     const dayDestination = currentItinerary.dayDestination;
 
-    return {
+    const endpoints = {
       origin: dayOrigin
         ? { lat: dayOrigin.lat, lng: dayOrigin.lng, type: dayOrigin.type }
-        : { lat: trip.origin.lat, lng: trip.origin.lng, type: "origin" as const },
+        : null,
       destination: dayDestination
         ? { lat: dayDestination.lat, lng: dayDestination.lng, type: dayDestination.type }
-        : { lat: trip.destination.lat, lng: trip.destination.lng, type: "destination" as const },
+        : null,
     };
-  }, [currentItinerary, trip]);
+
+    console.log(`[Result Page Day ${selectedDay}] dayEndpoints:`, endpoints);
+
+    return endpoints;
+  }, [currentItinerary, selectedDay]);
 
   // 현재 일자 마커 데이터 (일정 순서대로, 구간별 색상 적용)
   const currentDayMarkers = useMemo(() => {
@@ -292,59 +297,124 @@ export default function ResultPage({ params }: ResultPageProps) {
     };
   }, [currentDayMarkers, dayEndpoints]);
 
-  // 경로 구간 배열 (시작점 → 장소들 순서대로 → 끝점)
+  // 경로 구간 배열 (dayOrigin/dayDestination 기반)
   // 각 구간별 polyline(실제 경로) 또는 직선 연결, 구간별 색상 인덱스 포함
+  // 대중교통 모드: subPath별로 세분화 (도보 구간 포함)
   const routeSegments = useMemo(() => {
-    if (!trip || !currentItinerary || !dayEndpoints.origin || !dayEndpoints.destination) return [];
+    if (!trip || !currentItinerary) return [];
 
     const segments: Array<{
       from: Coordinate;
       to: Coordinate;
       encodedPath?: string;
+      path?: Coordinate[]; // passStopCoords 기반 경로
       transportMode: "walking" | "public" | "car";
       segmentIndex: number;
     }> = [];
 
-    const transportMode = trip.transportModes.includes("car") ? "car" as const : "public" as const;
-    // 일자별 시작점/끝점 사용 (dayOrigin/dayDestination)
-    const originCoord = { lat: dayEndpoints.origin.lat, lng: dayEndpoints.origin.lng };
-    const destCoord = { lat: dayEndpoints.destination.lat, lng: dayEndpoints.destination.lng };
+    const isCarMode = trip.transportModes.includes("car");
+    const baseTransportMode = isCarMode ? "car" as const : "public" as const;
 
-    // 시작점 → 첫 장소 (첫 번째 장소 색상 사용)
-    if (currentItinerary.schedule.length > 0 && currentDayMarkers.length > 0) {
-      segments.push({
-        from: originCoord,
-        to: currentDayMarkers[0].coordinate,
-        encodedPath: currentItinerary.transportFromOrigin?.polyline,
-        transportMode,
-        segmentIndex: 0,
-      });
+    // 일자별 시작점/끝점 좌표 (안전한 체크 포함)
+    const originCoord = dayEndpoints.origin
+      ? { lat: dayEndpoints.origin.lat, lng: dayEndpoints.origin.lng }
+      : null;
+    const destCoord = dayEndpoints.destination
+      ? { lat: dayEndpoints.destination.lat, lng: dayEndpoints.destination.lng }
+      : null;
+
+    // 대중교통 subPath에서 세분화된 경로 세그먼트 추출 함수
+    const extractSubPathSegments = (
+      transport: RouteSegment | undefined,
+      fromCoord: Coordinate,
+      toCoord: Coordinate,
+      segmentIndex: number
+    ) => {
+      // 자동차 모드이거나 transitDetails가 없으면 기존 방식
+      if (isCarMode || !transport?.transitDetails?.subPaths) {
+        segments.push({
+          from: fromCoord,
+          to: toCoord,
+          encodedPath: transport?.polyline,
+          transportMode: baseTransportMode,
+          segmentIndex,
+        });
+        return;
+      }
+
+      // 대중교통 모드: subPath별로 세분화
+      const subPaths = transport.transitDetails.subPaths;
+      for (const subPath of subPaths) {
+        if (!subPath.startCoord || !subPath.endCoord) continue;
+
+        const subTransportMode = subPath.trafficType === 3 ? "walking" as const : "public" as const;
+
+        // 대중교통 구간: passStopCoords가 있으면 path로 사용
+        // 도보 구간: polyline 사용 (TMap)
+        let pathCoords: Coordinate[] | undefined;
+        if (subPath.trafficType !== 3 && subPath.passStopCoords && subPath.passStopCoords.length > 0) {
+          // 대중교통 구간: 시작점 + 경유 정류장 + 끝점
+          pathCoords = [
+            subPath.startCoord,
+            ...subPath.passStopCoords,
+            subPath.endCoord,
+          ];
+        }
+
+        segments.push({
+          from: subPath.startCoord,
+          to: subPath.endCoord,
+          encodedPath: subPath.polyline, // 도보 구간의 TMap polyline
+          path: pathCoords, // 대중교통 구간의 passStopCoords 기반 경로
+          transportMode: subTransportMode,
+          segmentIndex,
+        });
+      }
+
+      // subPath가 없으면 전체 polyline 사용 (폴백)
+      if (subPaths.length === 0) {
+        segments.push({
+          from: fromCoord,
+          to: toCoord,
+          encodedPath: transport?.polyline,
+          transportMode: baseTransportMode,
+          segmentIndex,
+        });
+      }
+    };
+
+    // 출발지 → 첫 장소 (dayOrigin이 있고 transportFromOrigin이 있을 때만)
+    if (originCoord && currentItinerary.transportFromOrigin && currentDayMarkers.length > 0) {
+      extractSubPathSegments(
+        currentItinerary.transportFromOrigin,
+        originCoord,
+        currentDayMarkers[0].coordinate,
+        0
+      );
     }
 
-    // 장소들 사이 (도착 장소의 색상 사용)
+    // 장소들 사이
     for (let i = 0; i < currentItinerary.schedule.length - 1; i++) {
       const scheduleItem = currentItinerary.schedule[i];
       if (currentDayMarkers[i] && currentDayMarkers[i + 1]) {
-        segments.push({
-          from: currentDayMarkers[i].coordinate,
-          to: currentDayMarkers[i + 1].coordinate,
-          encodedPath: scheduleItem.transportToNext?.polyline,
-          transportMode,
-          segmentIndex: i + 1,
-        });
+        extractSubPathSegments(
+          scheduleItem.transportToNext,
+          currentDayMarkers[i].coordinate,
+          currentDayMarkers[i + 1].coordinate,
+          i + 1
+        );
       }
     }
 
-    // 마지막 장소 → 끝점 (마지막 장소 색상 사용)
-    if (currentItinerary.schedule.length > 0 && currentDayMarkers.length > 0) {
+    // 마지막 장소 → 도착지 (dayDestination이 있고 transportToDestination이 있을 때만)
+    if (destCoord && currentItinerary.transportToDestination && currentDayMarkers.length > 0) {
       const lastIndex = currentDayMarkers.length - 1;
-      segments.push({
-        from: currentDayMarkers[lastIndex].coordinate,
-        to: destCoord,
-        encodedPath: currentItinerary.transportToDestination?.polyline,
-        transportMode,
-        segmentIndex: lastIndex,
-      });
+      extractSubPathSegments(
+        currentItinerary.transportToDestination,
+        currentDayMarkers[lastIndex].coordinate,
+        destCoord,
+        lastIndex
+      );
     }
 
     return segments;
@@ -460,7 +530,11 @@ export default function ResultPage({ params }: ResultPageProps) {
             {dayEndpoints.origin && (
               <SingleMarker
                 coordinate={{ lat: dayEndpoints.origin.lat, lng: dayEndpoints.origin.lng }}
-                type={dayEndpoints.origin.type}
+                type={
+                  (dayEndpoints.origin.type === "waypoint"
+                    ? "default"
+                    : dayEndpoints.origin.type) as SingleMarkerProps["type"]
+                }
               />
             )}
 
@@ -473,7 +547,11 @@ export default function ResultPage({ params }: ResultPageProps) {
             {dayEndpoints.destination && (
               <SingleMarker
                 coordinate={{ lat: dayEndpoints.destination.lat, lng: dayEndpoints.destination.lng }}
-                type={dayEndpoints.destination.type}
+                type={
+                  (dayEndpoints.destination.type === "waypoint"
+                    ? "default"
+                    : dayEndpoints.destination.type) as SingleMarkerProps["type"]
+                }
               />
             )}
 

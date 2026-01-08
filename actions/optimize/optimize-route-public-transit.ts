@@ -13,7 +13,14 @@ import type { Place } from "@/types/place";
 import type { Trip } from "@/types/trip";
 import type { OptimizeNode } from "@/lib/optimize/types";
 import type { FixedSchedule } from "@/types/schedule";
-import type { TripInput, TripOutput, DayPlan, SegmentCost, Waypoint } from "@/types/route";
+import type {
+  TripInput,
+  TripOutput,
+  DayPlan,
+  SegmentCost,
+  Waypoint,
+  LatLng,
+} from "@/types/route";
 import type { SimpleOptimizeRequestInput } from "@/lib/schemas";
 import {
   getDaysBetween,
@@ -22,6 +29,7 @@ import {
   minutesToTime,
   addMinutesToTime,
 } from "@/lib/optimize";
+import { calculateDistance } from "@/lib/algorithms/utils/geo";
 
 // ============================================
 // Types
@@ -72,6 +80,22 @@ function placeToWaypoint(place: Place, fixedSchedules: FixedSchedule[]): Waypoin
   };
 }
 
+type TripLocationLike = Trip["origin"] & {
+  coordinate?: { lat: number; lng: number };
+};
+
+function resolveLatLng(location?: TripLocationLike | null): LatLng | undefined {
+  if (!location) return undefined;
+  if (Number.isFinite(location.lat) && Number.isFinite(location.lng)) {
+    return { lat: location.lat, lng: location.lng };
+  }
+  const coord = location.coordinate;
+  if (coord && Number.isFinite(coord.lat) && Number.isFinite(coord.lng)) {
+    return { lat: coord.lat, lng: coord.lng };
+  }
+  return undefined;
+}
+
 /**
  * TripOutput을 OptimizeResult로 변환
  */
@@ -84,6 +108,8 @@ function convertTripOutputToOptimizeResult(
 ): OptimizeResult {
   const totalDays = getDaysBetween(trip.startDate, trip.endDate);
   const dates = generateDateRange(trip.startDate, totalDays);
+  const originCoord = resolveLatLng(trip.origin);
+  const destinationCoord = resolveLatLng(trip.destination);
 
   // Place ID로 매핑
   const placeMap = new Map(places.map((p) => [p.id, p]));
@@ -136,14 +162,14 @@ function convertTripOutputToOptimizeResult(
     let totalStayDuration = 0;
     let currentTime = timeToMinutes(trip.dailyStartTime);
 
-    // 출발지 정보 (첫날은 trip.origin, 이후는 숙소 또는 전날 마지막 장소)
+    // 출발지 정보 (첫날은 trip.origin, 숙소 있으면 숙소, 없으면 표시 안 함)
     let dayOrigin: DailyItinerary["dayOrigin"];
-    if (dayIndex === 0) {
+    if (dayIndex === 0 && originCoord) {
       dayOrigin = {
         name: trip.origin.name,
         address: trip.origin.address,
-        lat: trip.origin.lat,
-        lng: trip.origin.lng,
+        lat: originCoord.lat,
+        lng: originCoord.lng,
         type: "origin",
       };
     } else if (trip.accommodations && trip.accommodations.length > 0) {
@@ -155,21 +181,32 @@ function convertTripOutputToOptimizeResult(
         lng: accom.location.lng,
         type: "accommodation",
       };
-    }
-
-    // 도착지 정보 (마지막 날은 trip.destination, 중간은 숙소)
-    let dayDestination: DailyItinerary["dayDestination"];
-    if (dayIndex === output.dayPlans.length - 1) {
-      if (trip.destination) {
-        dayDestination = {
-          name: trip.destination.name,
-          address: trip.destination.address,
-          lat: trip.destination.lat,
-          lng: trip.destination.lng,
-          type: "destination",
-        };
+    } else {
+      // 숙소가 없으면 전날 마지막 장소 사용
+      const prevDayPlan = output.dayPlans[dayIndex - 1];
+      if (prevDayPlan && prevDayPlan.waypointOrder.length > 0) {
+        const lastPlaceId = prevDayPlan.waypointOrder[prevDayPlan.waypointOrder.length - 1];
+        const lastPlace = placeMap.get(lastPlaceId);
+        if (lastPlace) {
+          dayOrigin = {
+            name: lastPlace.name,
+            address: lastPlace.address,
+            lat: lastPlace.coordinate.lat,
+            lng: lastPlace.coordinate.lng,
+            type: "lastPlace",
+          };
+        }
       }
-    } else if (trip.accommodations && trip.accommodations.length > 0) {
+    }
+    // 숙소가 없으면 dayOrigin을 설정하지 않음 (2일차부터는 출발지 표시 없이 경유지부터 시작)
+
+    // 도착지 정보 (숙소가 있으면 모든 날 숙소, 없으면 마지막 날만 도착지)
+    let dayDestination: DailyItinerary["dayDestination"];
+    const hasAccommodation = trip.accommodations && trip.accommodations.length > 0;
+    const isLastDay = dayIndex === output.dayPlans.length - 1;
+
+    if (hasAccommodation) {
+      // 숙소가 있으면 모든 날의 종점은 숙소
       const accom = trip.accommodations[0];
       dayDestination = {
         name: accom.location.name,
@@ -178,13 +215,38 @@ function convertTripOutputToOptimizeResult(
         lng: accom.location.lng,
         type: "accommodation",
       };
+    } else if (isLastDay && trip.destination && destinationCoord) {
+      // 숙소가 없고 마지막 날이면 최종 도착지 표시
+      // (출발지와의 거리 체크는 하지 않음 - 사용자가 설정한 도착지 존중)
+      dayDestination = {
+        name: trip.destination.name,
+        address: trip.destination.address,
+        lat: destinationCoord.lat,
+        lng: destinationCoord.lng,
+        type: "destination",
+      };
     }
+    // 숙소가 없고 마지막 날이 아니면 dayDestination은 undefined (다음 날 이어짐)
 
-    // 출발지 → 첫 장소 이동 정보
+      // 출발지 → 첫 장소 이동 정보
+    // dayOrigin이 있는 경우에만 transportFromOrigin 생성
     let transportFromOrigin: DailyItinerary["transportFromOrigin"];
-    if (dayPlan.waypointOrder.length > 0) {
+    if (dayOrigin && dayPlan.waypointOrder.length > 0) {
       const firstPlaceId = dayPlan.waypointOrder[0];
-      const originId = dayIndex === 0 ? "__origin__" : "__accommodation_0__";
+
+      // originId 결정: 첫날은 __origin__, 숙소 있으면 __accommodation_0__, 없으면 전날 마지막 장소 ID
+      let originId: string;
+      if (dayIndex === 0) {
+        originId = "__origin__";
+      } else if (hasAccommodation) {
+        originId = "__accommodation_0__";
+      } else {
+        const prevDayPlan = output.dayPlans[dayIndex - 1];
+        originId = prevDayPlan && prevDayPlan.waypointOrder.length > 0
+          ? prevDayPlan.waypointOrder[prevDayPlan.waypointOrder.length - 1]
+          : "__origin__";
+      }
+
       const segmentKey = `${originId}:${firstPlaceId}`;
       const segment = segmentMap.get(segmentKey);
 
@@ -261,7 +323,9 @@ function convertTripOutputToOptimizeResult(
     let transportToDestination: DailyItinerary["transportToDestination"];
     if (dayPlan.waypointOrder.length > 0 && dayDestination) {
       const lastPlaceId = dayPlan.waypointOrder[dayPlan.waypointOrder.length - 1];
-      const destinationId = dayIndex === output.dayPlans.length - 1 ? "__destination__" : "__accommodation_0__";
+
+      // destinationId 결정: 숙소 있으면 __accommodation_0__, 마지막 날은 __destination__
+      const destinationId = hasAccommodation ? "__accommodation_0__" : "__destination__";
       const segmentKey = `${lastPlaceId}:${destinationId}`;
       const segment = segmentMap.get(segmentKey);
 
@@ -353,27 +417,22 @@ export async function optimizePublicTransitRoute(
 
   try {
     const supabase = createClerkSupabaseClient();
+    const originCoord = resolveLatLng(trip.origin);
+    if (!originCoord) {
+      throw new Error("Invalid trip origin coordinates");
+    }
+    const destinationCoord = resolveLatLng(trip.destination);
+    const lodgingCoord = trip.accommodations?.[0]
+      ? resolveLatLng(trip.accommodations[0].location)
+      : undefined;
 
     // TripInput 변환 (신규 알고리즘 호환)
     const tripInput: TripInput = {
       tripId,
       days: getDaysBetween(trip.startDate, trip.endDate),
-      start: {
-        lat: trip.origin.lat,
-        lng: trip.origin.lng,
-      },
-      end: trip.destination
-        ? {
-            lat: trip.destination.lat,
-            lng: trip.destination.lng,
-          }
-        : undefined,
-      lodging: trip.accommodations?.[0]
-        ? {
-            lat: trip.accommodations[0].location.lat,
-            lng: trip.accommodations[0].location.lng,
-          }
-        : undefined,
+      start: originCoord,
+      end: destinationCoord,
+      lodging: lodgingCoord,
       waypoints: places.map((place) => placeToWaypoint(place, fixedSchedules)),
       dailyMaxMinutes: userOptions?.maxDailyMinutes,
     };

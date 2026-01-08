@@ -117,6 +117,10 @@ function convertTransportToRow(transport: {
 /**
  * DailyItinerary를 DB Row 형식으로 변환
  */
+function toInt(value: number): number {
+  return Math.round(value);
+}
+
 function convertItineraryToRow(
   itinerary: DailyItinerary,
   tripId: string
@@ -139,9 +143,9 @@ function convertItineraryToRow(
     day_number: itinerary.dayNumber,
     date: itinerary.date,
     schedule: scheduleRows,
-    total_distance: itinerary.totalDistance,
-    total_duration: itinerary.totalDuration,
-    total_stay_duration: itinerary.totalStayDuration,
+    total_distance: toInt(itinerary.totalDistance),
+    total_duration: toInt(itinerary.totalDuration),
+    total_stay_duration: toInt(itinerary.totalStayDuration),
     place_count: itinerary.placeCount,
     transport_from_origin: itinerary.transportFromOrigin
       ? convertTransportToRow(itinerary.transportFromOrigin)

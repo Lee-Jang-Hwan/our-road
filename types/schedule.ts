@@ -90,8 +90,8 @@ export interface DayEndpoint {
   lat: number;
   /** 경도 */
   lng: number;
-  /** 유형: origin(출발지), destination(도착지), accommodation(숙소), lastPlace(전날 마지막 장소) */
-  type: "origin" | "destination" | "accommodation" | "lastPlace";
+  /** 유형: origin(출발지), destination(도착지), accommodation(숙소), waypoint(경유지), lastPlace(전날 마지막 장소) */
+  type: "origin" | "destination" | "accommodation" | "waypoint" | "lastPlace";
 }
 
 /**

@@ -252,13 +252,14 @@ export function SingleMarker({
 /**
  * 특수 마커 SVG 생성 (출발지, 도착지, 현재 위치, 숙소, 전날 마지막 장소)
  */
-function createSpecialMarkerSvg(type: "default" | "origin" | "destination" | "current" | "accommodation" | "lastPlace"): string {
+function createSpecialMarkerSvg(type: "default" | "origin" | "destination" | "current" | "accommodation" | "waypoint" | "lastPlace"): string {
   const colors = {
     default: { bg: "#6b7280", stroke: "white" },
     origin: { bg: "#22c55e", stroke: "white" },
     destination: { bg: "#f97316", stroke: "white" },
     current: { bg: "#3b82f6", stroke: "white" },
     accommodation: { bg: "#a855f7", stroke: "white" }, // 보라색
+    waypoint: { bg: "#10b981", stroke: "white" }, // 초록색 (전날 경유지)
     lastPlace: { bg: "#64748b", stroke: "white" }, // 슬레이트 (전날 마지막 장소)
   };
 
@@ -268,6 +269,7 @@ function createSpecialMarkerSvg(type: "default" | "origin" | "destination" | "cu
     destination: "M10 6h12v12H10z", // 사각형
     current: "M16 8a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM16 11a2 2 0 1 1 0 4 2 2 0 0 1 0-4z", // 도넛
     accommodation: "M16 6l8 8v6H8v-6l8-8zm-4 12h8v-4l-4-4-4 4v4z", // 집 아이콘
+    waypoint: "M16 8a5 5 0 1 0 0 10 5 5 0 0 0 0-10z", // 원 (경유지)
     lastPlace: "M16 8a5 5 0 1 0 0 10 5 5 0 0 0 0-10z", // 원 (기본 마커)
   };
 
