@@ -14,6 +14,7 @@ import type { Coordinate, TransitRoute, TransitDetails, TransitSubPath, TransitL
 import { convertODsayPathToTransitRoute, ODSAY_BUS_TYPE_MAP, ODSAY_SUBWAY_LINE_MAP, type ODsayBusType, type ODsaySubwayCode } from "@/types/odsay";
 import { withRateLimit } from "./rate-limiter";
 import { logApiStart, logApiSuccess, logApiError } from "@/lib/utils/api-logger";
+import { getTmapWalkingRoute } from "./tmap";
 
 // ============================================
 // Configuration
@@ -756,6 +757,40 @@ export async function getBestTransitRouteWithDetails(
     transferCount: details.transferCount,
     subPathsCount: details.subPaths?.length,
   });
+
+  // 도보 구간에 TMap 도보 경로 polyline 추가
+  if (details.subPaths) {
+    const walkingSubPaths = details.subPaths.filter(
+      (sp) => sp.trafficType === 3 && sp.startCoord && sp.endCoord
+    );
+
+    console.log("[ODsay] 도보 구간 수:", walkingSubPaths.length);
+
+    // 도보 구간에 대해 병렬로 TMap API 호출
+    await Promise.all(
+      walkingSubPaths.map(async (subPath) => {
+        if (!subPath.startCoord || !subPath.endCoord) return;
+
+        try {
+          const walkingRoute = await getTmapWalkingRoute(
+            subPath.startCoord,
+            subPath.endCoord
+          );
+
+          if (walkingRoute?.polyline) {
+            subPath.polyline = walkingRoute.polyline;
+            console.log("[ODsay] 도보 구간 polyline 추가:", {
+              from: subPath.startName,
+              to: subPath.endName,
+              polylineLength: walkingRoute.polyline.length,
+            });
+          }
+        } catch (error) {
+          console.warn("[ODsay] TMap 도보 경로 조회 실패:", error);
+        }
+      })
+    );
+  }
 
   // 1차: loadLane API로 상세 경로 좌표 조회 시도
   let polyline: string | undefined;

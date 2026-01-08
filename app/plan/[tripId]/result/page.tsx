@@ -295,6 +295,7 @@ export default function ResultPage({ params }: ResultPageProps) {
 
   // 경로 구간 배열 (시작점 → 장소들 순서대로 → 끝점)
   // 각 구간별 polyline(실제 경로) 또는 직선 연결, 구간별 색상 인덱스 포함
+  // 대중교통 모드: subPath별로 세분화 (도보 구간 포함)
   const routeSegments = useMemo(() => {
     if (!trip || !currentItinerary || !dayEndpoints.origin || !dayEndpoints.destination) return [];
 
@@ -302,50 +303,109 @@ export default function ResultPage({ params }: ResultPageProps) {
       from: Coordinate;
       to: Coordinate;
       encodedPath?: string;
+      path?: Coordinate[]; // passStopCoords 기반 경로
       transportMode: "walking" | "public" | "car";
       segmentIndex: number;
     }> = [];
 
-    const transportMode = trip.transportModes.includes("car") ? "car" as const : "public" as const;
+    const isCarMode = trip.transportModes.includes("car");
+    const baseTransportMode = isCarMode ? "car" as const : "public" as const;
     // 일자별 시작점/끝점 사용 (dayOrigin/dayDestination)
     const originCoord = { lat: dayEndpoints.origin.lat, lng: dayEndpoints.origin.lng };
     const destCoord = { lat: dayEndpoints.destination.lat, lng: dayEndpoints.destination.lng };
 
-    // 시작점 → 첫 장소 (첫 번째 장소 색상 사용)
+    // 대중교통 subPath에서 세분화된 경로 세그먼트 추출 함수
+    const extractSubPathSegments = (
+      transport: { polyline?: string; transitDetails?: { subPaths?: Array<{ trafficType: number; startCoord?: { lat: number; lng: number }; endCoord?: { lat: number; lng: number }; polyline?: string; passStopCoords?: Array<{ lat: number; lng: number }> }> } } | undefined,
+      fromCoord: Coordinate,
+      toCoord: Coordinate,
+      segmentIndex: number
+    ) => {
+      // 자동차 모드이거나 transitDetails가 없으면 기존 방식
+      if (isCarMode || !transport?.transitDetails?.subPaths) {
+        segments.push({
+          from: fromCoord,
+          to: toCoord,
+          encodedPath: transport?.polyline,
+          transportMode: baseTransportMode,
+          segmentIndex,
+        });
+        return;
+      }
+
+      // 대중교통 모드: subPath별로 세분화
+      const subPaths = transport.transitDetails.subPaths;
+      for (const subPath of subPaths) {
+        if (!subPath.startCoord || !subPath.endCoord) continue;
+
+        const subTransportMode = subPath.trafficType === 3 ? "walking" as const : "public" as const;
+
+        // 대중교통 구간: passStopCoords가 있으면 path로 사용
+        // 도보 구간: polyline 사용 (TMap)
+        let pathCoords: Coordinate[] | undefined;
+        if (subPath.trafficType !== 3 && subPath.passStopCoords && subPath.passStopCoords.length > 0) {
+          // 대중교통 구간: 시작점 + 경유 정류장 + 끝점
+          pathCoords = [
+            subPath.startCoord,
+            ...subPath.passStopCoords,
+            subPath.endCoord,
+          ];
+        }
+
+        segments.push({
+          from: subPath.startCoord,
+          to: subPath.endCoord,
+          encodedPath: subPath.polyline, // 도보 구간의 TMap polyline
+          path: pathCoords, // 대중교통 구간의 passStopCoords 기반 경로
+          transportMode: subTransportMode,
+          segmentIndex,
+        });
+      }
+
+      // subPath가 없으면 전체 polyline 사용 (폴백)
+      if (subPaths.length === 0) {
+        segments.push({
+          from: fromCoord,
+          to: toCoord,
+          encodedPath: transport?.polyline,
+          transportMode: baseTransportMode,
+          segmentIndex,
+        });
+      }
+    };
+
+    // 시작점 → 첫 장소
     if (currentItinerary.schedule.length > 0 && currentDayMarkers.length > 0) {
-      segments.push({
-        from: originCoord,
-        to: currentDayMarkers[0].coordinate,
-        encodedPath: currentItinerary.transportFromOrigin?.polyline,
-        transportMode,
-        segmentIndex: 0,
-      });
+      extractSubPathSegments(
+        currentItinerary.transportFromOrigin,
+        originCoord,
+        currentDayMarkers[0].coordinate,
+        0
+      );
     }
 
-    // 장소들 사이 (도착 장소의 색상 사용)
+    // 장소들 사이
     for (let i = 0; i < currentItinerary.schedule.length - 1; i++) {
       const scheduleItem = currentItinerary.schedule[i];
       if (currentDayMarkers[i] && currentDayMarkers[i + 1]) {
-        segments.push({
-          from: currentDayMarkers[i].coordinate,
-          to: currentDayMarkers[i + 1].coordinate,
-          encodedPath: scheduleItem.transportToNext?.polyline,
-          transportMode,
-          segmentIndex: i + 1,
-        });
+        extractSubPathSegments(
+          scheduleItem.transportToNext,
+          currentDayMarkers[i].coordinate,
+          currentDayMarkers[i + 1].coordinate,
+          i + 1
+        );
       }
     }
 
-    // 마지막 장소 → 끝점 (마지막 장소 색상 사용)
+    // 마지막 장소 → 끝점
     if (currentItinerary.schedule.length > 0 && currentDayMarkers.length > 0) {
       const lastIndex = currentDayMarkers.length - 1;
-      segments.push({
-        from: currentDayMarkers[lastIndex].coordinate,
-        to: destCoord,
-        encodedPath: currentItinerary.transportToDestination?.polyline,
-        transportMode,
-        segmentIndex: lastIndex,
-      });
+      extractSubPathSegments(
+        currentItinerary.transportToDestination,
+        currentDayMarkers[lastIndex].coordinate,
+        destCoord,
+        lastIndex
+      );
     }
 
     return segments;
