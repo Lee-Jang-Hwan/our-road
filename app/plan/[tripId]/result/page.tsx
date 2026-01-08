@@ -229,16 +229,6 @@ export default function ResultPage({ params }: ResultPageProps) {
     (it) => it.dayNumber === selectedDay
   );
 
-  // 누락된 장소 정보 (이름 포함)
-  const unassignedPlaceInfos = useMemo(() => {
-    return unassignedPlaces
-      .map((placeId) => {
-        const place = places.find((p) => p.id === placeId);
-        return place ? { id: placeId, name: place.name } : null;
-      })
-      .filter((p): p is { id: string; name: string } => p !== null);
-  }, [unassignedPlaces, places]);
-
   // 현재 일자의 시작점/끝점 좌표 계산 (dayOrigin/dayDestination만 사용)
   const dayEndpoints = useMemo(() => {
     if (!currentItinerary) return { origin: null, destination: null };
