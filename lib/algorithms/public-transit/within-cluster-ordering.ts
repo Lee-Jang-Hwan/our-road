@@ -12,10 +12,11 @@ export function calculateAxis(centroid: LatLng, endAnchor: LatLng) {
 
 export function orderWithinClusterOneDirection(params: {
   cluster: Cluster;
+  startAnchor: LatLng;
   endAnchor: LatLng;
   waypoints: Map<string, Waypoint>;
 }): string[] {
-  const { cluster, endAnchor, waypoints } = params;
+  const { cluster, startAnchor, endAnchor, waypoints } = params;
   const waypointList = cluster.waypointIds
     .map((id) => waypoints.get(id))
     .filter((wp): wp is Waypoint => Boolean(wp));
@@ -24,18 +25,22 @@ export function orderWithinClusterOneDirection(params: {
     return waypointList.map((wp) => wp.id);
   }
 
-  const axis = calculateAxis(cluster.centroid, endAnchor);
+  // Use start → end direction as the main axis
+  const axis = calculateDirectionVector(startAnchor, endAnchor);
 
   const projected = waypointList.map((wp) => ({
     id: wp.id,
     projection: projectOntoAxis(wp.coord, axis),
+    distanceToStart: calculateDistance(wp.coord, startAnchor),
     distanceToEnd: calculateDistance(wp.coord, endAnchor),
   }));
 
   const EPS = 1e-6;
   projected.sort((a, b) => {
+    // Primary: sort by projection along start → end axis
     if (Math.abs(a.projection - b.projection) < EPS) {
-      return b.distanceToEnd - a.distanceToEnd;
+      // Secondary: prefer closer to start (for waypoints at same projection)
+      return a.distanceToStart - b.distanceToStart;
     }
     return a.projection - b.projection;
   });

@@ -68,9 +68,9 @@ export async function generatePublicTransitRoute(
     throw new Error("Clustering produced no valid clusters");
   }
 
-  // Order clusters
+  // Order clusters with start position consideration
   const endAnchor = chooseEndAnchor(input.lodging, clusters, input.days);
-  const orderedClusters = orderClustersOneDirection(clusters, endAnchor);
+  const orderedClusters = orderClustersOneDirection(clusters, endAnchor, input.start);
 
   // Build waypoint map
   const waypointMap = new Map<string, Waypoint>();
