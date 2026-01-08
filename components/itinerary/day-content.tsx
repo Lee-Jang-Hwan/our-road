@@ -44,6 +44,12 @@ export function DayContent({
   showHeader = true,
   className,
 }: DayContentProps) {
+  const normalizeEndpointType = (
+    type: NonNullable<DailyItinerary["dayOrigin"]>["type"]
+  ): "origin" | "accommodation" | "destination" | "lastPlace" => {
+    return type === "waypoint" ? "lastPlace" : type;
+  };
+
   const formattedDate = React.useMemo(() => {
     const date = new Date(itinerary.date);
     const month = date.getMonth() + 1;
@@ -71,12 +77,12 @@ export function DayContent({
         <DayContentEmpty />
       ) : (
         <div className="space-y-1">
-          {/* 시작점 (출발지 또는 전날 숙소) - dayOrigin 우선 사용 */}
-          {(itinerary.dayOrigin || origin) && (
+          {/* 시작점 (출발지 또는 전날 숙소) - dayOrigin만 사용 */}
+          {itinerary.dayOrigin && (
             <>
               <OriginDestinationItem
-                type={itinerary.dayOrigin?.type ?? "origin"}
-                name={itinerary.dayOrigin?.name ?? origin?.name ?? ""}
+                type={normalizeEndpointType(itinerary.dayOrigin.type)}
+                name={itinerary.dayOrigin.name}
                 time={itinerary.dailyStartTime || itinerary.startTime}
               />
               {/* 시작점 → 첫 장소 이동 */}
@@ -103,15 +109,15 @@ export function DayContent({
             </React.Fragment>
           ))}
 
-          {/* 끝점 (도착지 또는 숙소) - dayDestination 우선 사용 */}
-          {(itinerary.dayDestination || destination) && (
+          {/* 끝점 (도착지 또는 숙소) - dayDestination만 사용 */}
+          {itinerary.dayDestination && (
             <>
               {itinerary.transportToDestination && (
                 <RouteSegmentConnector segment={itinerary.transportToDestination} />
               )}
               <OriginDestinationItem
-                type={itinerary.dayDestination?.type ?? "destination"}
-                name={itinerary.dayDestination?.name ?? destination?.name ?? ""}
+                type={normalizeEndpointType(itinerary.dayDestination.type)}
+                name={itinerary.dayDestination.name}
                 time={calculateDestinationArrivalTime(itinerary)}
               />
             </>

@@ -71,9 +71,16 @@ export function extractSegments(
       startCoord = lodging;
       startId = "__accommodation_0__";
     } else {
-      const prevLastWaypoint = getWaypointCoord(dayPlans[dayIndex - 1].waypointOrder.slice(-1)[0]);
-      startCoord = prevLastWaypoint ?? start;
-      startId = prevLastWaypoint ? dayPlans[dayIndex - 1].waypointOrder.slice(-1)[0] : "__origin__";
+      // 숙소가 없으면 전날 마지막 경유지에서 시작
+      const prevLastWaypointId = dayPlans[dayIndex - 1].waypointOrder.slice(-1)[0];
+      const prevLastWaypoint = getWaypointCoord(prevLastWaypointId);
+
+      if (!prevLastWaypoint) {
+        throw new Error(`[extractSegments] Cannot find previous day's last waypoint for day ${dayIndex + 1}`);
+      }
+
+      startCoord = prevLastWaypoint;
+      startId = prevLastWaypointId;
     }
 
     // 첫 경유지로 가는 구간
@@ -103,25 +110,38 @@ export function extractSegments(
     }
 
     // 도착지 좌표 및 ID 결정
+    const lastCoord = getWaypointCoord(lastWaypointId);
     let endCoord: LatLng | undefined;
     let endId: string | undefined;
+    console.log(`[extractSegments Day ${dayIndex + 1}] isLastDay:`, isLastDay, 'lodging:', lodging, 'end:', end);
 
-    if (isLastDay) {
-      if (end) {
-        endCoord = end;
-        endId = "__destination__";
-      } else if (lodging) {
-        endCoord = lodging;
-        endId = "__accommodation_0__";
-      }
-    } else if (lodging) {
+    if (lodging) {
+      // 숙소가 있으면 모든 날의 종점은 숙소
       endCoord = lodging;
       endId = "__accommodation_0__";
+    } else if (isLastDay && end) {
+      // 숙소가 없고 마지막 날: 도착지 추가
+      // (출발지와 도착지가 완전히 같은 좌표가 아니면 항상 추가)
+      const isSameAsStart =
+        !!lastCoord &&
+        Math.abs(end.lat - lastCoord.lat) < 0.00001 &&
+        Math.abs(end.lng - lastCoord.lng) < 0.00001;
+
+      console.log(`[extractSegments Day ${dayIndex + 1}] isSameAsStart:`, isSameAsStart, 'distance:', Math.sqrt(Math.pow(end.lat - start.lat, 2) + Math.pow(end.lng - start.lng, 2)) * 111000, 'm');
+
+      if (!isSameAsStart) {
+        endCoord = end;
+        endId = "__destination__";
+      }
+      // 출발지와 도착지가 완전히 같으면 순환 여행으로 간주하여 endCoord를 설정하지 않음
     }
+    // 숙소가 없고 마지막 날이 아니면 endCoord를 설정하지 않음 (다음 날 이어짐)
 
     // 마지막 경유지에서 도착지로 가는 구간
-    const lastCoord = getWaypointCoord(lastWaypointId);
+    console.log(`[extractSegments Day ${dayIndex + 1}] endCoord:`, endCoord, 'endId:', endId, 'lastCoord:', lastCoord);
+
     if (endCoord && endId && lastCoord) {
+      console.log(`[extractSegments Day ${dayIndex + 1}] Adding destination segment: ${lastWaypointId} -> ${endId}`);
       segments.push({
         key: { fromId: lastWaypointId, toId: endId },
         fromCoord: lastCoord,
@@ -247,6 +267,10 @@ async function fetchSingleSegment(
         segmentCache.set(segment.fromCoord, segment.toCoord, result);
         return result;
       }
+      console.warn(
+        `[callRoutingAPI] TMAP returned no route for ${segment.key.fromId} -> ${segment.key.toId}`,
+        { from: segment.fromCoord, to: segment.toCoord }
+      );
     } catch (error) {
       console.warn(
         `[callRoutingAPI] TMAP API failed for ${segment.key.fromId} -> ${segment.key.toId}, using fallback calculation`,
