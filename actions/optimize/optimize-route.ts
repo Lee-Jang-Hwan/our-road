@@ -604,13 +604,36 @@ export async function optimizeRoute(
       }
     );
 
-    // 분배되지 못한 장소 경고
-    if (distributionResult.unassignedPlaces.length > 0) {
+    // 분배되지 못한 장소 경고 (출발지/도착지/숙소 제외)
+    const actualUnassignedPlaces = distributionResult.unassignedPlaces.filter(
+      (id) =>
+        id !== "__origin__" &&
+        id !== "__destination__" &&
+        !id.startsWith("__accommodation_")
+    );
+
+    if (actualUnassignedPlaces.length > 0) {
+      // 상세 정보 포함하여 전달
+      const unassignedPlaceDetails = actualUnassignedPlaces.map((placeId) => {
+        const place = places.find((p) => p.id === placeId);
+        const node = nodeMap.get(placeId);
+        return {
+          placeId,
+          placeName: place?.name || placeId,
+          reasonCode: "TIME_EXCEEDED" as const,
+          reasonMessage: "일일 활동 시간이 부족하여 일정에 포함하지 못했습니다.",
+          details: {
+            estimatedDuration: place?.estimatedDuration ?? node?.duration,
+          },
+        };
+      });
+
       errors.push({
         code: "EXCEEDS_DAILY_LIMIT",
-        message: `${distributionResult.unassignedPlaces.length}개 장소가 일정에 포함되지 못했습니다.`,
+        message: `${actualUnassignedPlaces.length}개 장소가 일정에 포함되지 못했습니다.`,
         details: {
-          unassignedPlaces: distributionResult.unassignedPlaces,
+          unassignedPlaces: actualUnassignedPlaces,
+          unassignedPlaceDetails,
         },
       });
     }

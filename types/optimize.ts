@@ -200,6 +200,37 @@ export interface TwoOptResult {
 }
 
 /**
+ * 누락된 장소 이유 코드
+ */
+export type UnassignedReasonCode =
+  | "TIME_EXCEEDED"      // 일일 활동 시간 초과
+  | "DISTANCE_TOO_FAR"   // 다른 장소들과 거리가 너무 멂
+  | "FIXED_CONFLICT"     // 고정 일정과 충돌
+  | "NO_ROUTE"           // 경로를 찾을 수 없음
+  | "LOW_PRIORITY"       // 우선순위가 낮아 제외됨
+  | "UNKNOWN";           // 알 수 없음
+
+/**
+ * 누락된 장소 상세 정보
+ */
+export interface UnassignedPlaceInfo {
+  /** 장소 ID */
+  placeId: string;
+  /** 장소 이름 */
+  placeName: string;
+  /** 누락 이유 코드 */
+  reasonCode: UnassignedReasonCode;
+  /** 누락 이유 상세 메시지 */
+  reasonMessage: string;
+  /** 추가 정보 (예: 예상 소요 시간, 거리 등) */
+  details?: {
+    estimatedDuration?: number;  // 예상 체류 시간 (분)
+    estimatedTravelTime?: number; // 예상 이동 시간 (분)
+    availableTime?: number;       // 남은 가용 시간 (분)
+  };
+}
+
+/**
  * 일자별 분배 결과
  */
 export interface DayDistributionResult {
@@ -209,6 +240,8 @@ export interface DayDistributionResult {
   dailyDurations: number[];
   /** 분배되지 못한 장소 ID */
   unassignedPlaces: string[];
+  /** 분배되지 못한 장소 상세 정보 */
+  unassignedPlaceDetails?: UnassignedPlaceInfo[];
 }
 
 /**
