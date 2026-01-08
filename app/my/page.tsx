@@ -15,6 +15,8 @@ import {
   LuChevronLeft,
 } from "react-icons/lu";
 
+import { useSafeBack } from "@/hooks/use-safe-back";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -186,6 +188,7 @@ function LoadingSkeleton() {
 export default function MyTripsPage() {
   const router = useRouter();
   const { user, isLoaded } = useUser();
+  const handleBack = useSafeBack("/");
   const [trips, setTrips] = useState<TripListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -290,7 +293,7 @@ export default function MyTripsPage() {
             size="icon"
             variant="ghost"
             className="touch-target"
-            onClick={() => router.back()}
+            onClick={handleBack}
           >
             <LuChevronLeft className="w-5 h-5" />
           </Button>

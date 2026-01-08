@@ -30,6 +30,7 @@ import { CurrentLocationTracker, useCurrentLocation } from "@/components/map/cur
 
 import { getTripWithDetails } from "@/actions/trips/get-trip";
 import { getSegmentColor } from "@/lib/utils";
+import { useSafeBack } from "@/hooks/use-safe-back";
 import type { TripWithDetails, Coordinate } from "@/types";
 import type { ScheduleItem, DailyItinerary } from "@/types/schedule";
 
@@ -546,6 +547,7 @@ function NavigationMapContent({
 export default function NavigatePage({ params }: NavigatePageProps) {
   const { tripId } = use(params);
   const { user, isLoaded } = useUser();
+  const handleBack = useSafeBack(`/my/trips/${tripId}`);
   const [trip, setTrip] = useState<TripWithDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -720,11 +722,14 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     return (
       <main className="flex flex-col h-[calc(100dvh-64px)]">
         <header className="flex items-center gap-3 px-4 py-3 border-b">
-          <Link href={`/my/trips/${tripId}`}>
-            <Button variant="ghost" size="icon" className="shrink-0 touch-target">
-              <LuChevronLeft className="w-5 h-5" />
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 touch-target"
+            onClick={handleBack}
+          >
+            <LuChevronLeft className="w-5 h-5" />
+          </Button>
           <h1 className="font-semibold text-lg">네비게이션</h1>
         </header>
         <ErrorState
@@ -741,11 +746,14 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     return (
       <main className="flex flex-col h-[calc(100dvh-64px)]">
         <header className="flex items-center gap-3 px-4 py-3 border-b">
-          <Link href={`/my/trips/${tripId}`}>
-            <Button variant="ghost" size="icon" className="shrink-0 touch-target">
-              <LuChevronLeft className="w-5 h-5" />
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 touch-target"
+            onClick={handleBack}
+          >
+            <LuChevronLeft className="w-5 h-5" />
+          </Button>
           <h1 className="font-semibold text-lg">{trip.title}</h1>
         </header>
         <EmptyState
@@ -763,11 +771,14 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     return (
       <main className="flex flex-col h-[calc(100dvh-64px)]">
         <header className="flex items-center gap-3 px-4 py-3 border-b">
-          <Link href={`/my/trips/${tripId}`}>
-            <Button variant="ghost" size="icon" className="shrink-0 touch-target">
-              <LuChevronLeft className="w-5 h-5" />
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 touch-target"
+            onClick={handleBack}
+          >
+            <LuChevronLeft className="w-5 h-5" />
+          </Button>
           <h1 className="font-semibold text-lg">{trip.title}</h1>
         </header>
         <EmptyState
@@ -790,11 +801,14 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     <main className="flex flex-col h-[calc(100dvh-64px)]">
       {/* 헤더 */}
       <header className="flex items-center gap-3 px-4 py-3 border-b bg-background z-10">
-        <Link href={`/my/trips/${tripId}`}>
-          <Button variant="ghost" size="icon" className="shrink-0 touch-target">
-            <LuChevronLeft className="w-5 h-5" />
-          </Button>
-        </Link>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0 touch-target"
+          onClick={handleBack}
+        >
+          <LuChevronLeft className="w-5 h-5" />
+        </Button>
         <div className="flex-1 min-w-0">
           <h1 className="font-semibold text-lg truncate">{trip.title}</h1>
         </div>

@@ -11,6 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTripDraft } from "@/hooks/use-trip-draft";
+import { useSafeBack } from "@/hooks/use-safe-back";
 import type { TripStatus } from "@/types/trip";
 import type { FixedSchedule } from "@/types/schedule";
 import type { Place } from "@/types/place";
@@ -22,6 +23,7 @@ interface TripEditPageProps {
 export default function TripEditPage({ params }: TripEditPageProps) {
   const { tripId } = use(params);
   const { getDraftByTripId, isLoaded } = useTripDraft();
+  const handleBack = useSafeBack("/my");
   const [tripData, setTripData] = useState<{
     id: string;
     title: string;
@@ -119,11 +121,14 @@ export default function TripEditPage({ params }: TripEditPageProps) {
       {/* 헤더 */}
       <header className="flex items-center justify-between px-4 py-3 border-b">
         <div className="flex items-center gap-3">
-          <Link href="/my">
-            <Button variant="ghost" size="icon" className="shrink-0">
-              <LuChevronLeft className="w-5 h-5" />
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0"
+            onClick={handleBack}
+          >
+            <LuChevronLeft className="w-5 h-5" />
+          </Button>
           <div>
             <h1 className="font-semibold text-lg">{trip.title}</h1>
             <p className="text-xs text-muted-foreground">

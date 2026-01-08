@@ -11,6 +11,10 @@ import { TripFormStep2 } from "./trip-form-step2";
 import { createTripSchema, type CreateTripInput } from "@/lib/schemas";
 
 interface TripFormWizardProps {
+  /** 현재 스텝 */
+  currentStep?: number;
+  /** 스텝 변경 핸들러 */
+  onStepChange?: (step: number) => void;
   /** 폼 제출 핸들러 */
   onSubmit: (data: CreateTripInput) => Promise<void>;
   /** 초기 데이터 (수정 모드) */
@@ -26,15 +30,21 @@ interface TripFormWizardProps {
 type SlideDirection = "forward" | "backward";
 
 export function TripFormWizard({
+  currentStep: externalCurrentStep,
+  onStepChange,
   onSubmit,
   initialData,
   isLoading = false,
   onCancel,
   className,
 }: TripFormWizardProps) {
-  const [currentStep, setCurrentStep] = React.useState(1);
+  const [internalCurrentStep, setInternalCurrentStep] = React.useState(1);
   const [direction, setDirection] = React.useState<SlideDirection>("forward");
   const [isAnimating, setIsAnimating] = React.useState(false);
+
+  // 외부에서 currentStep을 제어하는 경우 외부 값 사용, 아니면 내부 상태 사용
+  const currentStep = externalCurrentStep ?? internalCurrentStep;
+  const setCurrentStep = onStepChange ?? setInternalCurrentStep;
 
   const form = useForm<CreateTripInput>({
     resolver: zodResolver(createTripSchema),
