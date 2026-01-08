@@ -72,15 +72,25 @@ export function extractSegments(
       startId = "__accommodation_0__";
     } else {
       // 숙소가 없으면 전날 마지막 경유지에서 시작
-      const prevLastWaypointId = dayPlans[dayIndex - 1].waypointOrder.slice(-1)[0];
-      const prevLastWaypoint = getWaypointCoord(prevLastWaypointId);
+      const prevDayPlan = dayPlans[dayIndex - 1];
 
-      if (!prevLastWaypoint) {
-        throw new Error(`[extractSegments] Cannot find previous day's last waypoint for day ${dayIndex + 1}`);
+      if (!prevDayPlan || !prevDayPlan.waypointOrder || prevDayPlan.waypointOrder.length === 0) {
+        console.warn(`[extractSegments] Day ${dayIndex + 1}: No previous day waypoints, using origin`);
+        startCoord = start;
+        startId = "__origin__";
+      } else {
+        const prevLastWaypointId = prevDayPlan.waypointOrder[prevDayPlan.waypointOrder.length - 1];
+        const prevLastWaypoint = getWaypointCoord(prevLastWaypointId);
+
+        if (!prevLastWaypoint) {
+          console.warn(`[extractSegments] Day ${dayIndex + 1}: Cannot find coordinates for waypoint ${prevLastWaypointId}, using origin`);
+          startCoord = start;
+          startId = "__origin__";
+        } else {
+          startCoord = prevLastWaypoint;
+          startId = prevLastWaypointId;
+        }
       }
-
-      startCoord = prevLastWaypoint;
-      startId = prevLastWaypointId;
     }
 
     // 첫 경유지로 가는 구간
