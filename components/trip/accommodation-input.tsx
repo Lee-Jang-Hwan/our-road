@@ -32,10 +32,6 @@ interface AccommodationInputProps {
   index: number;
   /** 삭제 핸들러 */
   onRemove: () => void;
-  /** 여행 시작일 */
-  tripStartDate?: string;
-  /** 여행 종료일 */
-  tripEndDate?: string;
   /** 추가 클래스 */
   className?: string;
 }
@@ -46,8 +42,6 @@ const timeOptions = generateTimeOptions(0, 24);
 export function AccommodationInput({
   index,
   onRemove,
-  tripStartDate,
-  tripEndDate,
   className,
 }: AccommodationInputProps) {
   const form = useFormContext<CreateTripInput>();
@@ -57,6 +51,73 @@ export function AccommodationInput({
   const startDateValue = form.watch(`${fieldName}.startDate`);
   const endDateValue = form.watch(`${fieldName}.endDate`);
 
+  // 현재 폼의 여행 기간을 직접 참조
+  const currentTripStartDate = form.watch("startDate");
+  const currentTripEndDate = form.watch("endDate");
+
+  // 여행 기간이 변경되었을 때 숙소 날짜를 자동으로 조정
+  React.useEffect(() => {
+    if (!currentTripStartDate || !currentTripEndDate) return;
+    if (!startDateValue && !endDateValue) return; // 숙소 날짜가 없으면 조정 불필요
+
+    const tripStart = new Date(currentTripStartDate);
+    const tripEnd = new Date(currentTripEndDate);
+    tripStart.setHours(0, 0, 0, 0);
+    tripEnd.setHours(23, 59, 59, 999);
+
+    let needsUpdate = false;
+    let newStartDate = startDateValue;
+    let newEndDate = endDateValue;
+
+    // 시작일이 여행 기간을 벗어나면 조정
+    if (startDateValue) {
+      const start = new Date(startDateValue);
+      if (start < tripStart || start > tripEnd) {
+        newStartDate = currentTripStartDate;
+        needsUpdate = true;
+      }
+    }
+
+    // 종료일이 여행 기간을 벗어나면 조정
+    if (endDateValue) {
+      const end = new Date(endDateValue);
+      if (end < tripStart || end > tripEnd) {
+        newEndDate = currentTripEndDate;
+        needsUpdate = true;
+      }
+    }
+
+    // 시작일이 종료일보다 늦으면 조정
+    if (newStartDate && newEndDate) {
+      const start = new Date(newStartDate);
+      const end = new Date(newEndDate);
+      if (start > end) {
+        newEndDate = newStartDate;
+        needsUpdate = true;
+      }
+    }
+
+    if (needsUpdate) {
+      if (newStartDate) {
+        form.setValue(`${fieldName}.startDate`, newStartDate, {
+          shouldValidate: true,
+        });
+      }
+      if (newEndDate) {
+        form.setValue(`${fieldName}.endDate`, newEndDate, {
+          shouldValidate: true,
+        });
+      }
+    }
+  }, [
+    currentTripStartDate,
+    currentTripEndDate,
+    fieldName,
+    form,
+    startDateValue,
+    endDateValue,
+  ]);
+
   const selectedRange: DateRange | undefined =
     startDateValue || endDateValue
       ? {
@@ -65,11 +126,11 @@ export function AccommodationInput({
         }
       : undefined;
 
-  // 여행 기간 내에서만 선택 가능
+  // 여행 기간 내에서만 선택 가능 (현재 폼의 여행 기간 사용)
   const disabledDates = (date: Date) => {
-    if (!tripStartDate || !tripEndDate) return false;
-    const start = new Date(tripStartDate);
-    const end = new Date(tripEndDate);
+    if (!currentTripStartDate || !currentTripEndDate) return false;
+    const start = new Date(currentTripStartDate);
+    const end = new Date(currentTripEndDate);
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
     return date < start || date > end;
@@ -77,9 +138,13 @@ export function AccommodationInput({
 
   const handleDateRangeSelect = (range: DateRange | undefined) => {
     if (range?.from) {
-      form.setValue(`${fieldName}.startDate`, format(range.from, "yyyy-MM-dd"), {
-        shouldValidate: true,
-      });
+      form.setValue(
+        `${fieldName}.startDate`,
+        format(range.from, "yyyy-MM-dd"),
+        {
+          shouldValidate: true,
+        },
+      );
     }
     if (range?.to) {
       form.setValue(`${fieldName}.endDate`, format(range.to, "yyyy-MM-dd"), {
@@ -99,10 +164,7 @@ export function AccommodationInput({
 
   return (
     <div
-      className={cn(
-        "p-4 border rounded-lg space-y-3 bg-muted/30",
-        className
-      )}
+      className={cn("p-4 border rounded-lg space-y-3 bg-muted/30", className)}
     >
       {/* 헤더: 숙소 번호 + 삭제 버튼 */}
       <div className="flex items-center justify-between">
@@ -127,7 +189,7 @@ export function AccommodationInput({
               variant="outline"
               className={cn(
                 "w-full justify-start text-left font-normal",
-                !selectedRange?.from && "text-muted-foreground"
+                !selectedRange?.from && "text-muted-foreground",
               )}
             >
               <CalendarIcon className="mr-2 h-4 w-4" />
@@ -140,7 +202,9 @@ export function AccommodationInput({
                     {format(selectedRange.to, "M월 d일 (E)", { locale: ko })}
                   </>
                 ) : (
-                  format(selectedRange.from, "yyyy년 M월 d일 (E)", { locale: ko })
+                  format(selectedRange.from, "yyyy년 M월 d일 (E)", {
+                    locale: ko,
+                  })
                 )
               ) : (
                 <span>체크인 ~ 체크아웃 날짜 선택</span>
@@ -165,13 +229,19 @@ export function AccommodationInput({
       <div className="space-y-1.5">
         <label className="text-sm text-muted-foreground">숙소 위치</label>
         <LocationInput
-          value={form.watch(`${fieldName}.location`) as TripLocation | undefined}
+          value={
+            form.watch(`${fieldName}.location`) as TripLocation | undefined
+          }
           onChange={(location) => {
             if (location === undefined) {
               // undefined일 때 필드를 명시적으로 초기화
-              form.setValue(`${fieldName}.location`, undefined as unknown as TripLocation, {
-                shouldValidate: true,
-              });
+              form.setValue(
+                `${fieldName}.location`,
+                undefined as unknown as TripLocation,
+                {
+                  shouldValidate: true,
+                },
+              );
             } else {
               form.setValue(`${fieldName}.location`, location, {
                 shouldValidate: true,

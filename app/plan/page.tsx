@@ -9,6 +9,7 @@ import { LuChevronLeft } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TripFormWizard } from "@/components/trip/trip-form-wizard";
+import { TripConfirmDialog } from "@/components/trip/trip-confirm-dialog";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { useTripDraft } from "@/hooks/use-trip-draft";
 import { createTrip } from "@/actions/trips";
@@ -62,6 +63,10 @@ export default function NewTripPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentStep, setCurrentStep] = useState(1);
   const { saveTripInfo } = useTripDraft();
+  
+  // 확인 다이얼로그 상태
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [pendingSubmitData, setPendingSubmitData] = useState<CreateTripInput | null>(null);
 
   const handleBack = () => {
     if (currentStep === 2) {
@@ -74,10 +79,21 @@ export default function NewTripPage() {
   const handleSubmit = async (data: CreateTripInput) => {
     if (!user) return;
 
+    // 먼저 확인 다이얼로그를 엽니다
+    setPendingSubmitData(data);
+    setIsConfirmDialogOpen(true);
+  };
+
+  // 실제 submit 처리
+  const handleConfirmSubmit = async () => {
+    if (!user || !pendingSubmitData) return;
+
+    setIsConfirmDialogOpen(false);
     setIsSubmitting(true);
+    
     try {
       // Server Action으로 여행 생성
-      const result = await createTrip(data);
+      const result = await createTrip(pendingSubmitData);
 
       if (!result.success || !result.data) {
         showErrorToast(result.error || "여행 생성에 실패했습니다.");
@@ -85,7 +101,7 @@ export default function NewTripPage() {
       }
 
       // sessionStorage에도 저장 (장소 추가 시 사용)
-      saveTripInfo(data, result.data.id);
+      saveTripInfo(pendingSubmitData, result.data.id);
       showSuccessToast("여행이 생성되었습니다!");
       router.push(`/plan/${result.data.id}`);
     } catch (error) {
@@ -93,6 +109,7 @@ export default function NewTripPage() {
       showErrorToast("여행 생성에 실패했습니다. 다시 시도해주세요.");
     } finally {
       setIsSubmitting(false);
+      setPendingSubmitData(null);
     }
   };
 
@@ -135,6 +152,15 @@ export default function NewTripPage() {
           isLoading={isSubmitting}
         />
       </div>
+
+      {/* 확인 다이얼로그 */}
+      <TripConfirmDialog
+        open={isConfirmDialogOpen}
+        onOpenChange={setIsConfirmDialogOpen}
+        data={pendingSubmitData}
+        onConfirm={handleConfirmSubmit}
+        isLoading={isSubmitting}
+      />
     </main>
   );
 }

@@ -9,6 +9,7 @@ import { LuChevronLeft } from "react-icons/lu";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TripFormWizard } from "@/components/trip/trip-form-wizard";
+import { TripConfirmDialog } from "@/components/trip/trip-confirm-dialog";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import { useTripDraft } from "@/hooks/use-trip-draft";
 import { getTrip, updateTrip } from "@/actions/trips";
@@ -118,6 +119,11 @@ export default function EditTripPage({ params }: EditTripPageProps) {
   const [error, setError] = useState<string | null>(null);
   const { saveTripInfo } = useTripDraft();
 
+  // 확인 다이얼로그 상태
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [pendingSubmitData, setPendingSubmitData] =
+    useState<CreateTripInput | null>(null);
+
   // DB에서 여행 데이터 로드
   useEffect(() => {
     async function loadTrip() {
@@ -162,10 +168,21 @@ export default function EditTripPage({ params }: EditTripPageProps) {
   const handleSubmit = async (data: CreateTripInput) => {
     if (!user) return;
 
+    // 먼저 확인 다이얼로그를 엽니다
+    setPendingSubmitData(data);
+    setIsConfirmDialogOpen(true);
+  };
+
+  // 실제 submit 처리
+  const handleConfirmSubmit = async () => {
+    if (!user || !pendingSubmitData) return;
+
+    setIsConfirmDialogOpen(false);
     setIsSubmitting(true);
+
     try {
       // Server Action으로 여행 수정
-      const result = await updateTrip(tripId, data);
+      const result = await updateTrip(tripId, pendingSubmitData);
 
       if (!result.success) {
         showErrorToast(result.error || "여행 수정에 실패했습니다.");
@@ -173,7 +190,7 @@ export default function EditTripPage({ params }: EditTripPageProps) {
       }
 
       // sessionStorage에도 저장 (장소 추가 시 사용)
-      saveTripInfo(data, tripId);
+      saveTripInfo(pendingSubmitData, tripId);
       showSuccessToast("여행이 수정되었습니다!");
       router.push(`/plan/${tripId}`);
     } catch (error) {
@@ -181,6 +198,7 @@ export default function EditTripPage({ params }: EditTripPageProps) {
       showErrorToast("여행 수정에 실패했습니다. 다시 시도해주세요.");
     } finally {
       setIsSubmitting(false);
+      setPendingSubmitData(null);
     }
   };
 
@@ -241,6 +259,15 @@ export default function EditTripPage({ params }: EditTripPageProps) {
           submitButtonText="여행 수정하기"
         />
       </div>
+
+      {/* 확인 다이얼로그 */}
+      <TripConfirmDialog
+        open={isConfirmDialogOpen}
+        onOpenChange={setIsConfirmDialogOpen}
+        data={pendingSubmitData}
+        onConfirm={handleConfirmSubmit}
+        isLoading={isSubmitting}
+      />
     </main>
   );
 }

@@ -160,8 +160,6 @@ export function TripFormStep2({
                   key={field.id}
                   index={index}
                   onRemove={() => remove(index)}
-                  tripStartDate={startDateValue}
-                  tripEndDate={endDateValue}
                 />
               ))}
             </div>

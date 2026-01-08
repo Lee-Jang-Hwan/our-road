@@ -14,3 +14,4 @@ export { TripFormWizard } from "./trip-form-wizard";
 export { TripFormStep1 } from "./trip-form-step1";
 export { TripFormStep2 } from "./trip-form-step2";
 export { AccommodationInput } from "./accommodation-input";
+export { TripConfirmDialog } from "./trip-confirm-dialog";
