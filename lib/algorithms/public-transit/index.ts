@@ -16,7 +16,6 @@ import {
   selectWaypointsToRemoveFromDay,
 } from "./complexity-removal";
 import { extractSegments, callRoutingAPIForSegments } from "./api-caller";
-import { detectAnomalousSegments, applyLocalFixes } from "./anomaly-detection";
 import { buildOutput } from "./output-builder";
 
 export async function generatePublicTransitRoute(
@@ -234,11 +233,6 @@ export async function generatePublicTransitRoute(
         `[generatePublicTransitRoute] Reached max reoptimization rounds (${maxReoptimizationRounds}). Some days may still exceed time limit.`
       );
     }
-  }
-
-  const warnings = detectAnomalousSegments(segmentCosts);
-  if (warnings.length > 0) {
-    applyLocalFixes(dayPlans, warnings);
   }
 
   return buildOutput({
