@@ -23,6 +23,7 @@ import { PlaceMarkers, SingleMarker } from "@/components/map/place-markers";
 import { RealRoutePolyline } from "@/components/map/route-polyline";
 import { OffScreenMarkers, FitBoundsButton } from "@/components/map/off-screen-markers";
 import { useSwipe } from "@/hooks/use-swipe";
+import { useSafeBack } from "@/hooks/use-safe-back";
 import { optimizeRoute } from "@/actions/optimize/optimize-route";
 import { saveItinerary } from "@/actions/optimize/save-itinerary";
 import { getPlaces } from "@/actions/places";
@@ -41,6 +42,7 @@ interface ResultPageProps {
 export default function ResultPage({ params }: ResultPageProps) {
   const { tripId } = use(params);
   const router = useRouter();
+  const handleBack = useSafeBack(`/plan/${tripId}`);
   const [selectedDay, setSelectedDay] = useState(1);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -402,11 +404,14 @@ export default function ResultPage({ params }: ResultPageProps) {
     <main className="flex flex-col min-h-[calc(100dvh-64px)]">
       {/* 헤더 */}
       <header className="flex items-center gap-3 px-4 py-3 border-b">
-        <Link href={`/plan/${tripId}`}>
-          <Button variant="ghost" size="icon" className="shrink-0">
-            <LuChevronLeft className="w-5 h-5" />
-          </Button>
-        </Link>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0"
+          onClick={handleBack}
+        >
+          <LuChevronLeft className="w-5 h-5" />
+        </Button>
         <h1 className="font-semibold text-lg flex-1">최적화 결과</h1>
         <Button variant="ghost" size="icon" onClick={handleShare}>
           <LuShare2 className="w-5 h-5" />

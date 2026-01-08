@@ -48,6 +48,7 @@ function convertRowToTrip(row: TripRow): Trip {
     dailyEndTime: row.daily_end_time,
     transportModes: row.transport_mode,
     status: row.status,
+    accommodations: row.accommodations ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
