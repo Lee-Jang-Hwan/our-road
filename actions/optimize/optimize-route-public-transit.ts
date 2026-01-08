@@ -181,14 +181,31 @@ function convertTripOutputToOptimizeResult(
         lng: accom.location.lng,
         type: "accommodation",
       };
+    } else {
+      // 숙소가 없으면 전날 마지막 장소 사용
+      const prevDayPlan = output.dayPlans[dayIndex - 1];
+      if (prevDayPlan && prevDayPlan.waypointOrder.length > 0) {
+        const lastPlaceId = prevDayPlan.waypointOrder[prevDayPlan.waypointOrder.length - 1];
+        const lastPlace = placeMap.get(lastPlaceId);
+        if (lastPlace) {
+          dayOrigin = {
+            name: lastPlace.name,
+            address: lastPlace.address,
+            lat: lastPlace.coordinate.lat,
+            lng: lastPlace.coordinate.lng,
+            type: "lastPlace",
+          };
+        }
+      }
     }
     // 숙소가 없으면 dayOrigin을 설정하지 않음 (2일차부터는 출발지 표시 없이 경유지부터 시작)
 
-    // 도착지 정보 (숙소가 있으면 매일 숙소, 없으면 마지막 날만 최종 도착지)
+    // 도착지 정보 (숙소가 있으면 모든 날 숙소, 없으면 마지막 날만 도착지)
     let dayDestination: DailyItinerary["dayDestination"];
+    const hasAccommodation = trip.accommodations && trip.accommodations.length > 0;
     const isLastDay = dayIndex === output.dayPlans.length - 1;
 
-    if (trip.accommodations && trip.accommodations.length > 0) {
+    if (hasAccommodation) {
       // 숙소가 있으면 모든 날의 종점은 숙소
       const accom = trip.accommodations[0];
       dayDestination = {
@@ -209,24 +226,25 @@ function convertTripOutputToOptimizeResult(
         type: "destination",
       };
     }
-    // 숙소가 없고 마지막 날이 아니면 dayDestination을 설정하지 않음 (도착지 표시 없이 경유지에서 종료)
+    // 숙소가 없고 마지막 날이 아니면 dayDestination은 undefined (다음 날 이어짐)
 
-    // 출발지 → 첫 장소 이동 정보
+      // 출발지 → 첫 장소 이동 정보
     // dayOrigin이 있는 경우에만 transportFromOrigin 생성
     let transportFromOrigin: DailyItinerary["transportFromOrigin"];
     if (dayOrigin && dayPlan.waypointOrder.length > 0) {
       const firstPlaceId = dayPlan.waypointOrder[0];
 
-      // originId 결정
+      // originId 결정: 첫날은 __origin__, 숙소 있으면 __accommodation_0__, 없으면 전날 마지막 장소 ID
       let originId: string;
       if (dayIndex === 0) {
         originId = "__origin__";
-      } else if (trip.accommodations && trip.accommodations.length > 0) {
+      } else if (hasAccommodation) {
         originId = "__accommodation_0__";
       } else {
-        // 숙소가 없으면 전날 마지막 경유지
         const prevDayPlan = output.dayPlans[dayIndex - 1];
-        originId = prevDayPlan.waypointOrder[prevDayPlan.waypointOrder.length - 1];
+        originId = prevDayPlan && prevDayPlan.waypointOrder.length > 0
+          ? prevDayPlan.waypointOrder[prevDayPlan.waypointOrder.length - 1]
+          : "__origin__";
       }
 
       const segmentKey = `${originId}:${firstPlaceId}`;
@@ -306,17 +324,8 @@ function convertTripOutputToOptimizeResult(
     if (dayPlan.waypointOrder.length > 0 && dayDestination) {
       const lastPlaceId = dayPlan.waypointOrder[dayPlan.waypointOrder.length - 1];
 
-      // destinationId 결정
-      let destinationId: string;
-      if (trip.accommodations && trip.accommodations.length > 0) {
-        destinationId = "__accommodation_0__";
-      } else if (dayIndex === output.dayPlans.length - 1) {
-        destinationId = "__destination__";
-      } else {
-        // 숙소 없고 마지막 날이 아니면 여기 도달하지 않아야 함 (dayDestination이 없음)
-        destinationId = "__destination__";
-      }
-
+      // destinationId 결정: 숙소 있으면 __accommodation_0__, 마지막 날은 __destination__
+      const destinationId = hasAccommodation ? "__accommodation_0__" : "__destination__";
       const segmentKey = `${lastPlaceId}:${destinationId}`;
       const segment = segmentMap.get(segmentKey);
 

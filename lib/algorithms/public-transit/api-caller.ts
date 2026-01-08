@@ -121,25 +121,21 @@ export function extractSegments(
       endId = "__accommodation_0__";
     } else if (isLastDay && end) {
       // 숙소가 없고 마지막 날: 도착지 추가
-      // (출발지와 도착지가 완전히 같은 좌표가 아니면 항상 추가)
-      const isSameAsStart =
+      // (마지막 경유지와 도착지가 완전히 같은 좌표가 아니면 항상 추가)
+      const isSameAsLastWaypoint =
         !!lastCoord &&
         Math.abs(end.lat - lastCoord.lat) < 0.00001 &&
         Math.abs(end.lng - lastCoord.lng) < 0.00001;
 
-      console.log(`[extractSegments Day ${dayIndex + 1}] isSameAsStart:`, isSameAsStart, 'distance:', Math.sqrt(Math.pow(end.lat - start.lat, 2) + Math.pow(end.lng - start.lng, 2)) * 111000, 'm');
-
-      if (!isSameAsStart) {
+      if (!isSameAsLastWaypoint) {
         endCoord = end;
         endId = "__destination__";
       }
-      // 출발지와 도착지가 완전히 같으면 순환 여행으로 간주하여 endCoord를 설정하지 않음
+      // 마지막 경유지와 도착지가 완전히 같으면 순환 여행으로 간주하여 endCoord를 설정하지 않음
     }
     // 숙소가 없고 마지막 날이 아니면 endCoord를 설정하지 않음 (다음 날 이어짐)
 
     // 마지막 경유지에서 도착지로 가는 구간
-    console.log(`[extractSegments Day ${dayIndex + 1}] endCoord:`, endCoord, 'endId:', endId, 'lastCoord:', lastCoord);
-
     if (endCoord && endId && lastCoord) {
       console.log(`[extractSegments Day ${dayIndex + 1}] Adding destination segment: ${lastWaypointId} -> ${endId}`);
       segments.push({
