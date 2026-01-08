@@ -451,6 +451,14 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
             <LuMapPin className="w-4 h-4 shrink-0" />
             <span>장소 {trip.places.length}곳</span>
           </div>
+          {!hasItinerary && (
+            <Link href={`/plan/${tripId}`}>
+              <Button variant="default" size="sm" className="bg-black text-white hover:bg-gray-900">
+                <LuPencil className="w-4 h-4 mr-2" />
+                편집하기
+              </Button>
+            </Link>
+          )}
           {hasItinerary && (
             <div className="flex items-center gap-1.5">
               <LuClock className="w-4 h-4 shrink-0" />
@@ -554,12 +562,6 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
               ? "장소가 추가되어 있습니다. 일정을 최적화해보세요."
               : "장소를 추가하고 일정을 최적화해보세요."}
           </p>
-          <Link href={`/plan/${tripId}`}>
-            <Button>
-              <LuPencil className="w-4 h-4 mr-2" />
-              편집하기
-            </Button>
-          </Link>
         </div>
       )}
 

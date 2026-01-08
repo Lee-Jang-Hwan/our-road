@@ -62,7 +62,10 @@ function getStatusBadge(status: TripStatus) {
       );
     case "optimizing":
       return (
-        <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800">
+        <Badge
+          variant="secondary"
+          className="text-xs bg-yellow-100 text-yellow-800"
+        >
           최적화 중
         </Badge>
       );
@@ -106,7 +109,7 @@ function TripCard({
   const duration = calculateTripDuration(trip.startDate, trip.endDate);
 
   return (
-    <Card className="py-0 overflow-hidden">
+    <Card className="py-0 overflow-hidden hover:bg-muted active:bg-muted/90">
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
           <button
@@ -142,7 +145,11 @@ function TripCard({
           {/* 메뉴 버튼 */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="shrink-0 -mt-1 -mr-2 touch-target">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="shrink-0 -mt-1 -mr-2 touch-target"
+              >
                 <LuEllipsisVertical className="w-4 h-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -151,7 +158,10 @@ function TripCard({
                 <LuMap className="w-4 h-4 mr-2" />
                 상세 보기
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={onDelete} className="text-destructive touch-target">
+              <DropdownMenuItem
+                onClick={onDelete}
+                className="text-destructive touch-target"
+              >
                 <LuTrash2 className="w-4 h-4 mr-2" />
                 삭제하기
               </DropdownMenuItem>
@@ -275,11 +285,7 @@ export default function MyTripsPage() {
         <header className="flex items-center justify-between px-4 py-3 border-b">
           <h1 className="font-semibold text-lg">내 여행</h1>
         </header>
-        <ErrorState
-          type="generic"
-          description={error}
-          onRetry={loadTrips}
-        />
+        <ErrorState type="generic" description={error} onRetry={loadTrips} />
       </main>
     );
   }
@@ -307,13 +313,10 @@ export default function MyTripsPage() {
       </header>
 
       {/* 여행 목록 with Pull-to-refresh */}
-      <PullToRefresh onRefresh={handleRefresh} className="flex-1">
+      <PullToRefresh onRefresh={handleRefresh} className="flex-1" >
         <div className="px-4 py-4">
           {trips.length === 0 ? (
-            <EmptyState
-              type="trips"
-              onAction={() => router.push("/plan")}
-            />
+            <EmptyState type="trips" onAction={() => router.push("/plan")} />
           ) : (
             <div className="space-y-3">
               {trips.map((trip) => (

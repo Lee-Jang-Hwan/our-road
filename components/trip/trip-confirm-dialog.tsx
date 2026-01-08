@@ -54,7 +54,7 @@ function formatTransportMode(mode: string): string {
 }
 
 /**
- * 두 날짜 사이의 일수 계산
+ * 두 날짜 사이의 일수 계산 (표시용)
  */
 function calculateDaysBetween(startDate: string, endDate: string): number {
   const start = new Date(startDate);
@@ -64,16 +64,28 @@ function calculateDaysBetween(startDate: string, endDate: string): number {
 }
 
 /**
- * 숙박 기간의 합 계산
+ * 두 날짜 사이의 숙박 횟수 계산 (박수)
+ * 예: 8일~12일 = 4박 (8일 밤, 9일 밤, 10일 밤, 11일 밤)
  */
-function calculateTotalAccommodationDays(
-  accommodations: CreateTripInput["accommodations"]
+function calculateNightsBetween(startDate: string, endDate: string): number {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const diffTime = Math.abs(end.getTime() - start.getTime());
+  const days = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  return days;
+}
+
+/**
+ * 숙박 기간의 총 박수 계산
+ */
+function calculateTotalAccommodationNights(
+  accommodations: CreateTripInput["accommodations"],
 ): number {
   if (!accommodations || accommodations.length === 0) return 0;
 
   return accommodations.reduce((total, acc) => {
     if (acc.startDate && acc.endDate) {
-      return total + calculateDaysBetween(acc.startDate, acc.endDate);
+      return total + calculateNightsBetween(acc.startDate, acc.endDate);
     }
     return total;
   }, 0);
@@ -86,20 +98,20 @@ function calculateTotalAccommodationDays(
 function validateAccommodationPeriod(
   startDate: string,
   endDate: string,
-  accommodations: CreateTripInput["accommodations"]
+  accommodations: CreateTripInput["accommodations"],
 ): { isValid: boolean; message?: string } {
   // 숙소가 없으면 검증하지 않음
   if (!accommodations || accommodations.length === 0) {
     return { isValid: true };
   }
 
-  const tripDays = calculateDaysBetween(startDate, endDate);
-  const accommodationDays = calculateTotalAccommodationDays(accommodations);
+  const tripNights = calculateNightsBetween(startDate, endDate);
+  const accommodationNights = calculateTotalAccommodationNights(accommodations);
 
-  if (accommodationDays !== tripDays) {
+  if (accommodationNights !== tripNights) {
     return {
       isValid: false,
-      message: `숙박 기간의 합(${accommodationDays}일)이 여행 기간(${tripDays}일)과 일치하지 않습니다.`,
+      message: `숙박 횟수(${accommodationNights}박)가 여행 기간(${tripNights}박)과 일치하지 않습니다.`,
     };
   }
 
@@ -117,7 +129,7 @@ export function TripConfirmDialog({
     ? validateAccommodationPeriod(
         data.startDate,
         data.endDate,
-        data.accommodations
+        data.accommodations,
       )
     : { isValid: true };
 

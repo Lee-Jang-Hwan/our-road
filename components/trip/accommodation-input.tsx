@@ -47,6 +47,9 @@ export function AccommodationInput({
   const form = useFormContext<CreateTripInput>();
   const fieldName = `accommodations.${index}` as const;
   const [calendarOpen, setCalendarOpen] = React.useState(false);
+  const [tempRange, setTempRange] = React.useState<DateRange | undefined>(
+    undefined,
+  );
 
   const startDateValue = form.watch(`${fieldName}.startDate`);
   const endDateValue = form.watch(`${fieldName}.endDate`);
@@ -55,13 +58,19 @@ export function AccommodationInput({
   const currentTripStartDate = form.watch("startDate");
   const currentTripEndDate = form.watch("endDate");
 
+  // 날짜 문자열을 로컬 날짜로 파싱 (타임존 문제 방지)
+  const parseLocalDate = React.useCallback((dateStr: string) => {
+    const [year, month, day] = dateStr.split("-").map(Number);
+    return new Date(year, month - 1, day);
+  }, []);
+
   // 여행 기간이 변경되었을 때 숙소 날짜를 자동으로 조정
   React.useEffect(() => {
     if (!currentTripStartDate || !currentTripEndDate) return;
     if (!startDateValue && !endDateValue) return; // 숙소 날짜가 없으면 조정 불필요
 
-    const tripStart = new Date(currentTripStartDate);
-    const tripEnd = new Date(currentTripEndDate);
+    const tripStart = parseLocalDate(currentTripStartDate);
+    const tripEnd = parseLocalDate(currentTripEndDate);
     tripStart.setHours(0, 0, 0, 0);
     tripEnd.setHours(23, 59, 59, 999);
 
@@ -71,7 +80,7 @@ export function AccommodationInput({
 
     // 시작일이 여행 기간을 벗어나면 조정
     if (startDateValue) {
-      const start = new Date(startDateValue);
+      const start = parseLocalDate(startDateValue);
       if (start < tripStart || start > tripEnd) {
         newStartDate = currentTripStartDate;
         needsUpdate = true;
@@ -80,7 +89,7 @@ export function AccommodationInput({
 
     // 종료일이 여행 기간을 벗어나면 조정
     if (endDateValue) {
-      const end = new Date(endDateValue);
+      const end = parseLocalDate(endDateValue);
       if (end < tripStart || end > tripEnd) {
         newEndDate = currentTripEndDate;
         needsUpdate = true;
@@ -89,8 +98,8 @@ export function AccommodationInput({
 
     // 시작일이 종료일보다 늦으면 조정
     if (newStartDate && newEndDate) {
-      const start = new Date(newStartDate);
-      const end = new Date(newEndDate);
+      const start = parseLocalDate(newStartDate);
+      const end = parseLocalDate(newEndDate);
       if (start > end) {
         newEndDate = newStartDate;
         needsUpdate = true;
@@ -116,27 +125,37 @@ export function AccommodationInput({
     form,
     startDateValue,
     endDateValue,
+    parseLocalDate,
   ]);
 
   const selectedRange: DateRange | undefined =
     startDateValue || endDateValue
       ? {
-          from: startDateValue ? new Date(startDateValue) : undefined,
-          to: endDateValue ? new Date(endDateValue) : undefined,
+          from: startDateValue ? parseLocalDate(startDateValue) : undefined,
+          to: endDateValue ? parseLocalDate(endDateValue) : undefined,
         }
       : undefined;
+
+  // 캘린더가 열릴 때 기존 선택을 초기화
+  React.useEffect(() => {
+    if (calendarOpen) {
+      setTempRange(undefined);
+    }
+  }, [calendarOpen]);
 
   // 여행 기간 내에서만 선택 가능 (현재 폼의 여행 기간 사용)
   const disabledDates = (date: Date) => {
     if (!currentTripStartDate || !currentTripEndDate) return false;
-    const start = new Date(currentTripStartDate);
-    const end = new Date(currentTripEndDate);
+    const start = parseLocalDate(currentTripStartDate);
+    const end = parseLocalDate(currentTripEndDate);
     start.setHours(0, 0, 0, 0);
     end.setHours(23, 59, 59, 999);
     return date < start || date > end;
   };
 
   const handleDateRangeSelect = (range: DateRange | undefined) => {
+    setTempRange(range); // 임시 상태 업데이트
+
     if (range?.from) {
       form.setValue(
         `${fieldName}.startDate`,
@@ -151,14 +170,9 @@ export function AccommodationInput({
         shouldValidate: true,
       });
       // 시작일과 종료일 모두 선택되면 캘린더 닫기
-      if (range.from) {
+      if (range.from && range.from.getTime() !== range.to.getTime()) {
         setCalendarOpen(false);
       }
-    } else if (range?.from && !range?.to) {
-      // 시작일만 선택된 경우 종료일도 같은 날짜로 임시 설정
-      form.setValue(`${fieldName}.endDate`, format(range.from, "yyyy-MM-dd"), {
-        shouldValidate: true,
-      });
     }
   };
 
@@ -214,7 +228,7 @@ export function AccommodationInput({
           <PopoverContent className="w-auto p-0" align="start">
             <Calendar
               mode="range"
-              selected={selectedRange}
+              selected={tempRange}
               onSelect={handleDateRangeSelect}
               disabled={disabledDates}
               locale={ko}
