@@ -11,6 +11,7 @@ import {
   Banknote,
   Bus,
   Train,
+  Ship,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
@@ -124,14 +125,37 @@ interface RouteSegmentConnectorProps {
 /**
  * 구간 타입에 따른 아이콘 반환
  */
-function getTrafficIcon(trafficType: 1 | 2 | 3, className?: string) {
+function getTrafficIcon(trafficType: number, className?: string) {
   switch (trafficType) {
     case 1: // 지하철
+    case 10: // 열차
       return <Train className={cn("w-3 h-3", className)} />;
     case 2: // 버스
+    case 11: // 고속버스
+    case 12: // 시외버스
       return <Bus className={cn("w-3 h-3", className)} />;
     case 3: // 도보
       return <Footprints className={cn("w-3 h-3", className)} />;
+    case 14: // 해운
+      return <Ship className={cn("w-3 h-3", className)} />;
+    default:
+      return <TrainFront className={cn("w-3 h-3", className)} />;
+  }
+}
+
+/**
+ * 구간 타입에 따른 라벨 반환
+ */
+function getTrafficLabel(trafficType: number): string {
+  switch (trafficType) {
+    case 1: return "지하철";
+    case 2: return "버스";
+    case 3: return "도보";
+    case 10: return "열차";
+    case 11: return "고속버스";
+    case 12: return "시외버스";
+    case 14: return "해운";
+    default: return "대중교통";
   }
 }
 
@@ -183,7 +207,7 @@ export function RouteSegmentConnector({
                     style={{ backgroundColor: subPath.lane?.lineColor || "#6b7280" }}
                   >
                     {getTrafficIcon(subPath.trafficType, "w-2.5 h-2.5")}
-                    <span>{subPath.lane?.name || (subPath.trafficType === 1 ? "지하철" : "버스")}</span>
+                    <span>{subPath.lane?.name || getTrafficLabel(subPath.trafficType)}</span>
                   </span>
                 ))}
                 {transitPaths.length > 3 && (
@@ -239,7 +263,7 @@ export function RouteSegmentConnector({
                               className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium text-white"
                               style={{ backgroundColor: subPath.lane?.lineColor || "#6b7280" }}
                             >
-                              {subPath.lane?.name || (subPath.trafficType === 1 ? "지하철" : "버스")}
+                              {subPath.lane?.name || getTrafficLabel(subPath.trafficType)}
                             </span>
                             {subPath.way && (
                               <span className="text-muted-foreground">{subPath.way} 방면</span>

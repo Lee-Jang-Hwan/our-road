@@ -1,0 +1,143 @@
+대중교통 길찾기 v1.8(Public Transit Route Search)
+
+대중교통 길찾기 정보를 리턴합니다.
+* 2020.09.24 도시간 길찾기 결과 중 열차 환승을 지원하는 길찾기 결과를 제공합니다. 이전 버전의 가이드를 확인하시려면 여기를 클릭하세요.
+* 경로 검색 결과에 도시간 경로가 반환될 경우, 아래와 같이 경로 API 호출 추가 필요
+   - 출발지 -> 출발 터미널(시외, 고속, 열차, 항공 등) 이동을 위한 도시내 경로 API 호출
+   - 도착지 -> 도착 터미널(시외, 고속, 열차, 항공 등) 이동을 위한 도시내 경로 API 호출
+매서드 	요청 URI 	출력 포맷
+GET/POST 	https://api.odsay.com/v1/api/searchPubTransPathT 	json, xml
+• 파라미터(Parameter)
+번호 	파라미터 	필수값 	설명 	예시
+공통 	apiKey 	Y 	발급된 키 	apiKey=xxxxxxxxxxx
+공통 	lang 	N 	결과 언어 선택
+(국문:0 , 영문:1, 일문:2, 중문(간체):3, 중문(번체):4, 베트남어:5)
+* 베트남어의 결과 있을경우 활용)
+7 	SearchPathType 	N 	도시 내 경로수단을 지정한다. 	0: 모두(default)
+1: 지하철
+2: 버스
+• 출력 데이터 (도시내 길찾기)(Output Data)
+번호 	요소 	데이터 타입 	필수값 	출력개수 	설명
+1 	result 	확장노드 	Y 	1 	데이터를 포함하는 최 상위 노드
+1-1 	searchType 	int 	Y 	1 	결과 구분 (도시내 or 도시간 직통 or 도시간 환승)
+0-도시내, 1-도시간 직통, 2-도시간 환승
+1-2 	outTrafficCheck 	int 	Y 	1 	도시간 "직통" 탐색 결과 유무(환승 X)
+0-False, 1-True
+1-3 	busCount 	int 	Y 	1 	버스 결과 개수
+1-4 	subwayCount 	int 	Y 	1 	지하철 결과 개수
+1-5 	subwayBusCount 	int 	Y 	1 	“버스+지하철” 결과 개수
+1-6 	pointDistance 	double 	Y 	1 	출발지(SX, SY)와 도착지(EX, EY)의 직선 거리 (미터)
+1-7 	startRadius 	int 	Y 	1 	출발지 반경
+1-8 	endRadius 	int 	Y 	1 	도착지 반경
+1-9 	path 	확장노드 	Y 	1...n 	결과 리스트 확장 노드
+1-9-1 	pathType 	int 	string 	Y 	1 	보간점 API를 호출하기 위한 파라미터 값
+1-9-2-8 	firstStartStation 	string 	Y 	1 	최초 출발역/정류장
+1-9-2-9 	firstStartStationKor 	string 	Y 	1 	최초 출발역/정류장 국문
+(다국어 서비스 시 표출)
+1-9-2-10 	firstStartStationJpnKata 	string 	Y 	1 	최초 출발역/정류장 일문(가타카나)
+(lang = 2 인 경우 표출)
+1-9-2-11 	lastEndStation 	string 	Y 	1 	최종 도착역/정류장
+1-9-2-12 	lastEndStationKor 	string 	Y 	1 	최종 도착역/정류장 국문
+(다국어 서비스 시 표출)
+1-9-2-13 	lastEndStationJpnKata 	string 	Y 	1 	최종 도착역/정류장 일문(가타카나)
+(lang = 2 인 경우 표출)
+1-9-2-14 	totalStationCount 	int 	Y 	1 	총 정류장 합
+1-9-2-15 	busStationCount 	int 	Y 	1 	버스 정류장 합
+1-9-2-16 	subwayStationCount 	int 	Y 	1 	지하철 정류장 합
+1-9-2-17 	totalDistance 	double 	Y 	1 	총 거리
+1-9-2-18 	checkIntervalTime 	int 	Y 	1 	배차간격 체크 기준 시간(분)
+1-9-2-19 	checkIntervalTimeOverYn sectionTime 	int 	Y 	1 	이동 소요 시간
+1-9-3-4 	stationCount 	int 	Y/N 	1 	이동하여 정차하는 정거장 수(지하철, 버스 경우만 필수)
+1-9-3-5 	lane 	확장노드 	Y/N 	1...n 	교통 수단 정보 확장 노드
+1-9-3-5-1 	name 	string 	Y/N 	1 	지하철 노선명 (지하철인 경우에만 필수)
+1-9-3-5-2 	nameKor 	string 	Y/N 	1 	지하철 노선명 국문
+(다국어 서비스 시 지하철인 경우 표출)
+1-9-3-5-3 	nameJpnKata 	string 	Y/N 	1 	지하철 노선명 일문(가타카나)
+(lang = 2 이면서 지하철인 경우 표출)
+1-9-3-5-4 	busNo 	string 	Y/N 	1 	버스 번호 (버스인 경우에만 필수)
+1-9-3-5-5 	busNoKor 	string 	Y/N 	1 	버스 번호 국문
+(다국어 서비스 시 버스인 경우 표출)
+1-9-3-5-6 	busNoJpnKata 	string 	Y/N 	1 	버스 번호 일문(가타카나)
+(lang = 2 이면서 버스인 경우 표출)
+1-9-3-5-7 	type 	int 	Y/N 	1 	버스 타입 (버스인 경우에만 필수,최하단 참조)
+1-9-3-5-8 	busID 	int 	Y/N 	1 	버스 코드 (버스ìme 	int 	Y 	1 	평균 배차간격(분)
+1-9-3-7 	startName 	string 	Y 	1 	승차 정류장/역명
+1-9-3-8 	startNameKor 	string 	Y 	1 	승차 정류장/역명 국문
+(다국어 서비스 시 표출)
+1-9-3-9 	startNameJpnKata 	string 	Y 	1 	승차 정류장/역명 일문(가타카나)
+(lang = 2 인 경우 표출)
+1-9-3-10 	startX 	double 	Y 	1 	승차 정류장/역 X 좌표
+1-9-3-11 	startY 	double 	Y 	1 	승차 정류장/역 Y 좌표
+1-9-3-12 	endName 	string 	Y 	1 	하차 정류장/역명
+1-9-3-13 	endNameKor 	string 	Y 	1 	하차 정류장/역명 국문
+(다국어 서비스 시 표출)
+1-9-3-14 	endNameJpnKata 	string 	Y 	1 	하차 정류장/역명 일문(가타카나)
+(lang = 2 인 경우 표출)
+1-9-3-15 	endX 	double 	Y 	1 	하차 정류장/역 X 좌표
+1-9-3-16 	endY 	double 	Y 	1 	하차 정류장/역 Y 좌표
+1-9-3-17 	way 	string 	Y/N 	1 	방면 정보 (지하철인 경우에만 필수)
+1-9-3-18 	wayCode 	int 	Y/N 	1 	방면 정보 코드(지하철의 첫번째 경로에만 필수)
+1 : 상행, 2:  (BIS 제공지역인 경우에만 필수)
+1-9-3-24 	startArsID 	string 	Y/N 	1 	각 지역 출발 정류장 고유번호 (BIS 제공지역인 경우에만 필수)
+1-9-3-25 	endID 	int 	Y 	1 	도착 정류장/역 코드
+1-9-3-26 	endStationCityCode 	int 	Y/N 	1 	도착 정류장 도시코드 (버스인 경우에만 필수)
+1-9-3-27 	endStationProviderCode 	int 	Y/N 	1 	도착 정류장 BIS 코드 (BIS 제공지역인 경우에만 필수)
+1-9-3-28 	endLocalStationID 	string 	Y/N 	1 	각 지역 도착 정류장 ID (BIS 제공지역인 경우에만 필수)
+1-9-3-29 	endArsID 	string 	Y/N 	1 	각 지역 도착 정류장 고유번호 (BIS 제공지역인 경우에만 필수)
+1-9-3-30 	startExitNo 	string 	N 	1 	지하철 들어가는 출구 번호
+(지하철인 경우에만 사용되지만 해당 태그가 없을 수도 있다.)
+1-9-3-31 	startExitX 	double 	N 	1 	지하철 들어가는 출구 X좌표(지하철인 경우에 만 사용되지만 해당 태그가 없을 수도 있다.)
+1-9-3-32 	startExitY 	double  	확장노드 	Y 	1...n 	정류장 정보 그룹노드
+1-9-3-36-1-1 	index 	int 	Y 	1 	정류장 순번
+1-9-3-36-1-2 	stationID 	int 	Y 	1 	정류장 ID
+1-9-3-36-1-3 	stationName 	string 	Y 	1 	정류장 명칭
+1-9-3-36-1-4 	stationNameKor 	string 	Y 	1 	정류장 명칭 국문
+(다국어 서비스 시 표출)
+1-9-3-36-1-5 	stationNameJpnKata 	string 	Y 	1 	정류장 명칭 일문(가타카나)
+(lang = 2 인 경우 표출)
+1-9-3-36-1-6 	stationCityCode 	int 	Y/N 	1 	정류장 도시코드 (버ì지역 정류장 ID (BIS 제공지역인 경우에만 필수)
+1-9-3-36-1-9 	arsID 	string 	Y/N 	1 	각 지역 정류장 고유번호 (BIS 제공지역인 경우에만 필수)
+1-9-3-36-1-10 	x 	string 	Y 	1 	정류장 X좌표
+1-9-3-36-1-11 	y 	string 	Y 	1 	정류장 Y좌표
+1-9-3-36-1-	요소 	데이터 타입 	필수값 	출력개수 	설명
+1 	result -1 	searchType 	int 	Y 	1 	결과 구분 (도시내 or 도시간)
+0-도시내, 1-도시간
+1-2 	busCount 	int 	Y 	1 	고속/시외버스 4 	airCount 	int 	Y 	1 	항공 결과 개수
+1-5 	mixedCount 	int 	Y 	1 	시외교통 수단 복합 이용 결과 개수
+1-6 	path 	확장노드 	Y 	1...n 	결과 리스트 확장 노드
+1-6-1 	pathType 	int 	Ynfo 	확장노드 	Y 	1 	요약 정보 확장 노드
+1-6-2-1 	totalTime 	int 	Y 	1 	시외교통 총 소요시간
+1-6-2-2 	totalPayment 	int 	Y	Y 	1 	이용하는 시외교통 수
+1-6-2-4 	firstStartStation 	string 	Y 	1 	최초 출발역/터미널/공항
+1-6-2-5 	firstStartStationKor 	string 	Y 	1 	최초 출발역/터미널/공항 국문
+(다국어 서항 일문(가타카나)
+(lang = 2 인 경우 표출)
+1-6-2-7 	lastEndStation 	string 	Y 	1 	최종 출발역/터미널/공항
+1-6-2-8 	lastEndStationKor 	string 	Y 	1 	최종 출발역/터미널/공항 국문
+(다국어 서비스 시 표출)
+1-6-2-9 	lastEndStationJpnKata 	string 	Y 	1 	최종 출발역/터미널/공항 일문(가타카나)
+(lang = 2 인 경우 표출)
+1-6-2-10 	totalDistance 	int 	Y 	1 	시외교통 총 ype 	int 	Y/N 	1 	열차 종류(열차인 경우에만 필수)
+1-KTX, 2-새마을, 3-무궁화, 4-누리로
+5-통근, 6-ITX, 7-ITX-청춘, 8-SsectionTime 	int 	Y 	1 	이동시간 (분)
+1-6-3-5 	payment 	int 	Y 	1 	요금
+1-6-3-6 	trainSpSeatYn 	string 	Y/N 	1 	열차내 특실 존재여부 Y/N (열차인 경우에만 필수)
+1-6-3-7 	trainSpSeatPayment tName 	string 	Y 	1 	출발 역/터미널/공항 명칭
+1-6-3-9 	startNameKor 	string 	Y 	1 	출발 역/터미널/공항 명칭 국문
+(다국어 서비스 시 표출)
+1-6-3-10 	startNameJpnKata 	string 	Y 	1 	ìing 	Y 	1 	도착 역/터미널/공항 명칭
+1-6-3-12 	endNameKor 	string 	Y 	1 	도착 역/터미널/공항 명칭 국문
+(다국어 서비스 시 표출)
+1-6-3-13 	endNameJpnKata 	string 	Y 	1 	도착 역/터미널/공항 명칭 일문(가타카나)
+(lang = 2 인 경우 표tartCityCode 	int 	Y 	1 	출발 역/터미널/공항 도시코드
+1-6-3-17 	endCityCode 	int 	Y 	1 	도착 역/터미널/공항 도시코드
+1-6-3-18 	startX 	double 	Y 	1 	출발 역/터미널/공항 X 좌표
+1-6-3-19 	startY 	double 	Y 	1 	출발 역/터미널/공항 Y 좌표
+1-6좌표
+1-6-3-22 	intervalTime 	int 	Y 	1 	평균 배차간격(분)
+1-6-3-23 	intervalCount 	int 	Y 	1 	운행 횟수
+
+현재 도시내길찾기(버스, 전철)은 호선 표시나 대중교통 표기가 잘 되어있는데
+도시간 길찾기(고속버스, 기차 등)은 제대로 이게 기차인지, 어떤 교통수단인지 표기가 안되고있음. 도시간 길찾기 정보 표기가 필요함
+searchType으로 도시내인지, 도시간인지 구분이 가능함.
+두 타입의 API Output Data 자세히 파악하고 도시간 길찾기일 경우에도 데이터를 잘 표기할 수 있도록 수정해줘
