@@ -183,7 +183,7 @@ export async function getTripList(
     let tripsQuery = supabase
       .from("trips")
       .select(
-        "id, title, start_date, end_date, status, created_at, trip_places(count)",
+        "id, title, start_date, end_date, status, transport_mode, created_at, updated_at, trip_places(count)",
         {
           count: "exact",
         }
@@ -227,8 +227,10 @@ export async function getTripList(
       startDate: trip.start_date,
       endDate: trip.end_date,
       status: trip.status,
+      transportModes: trip.transport_mode,
       placeCount: trip.trip_places?.[0]?.count ?? 0,
       createdAt: trip.created_at,
+      updatedAt: trip.updated_at,
     }));
 
     return {

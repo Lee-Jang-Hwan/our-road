@@ -46,41 +46,58 @@ import { showSuccessToast, showErrorToast } from "@/lib/toast";
 
 import { getTripList } from "@/actions/trips/get-trips";
 import { deleteTrip } from "@/actions/trips/delete-trip";
-import type { TripListItem, TripStatus } from "@/types";
+import type { TripListItem, TripStatus, TransportMode } from "@/types";
 import { calculateTripDuration } from "@/types/trip";
 
 /**
- * 상태별 배지 스타일
+ * 상태별 배지 스타일 (세분화된 작성중 상태)
  */
-function getStatusBadge(status: TripStatus) {
+function getStatusBadge(status: TripStatus, placeCount: number) {
   switch (status) {
-    case "draft":
-      return (
-        <Badge variant="secondary" className="text-xs">
-          작성 중
-        </Badge>
-      );
+    case "draft": {
+      // 작성 중 세분화
+      if (placeCount === 0) {
+        return (
+          <Badge className="text-xs bg-gray-100 text-gray-600 border-gray-300">
+            📝 기본 정보만 입력
+          </Badge>
+        );
+      } else if (placeCount <= 2) {
+        return (
+          <Badge className="text-xs bg-orange-100 text-orange-700 border-orange-300">
+            📍 장소 {placeCount}곳 추가됨
+          </Badge>
+        );
+      } else {
+        return (
+          <Badge className="text-xs bg-blue-100 text-blue-700 border-blue-300">
+            ✅ 최적화 준비 완료 ({placeCount}곳)
+          </Badge>
+        );
+      }
+    }
+    
     case "optimizing":
       return (
-        <Badge
-          variant="secondary"
-          className="text-xs bg-yellow-100 text-yellow-800"
-        >
-          최적화 중
+        <Badge className="text-xs bg-yellow-100 text-yellow-800 border-yellow-300">
+          ⏳ 최적화 중
         </Badge>
       );
+      
     case "optimized":
       return (
-        <Badge variant="default" className="text-xs">
-          최적화 완료
+        <Badge className="text-xs bg-green-100 text-green-700 border-green-300">
+          ✨ 최적화 완료
         </Badge>
       );
+      
     case "completed":
       return (
-        <Badge variant="outline" className="text-xs">
-          완료
+        <Badge className="text-xs bg-purple-100 text-purple-700 border-purple-300">
+          🎉 여행 완료
         </Badge>
       );
+      
     default:
       return null;
   }
@@ -92,6 +109,82 @@ function getStatusBadge(status: TripStatus) {
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
   return `${date.getMonth() + 1}월 ${date.getDate()}일`;
+}
+
+/**
+ * 상대 시간 포맷 (간략하게)
+ */
+function formatRelativeTime(dateStr: string): string {
+  const now = new Date();
+  const date = new Date(dateStr);
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  // 1분 이내
+  if (diffMins < 1) {
+    return "방금";
+  }
+  
+  // 1시간 이내
+  if (diffMins < 60) {
+    return `${diffMins}분 전`;
+  }
+  
+  // 오늘 (24시간 이내)
+  if (diffHours < 24 && date.getDate() === now.getDate()) {
+    return `${diffHours}시간 전`;
+  }
+  
+  // 어제
+  if (diffDays === 1 || (diffHours < 48 && date.getDate() === now.getDate() - 1)) {
+    const hours = date.getHours().toString().padStart(2, '0');
+    const mins = date.getMinutes().toString().padStart(2, '0');
+    return `어제 ${hours}:${mins}`;
+  }
+  
+  // 일주일 이내
+  if (diffDays < 7) {
+    return `${diffDays}일 전`;
+  }
+  
+  // 그 외 (날짜 표시)
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const hours = date.getHours().toString().padStart(2, '0');
+  const mins = date.getMinutes().toString().padStart(2, '0');
+  
+  // 올해면 연도 생략
+  if (date.getFullYear() === now.getFullYear()) {
+    return `${month}월 ${day}일 ${hours}:${mins}`;
+  }
+  
+  // 작년 이상이면 연도 포함
+  return `${date.getFullYear()}.${month}.${day}`;
+}
+
+/**
+ * 이동수단 아이콘
+ */
+function TransportIcon({ modes }: { modes: TransportMode[] }) {
+  if (modes.length === 1) {
+    if (modes.includes('walking')) return <span className="text-base">🚶</span>;
+    if (modes.includes('public')) return <span className="text-base">🚇</span>;
+    if (modes.includes('car')) return <span className="text-base">🚗</span>;
+  }
+  return <span className="text-base">🚀</span>;
+}
+
+/**
+ * 이동수단 텍스트
+ */
+function getTransportModeText(modes: TransportMode[]): string {
+  const labels: string[] = [];
+  if (modes.includes('walking')) labels.push('도보');
+  if (modes.includes('public')) labels.push('대중교통');
+  if (modes.includes('car')) labels.push('차량');
+  return labels.join(' + ');
 }
 
 /**
@@ -122,7 +215,7 @@ function TripCard({
                 <h3 className="font-semibold text-base line-clamp-1">
                   {trip.title}
                 </h3>
-                {getStatusBadge(trip.status)}
+                {getStatusBadge(trip.status, trip.placeCount)}
               </div>
 
               {/* 날짜 정보 */}
@@ -138,6 +231,19 @@ function TripCard({
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <LuMapPin className="w-4 h-4 shrink-0" />
                 <span>장소 {trip.placeCount}곳</span>
+              </div>
+
+              {/* 이동수단 */}
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                <TransportIcon modes={trip.transportModes} />
+                <span>{getTransportModeText(trip.transportModes)}</span>
+              </div>
+
+              {/* 마지막 수정 시간 */}
+              <div className="flex items-center justify-end">
+                <span className="text-xs text-muted-foreground/70">
+                  {formatRelativeTime(trip.updatedAt)}
+                </span>
               </div>
             </div>
           </button>

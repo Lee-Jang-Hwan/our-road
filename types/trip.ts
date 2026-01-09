@@ -137,8 +137,10 @@ export interface TripListItem {
   startDate: string;
   endDate: string;
   status: TripStatus;
+  transportModes: TransportMode[];
   placeCount: number;
   createdAt: string;
+  updatedAt: string;
 }
 
 /**
