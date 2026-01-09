@@ -1,7 +1,7 @@
 import Link from "next/link";
+import Image from "next/image";
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
-import { LuRoute } from "react-icons/lu";
 import { BackgroundMedia } from "@/components/landing/background-media";
 
 export default async function Home() {
@@ -27,18 +27,20 @@ export default async function Home() {
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 text-center animate-float-slow">
         {/* Icon/Logo Mark */}
         <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-xl ring-1 ring-white/10">
-          <LuRoute className="text-white w-8 h-8" />
+          <Image
+            src="/2026.png"
+            alt="OurRoad 로고"
+            width={32}
+            height={32}
+            className="w-8 h-8"
+          />
         </div>
 
         {/* Headline */}
         <h1 className="text-white text-[42px] font-extrabold tracking-tight leading-tight drop-shadow-lg mb-2">
-          OurRoad
+          RoAId
         </h1>
 
-        {/* Tagline */}
-        <p className="text-white/90 text-lg font-medium leading-relaxed drop-shadow-md tracking-wide max-w-[280px]">
-          AI가 만드는 최적의 여행 동선
-        </p>
       </div>
 
       {/* Footer / Action Area */}

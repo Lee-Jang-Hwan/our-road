@@ -9,11 +9,11 @@ export function BackgroundMedia() {
       playsInline
       className="absolute inset-0 z-0 h-full w-full object-cover object-center scale-105"
       ref={(video) => {
-        if (video) video.playbackRate = 0.7;
+        if (video) video.playbackRate = 0.9;
       }}
     >
       <source
-        src="/intro/Vertical_916_aspect_202601091805_yjc1y.mp4"
+        src="/intro/0109.mp4"
         type="video/mp4"
       />
     </video>
