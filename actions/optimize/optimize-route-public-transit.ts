@@ -355,8 +355,14 @@ function convertTripOutputToOptimizeResult(
       }
     }
 
-    const startTime = schedule[0]?.arrivalTime ?? trip.dailyStartTime;
-    const endTime = schedule[schedule.length - 1]?.departureTime ?? trip.dailyStartTime;
+    // startTime: 출발지 출발 시간 (dailyStartTime)
+    const startTime = trip.dailyStartTime;
+    
+    // endTime: 마지막 장소 출발 시간 + 도착지까지 이동 시간
+    let endTime = schedule[schedule.length - 1]?.departureTime ?? trip.dailyStartTime;
+    if (transportToDestination) {
+      endTime = addMinutesToTime(endTime, transportToDestination.duration);
+    }
 
     itinerary.push({
       dayNumber: dayIndex + 1,

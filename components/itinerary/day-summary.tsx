@@ -79,34 +79,30 @@ export function DaySummary({
   return (
     <div
       className={cn(
-        "flex items-center justify-between p-3 bg-muted/50 rounded-lg text-sm",
+        "grid grid-cols-2 gap-2 p-3 bg-muted/30 rounded-lg border border-border/40",
         className
       )}
     >
-      <div className="flex items-center gap-4">
-        <SummaryItem
-          icon={<Route className="h-4 w-4" />}
-          label="이동"
-          value={formatDistance(itinerary.totalDistance)}
-        />
-        <SummaryItem
-          icon={<Clock className="h-4 w-4" />}
-          label="이동시간"
-          value={formatDuration(itinerary.totalDuration)}
-        />
-      </div>
-      <div className="flex items-center gap-4">
-        <SummaryItem
-          icon={<MapPin className="h-4 w-4" />}
-          label="장소"
-          value={`${itinerary.placeCount}곳`}
-        />
-        <SummaryItem
-          icon={<Timer className="h-4 w-4" />}
-          label="체류"
-          value={formatDuration(itinerary.totalStayDuration)}
-        />
-      </div>
+      <SummaryItem
+        icon={<Route className="h-3.5 w-3.5 shrink-0" />}
+        label="총 이동거리"
+        value={formatDistance(itinerary.totalDistance)}
+      />
+      <SummaryItem
+        icon={<MapPin className="h-3.5 w-3.5 shrink-0" />}
+        label="방문 장소"
+        value={`${itinerary.placeCount}곳`}
+      />
+      <SummaryItem
+        icon={<Clock className="h-3.5 w-3.5 shrink-0" />}
+        label="총 이동시간"
+        value={formatDuration(itinerary.totalDuration)}
+      />
+      <SummaryItem
+        icon={<Timer className="h-3.5 w-3.5 shrink-0" />}
+        label="활동 시간"
+        value={formatDuration(itinerary.totalDuration + itinerary.totalStayDuration)}
+      />
     </div>
   );
 }
@@ -119,10 +115,18 @@ interface SummaryItemProps {
 
 function SummaryItem({ icon, label, value }: SummaryItemProps) {
   return (
-    <div className="flex items-center gap-1.5">
-      <span className="text-muted-foreground">{icon}</span>
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium text-foreground">{value}</span>
+    <div className="flex items-center gap-1.5 px-2 py-1.5">
+      <div className="flex items-center justify-center w-6 h-6 rounded-md bg-primary/10 text-primary shrink-0">
+        {icon}
+      </div>
+      <div className="flex flex-col min-w-0">
+        <span className="text-[10px] text-muted-foreground leading-none">
+          {label}
+        </span>
+        <span className="text-sm font-semibold text-foreground leading-tight mt-0.5">
+          {value}
+        </span>
+      </div>
     </div>
   );
 }

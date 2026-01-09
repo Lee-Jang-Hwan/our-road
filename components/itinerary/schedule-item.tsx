@@ -4,6 +4,7 @@ import * as React from "react";
 import { Clock, Pin, MoreVertical, Edit, Trash2, GripVertical } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { normalizeTime } from "@/lib/optimize";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -107,7 +108,7 @@ export function ScheduleItem({
               <div className="flex items-center gap-1">
                 <Clock className="h-3.5 w-3.5" />
                 <span>
-                  {item.arrivalTime} - {item.departureTime}
+                  {normalizeTime(item.arrivalTime)} - {normalizeTime(item.departureTime)}
                 </span>
               </div>
               <span className="text-xs text-muted-foreground/70">
@@ -193,7 +194,7 @@ export function ScheduleItemCompact({
       </span>
       <span className="flex-1 truncate text-sm">{item.placeName}</span>
       <span className="text-xs text-muted-foreground shrink-0">
-        {item.arrivalTime}
+        {normalizeTime(item.arrivalTime)}
       </span>
     </div>
   );

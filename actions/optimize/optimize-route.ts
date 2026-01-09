@@ -297,8 +297,15 @@ async function createDailyItinerary(
     }
   }
 
-  const startTime = schedule[0]?.arrivalTime ?? dailyStartTime;
-  const endTime = schedule[schedule.length - 1]?.departureTime ?? dailyStartTime;
+  // startTime: 출발지 출발 시간 (dailyStartTime)
+  // endTime: 마지막 장소 출발 시간 + 도착지까지 이동 시간
+  const startTime = dailyStartTime;
+  let endTime = schedule[schedule.length - 1]?.departureTime ?? dailyStartTime;
+  
+  // 도착지까지 이동 시간이 있으면 추가
+  if (transportToDestination) {
+    endTime = addMinutesToTime(endTime, transportToDestination.duration);
+  }
 
   return {
     dayNumber,

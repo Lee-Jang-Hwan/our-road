@@ -17,7 +17,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 import { DayTabsContainer } from "@/components/itinerary/day-tabs";
 import { DayContentPanel } from "@/components/itinerary/day-content";
-import { DaySummary } from "@/components/itinerary/day-summary";
 import { KakaoMap } from "@/components/map/kakao-map";
 import { PlaceMarkers, SingleMarker } from "@/components/map/place-markers";
 import { RealRoutePolyline } from "@/components/map/route-polyline";
@@ -416,13 +415,6 @@ export default function SharedTripPage({ params }: SharedTripPageProps) {
           className="flex-1"
         >
           <div className="px-4 py-4" {...swipeHandlers}>
-            {currentItinerary && (
-              <DaySummary
-                itinerary={currentItinerary}
-                className="mb-4"
-              />
-            )}
-
             <DayContentPanel
               itineraries={trip.itinerary!}
               selectedDay={selectedDay}

@@ -147,6 +147,19 @@ export const DEFAULT_OPTIMIZE_CONFIG: OptimizeConfig = {
 // ============================================
 
 /**
+ * 시간 문자열을 HH:mm 형식으로 정규화
+ * @param time - HH:mm 또는 HH:mm:ss 형식 시간
+ * @returns HH:mm 형식 시간
+ */
+export function normalizeTime(time: string): string {
+  const parts = time.split(":");
+  if (parts.length >= 2) {
+    return `${parts[0].padStart(2, "0")}:${parts[1].padStart(2, "0")}`;
+  }
+  return time;
+}
+
+/**
  * HH:mm 형식의 시간을 분으로 변환
  * @param time - HH:mm 형식 시간
  * @returns 분 (00:00 기준)

@@ -2,6 +2,7 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { createClerkSupabaseClient } from "@/lib/supabase/server";
+import { addMinutesToTime } from "@/lib/optimize";
 import type {
   Trip,
   TripRow,
@@ -133,27 +134,40 @@ function convertTransportInfo(info: TripItineraryRow["transport_from_origin"]): 
  * TripItineraryRow를 DailyItinerary로 변환
  */
 function convertRowToItinerary(row: TripItineraryRow): DailyItinerary {
+  const schedule = row.schedule.map((item) => ({
+    order: item.order,
+    placeId: item.place_id,
+    placeName: item.place_name,
+    arrivalTime: item.arrival_time,
+    departureTime: item.departure_time,
+    duration: item.duration,
+    isFixed: item.is_fixed,
+    transportToNext: convertTransportInfo(item.transport_to_next),
+  }));
+
+  const transportToDestination = convertTransportInfo(row.transport_to_destination);
+
+  // startTime: 출발지 출발 시간 (dailyStartTime 또는 기본값)
+  const startTime = row.daily_start_time ?? "10:00";
+  
+  // endTime: 마지막 장소 출발 시간 + 도착지까지 이동 시간
+  let endTime = schedule[schedule.length - 1]?.departureTime ?? "22:00";
+  if (transportToDestination) {
+    endTime = addMinutesToTime(endTime, transportToDestination.duration);
+  }
+
   return {
     dayNumber: row.day_number,
     date: row.date,
-    schedule: row.schedule.map((item) => ({
-      order: item.order,
-      placeId: item.place_id,
-      placeName: item.place_name,
-      arrivalTime: item.arrival_time,
-      departureTime: item.departure_time,
-      duration: item.duration,
-      isFixed: item.is_fixed,
-      transportToNext: convertTransportInfo(item.transport_to_next),
-    })),
+    schedule,
     totalDistance: row.total_distance ?? 0,
     totalDuration: row.total_duration ?? 0,
     totalStayDuration: row.total_stay_duration ?? 0,
     placeCount: row.place_count ?? 0,
-    startTime: row.schedule[0]?.arrival_time ?? "10:00",
-    endTime: row.schedule[row.schedule.length - 1]?.departure_time ?? "22:00",
+    startTime,
+    endTime,
     transportFromOrigin: convertTransportInfo(row.transport_from_origin),
-    transportToDestination: convertTransportInfo(row.transport_to_destination),
+    transportToDestination,
     dailyStartTime: row.daily_start_time,
     dailyEndTime: row.daily_end_time,
   };

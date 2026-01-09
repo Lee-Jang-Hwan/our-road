@@ -16,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DayTabs, DayTabsContainer } from "@/components/itinerary/day-tabs";
 import { DayContentPanel } from "@/components/itinerary/day-content";
-import { DaySummary } from "@/components/itinerary/day-summary";
 import { UnassignedPlaces } from "@/components/itinerary/unassigned-places";
 import { KakaoMap } from "@/components/map/kakao-map";
 import { PlaceMarkers, SingleMarker, type SingleMarkerProps } from "@/components/map/place-markers";
@@ -581,14 +580,6 @@ export default function ResultPage({ params }: ResultPageProps) {
               </div>
             ) : (
               <>
-                {/* 일일 요약 */}
-                {currentItinerary && (
-                  <DaySummary
-                    itinerary={currentItinerary}
-                    className="mb-4"
-                  />
-                )}
-
                 {/* 일정 타임라인 */}
                 <DayContentPanel
                   itineraries={itineraries}
