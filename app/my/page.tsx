@@ -76,28 +76,28 @@ function getStatusBadge(status: TripStatus, placeCount: number) {
         );
       }
     }
-    
+
     case "optimizing":
       return (
         <Badge className="text-xs bg-yellow-100 text-yellow-800 border-yellow-300">
           ⏳ 최적화 중
         </Badge>
       );
-      
+
     case "optimized":
       return (
         <Badge className="text-xs bg-green-100 text-green-700 border-green-300">
           ✨ 최적화 완료
         </Badge>
       );
-      
+
     case "completed":
       return (
         <Badge className="text-xs bg-purple-100 text-purple-700 border-purple-300">
           🎉 여행 완료
         </Badge>
       );
-      
+
     default:
       return null;
   }
@@ -126,40 +126,43 @@ function formatRelativeTime(dateStr: string): string {
   if (diffMins < 1) {
     return "방금";
   }
-  
+
   // 1시간 이내
   if (diffMins < 60) {
     return `${diffMins}분 전`;
   }
-  
+
   // 오늘 (24시간 이내)
   if (diffHours < 24 && date.getDate() === now.getDate()) {
     return `${diffHours}시간 전`;
   }
-  
+
   // 어제
-  if (diffDays === 1 || (diffHours < 48 && date.getDate() === now.getDate() - 1)) {
-    const hours = date.getHours().toString().padStart(2, '0');
-    const mins = date.getMinutes().toString().padStart(2, '0');
+  if (
+    diffDays === 1 ||
+    (diffHours < 48 && date.getDate() === now.getDate() - 1)
+  ) {
+    const hours = date.getHours().toString().padStart(2, "0");
+    const mins = date.getMinutes().toString().padStart(2, "0");
     return `어제 ${hours}:${mins}`;
   }
-  
+
   // 일주일 이내
   if (diffDays < 7) {
     return `${diffDays}일 전`;
   }
-  
+
   // 그 외 (날짜 표시)
   const month = date.getMonth() + 1;
   const day = date.getDate();
-  const hours = date.getHours().toString().padStart(2, '0');
-  const mins = date.getMinutes().toString().padStart(2, '0');
-  
+  const hours = date.getHours().toString().padStart(2, "0");
+  const mins = date.getMinutes().toString().padStart(2, "0");
+
   // 올해면 연도 생략
   if (date.getFullYear() === now.getFullYear()) {
     return `${month}월 ${day}일 ${hours}:${mins}`;
   }
-  
+
   // 작년 이상이면 연도 포함
   return `${date.getFullYear()}.${month}.${day}`;
 }
@@ -169,9 +172,9 @@ function formatRelativeTime(dateStr: string): string {
  */
 function TransportIcon({ modes }: { modes: TransportMode[] }) {
   if (modes.length === 1) {
-    if (modes.includes('walking')) return <span className="text-base">🚶</span>;
-    if (modes.includes('public')) return <span className="text-base">🚇</span>;
-    if (modes.includes('car')) return <span className="text-base">🚗</span>;
+    if (modes.includes("walking")) return <span className="text-base">🚶</span>;
+    if (modes.includes("public")) return <span className="text-base">🚇</span>;
+    if (modes.includes("car")) return <span className="text-base">🚗</span>;
   }
   return <span className="text-base">🚀</span>;
 }
@@ -181,10 +184,10 @@ function TransportIcon({ modes }: { modes: TransportMode[] }) {
  */
 function getTransportModeText(modes: TransportMode[]): string {
   const labels: string[] = [];
-  if (modes.includes('walking')) labels.push('도보');
-  if (modes.includes('public')) labels.push('대중교통');
-  if (modes.includes('car')) labels.push('차량');
-  return labels.join(' + ');
+  if (modes.includes("walking")) labels.push("도보");
+  if (modes.includes("public")) labels.push("대중교통");
+  if (modes.includes("car")) labels.push("차량");
+  return labels.join(" + ");
 }
 
 /**
@@ -204,75 +207,77 @@ function TripCard({
   return (
     <Card className="py-0 overflow-hidden hover:bg-muted active:bg-muted/90">
       <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <button
-            onClick={onView}
-            className="flex-1 text-left focus:outline-none touch-target no-tap-highlight"
-          >
-            <div className="space-y-2">
-              {/* 제목 + 상태 */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <h3 className="font-semibold text-base line-clamp-1">
-                  {trip.title}
-                </h3>
-                {getStatusBadge(trip.status, trip.placeCount)}
-              </div>
+        <div className="space-y-2">
+          <div className="flex items-start justify-between gap-3">
+            <button
+              onClick={onView}
+              className="flex-1 text-left focus:outline-none touch-target no-tap-highlight"
+            >
+              <div className="space-y-2">
+                {/* 제목 + 상태 */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-semibold text-base line-clamp-1">
+                    {trip.title}
+                  </h3>
+                  {getStatusBadge(trip.status, trip.placeCount)}
+                </div>
 
-              {/* 날짜 정보 */}
-              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                <LuCalendar className="w-4 h-4 shrink-0" />
-                <span>
-                  {formatDate(trip.startDate)} - {formatDate(trip.endDate)}
-                </span>
-                <span className="text-xs">({duration.displayText})</span>
-              </div>
+                {/* 날짜 정보 */}
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <LuCalendar className="w-4 h-4 shrink-0" />
+                  <span>
+                    {formatDate(trip.startDate)} - {formatDate(trip.endDate)}
+                  </span>
+                  <span className="text-xs">({duration.displayText})</span>
+                </div>
 
-              {/* 장소 수 */}
-              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                <LuMapPin className="w-4 h-4 shrink-0" />
-                <span>장소 {trip.placeCount}곳</span>
-              </div>
+                {/* 장소 수 */}
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <LuMapPin className="w-4 h-4 shrink-0" />
+                  <span>장소 {trip.placeCount}곳</span>
+                </div>
 
-              {/* 이동수단 */}
-              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                <TransportIcon modes={trip.transportModes} />
-                <span>{getTransportModeText(trip.transportModes)}</span>
+                {/* 이동수단 */}
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <TransportIcon modes={trip.transportModes} />
+                  <span>{getTransportModeText(trip.transportModes)}</span>
+                </div>
               </div>
+            </button>
 
-              {/* 마지막 수정 시간 */}
-              <div className="flex items-center justify-end">
-                <span className="text-xs text-muted-foreground/70">
-                  {formatRelativeTime(trip.updatedAt)}
-                </span>
-              </div>
-            </div>
-          </button>
+            {/* 메뉴 버튼 */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 -mt-1 -mr-2 touch-target"
+                >
+                  <LuEllipsisVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={onView} className="touch-target">
+                  <LuMap className="w-4 h-4 mr-2" />
+                  상세 보기
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={onDelete}
+                  className="text-destructive touch-target"
+                >
+                  <LuTrash2 className="w-4 h-4 mr-2" />
+                  삭제하기
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
 
-          {/* 메뉴 버튼 */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="shrink-0 -mt-1 -mr-2 touch-target"
-              >
-                <LuEllipsisVertical className="w-4 h-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={onView} className="touch-target">
-                <LuMap className="w-4 h-4 mr-2" />
-                상세 보기
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={onDelete}
-                className="text-destructive touch-target"
-              >
-                <LuTrash2 className="w-4 h-4 mr-2" />
-                삭제하기
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {/* 마지막 수정 시간 - 카드 맨 아래 오른쪽 */}
+          <div className="text-right pr-1">
+            <span className="text-xs text-muted-foreground/70">
+              {formatRelativeTime(trip.updatedAt)}
+            </span>
+          </div>
         </div>
       </CardContent>
     </Card>
