@@ -134,38 +134,38 @@ export function extractSegments(
       }
     }
 
-    // 도착지 좌표 및 ID 결정
-    const lastCoord = getWaypointCoord(lastWaypointId);
-    let endCoord: LatLng | undefined;
-    let endId: string | undefined;
-    console.log(
-      `[extractSegments Day ${dayIndex + 1}] isLastDay:`,
-      isLastDay,
-      "lodging:",
-      lodging,
-      "end:",
-      end,
-    );
-
-    if (lodging) {
-      // 숙소가 있으면 모든 날의 종점은 숙소
-      endCoord = lodging;
-      endId = "__accommodation_0__";
-    } else if (isLastDay && end) {
-      // 숙소가 없고 마지막 날: 도착지 추가
-      // (마지막 경유지와 도착지가 완전히 같은 좌표가 아니면 항상 추가)
-      const isSameAsLastWaypoint =
-        !!lastCoord &&
-        Math.abs(end.lat - lastCoord.lat) < 0.00001 &&
-        Math.abs(end.lng - lastCoord.lng) < 0.00001;
-
-      if (!isSameAsLastWaypoint) {
-        endCoord = end;
-        endId = "__destination__";
-      }
-      // 마지막 경유지와 도착지가 완전히 같으면 순환 여행으로 간주하여 endCoord를 설정하지 않음
-    }
-    // 숙소가 없고 마지막 날이 아니면 endCoord를 설정하지 않음 (다음 날 이어짐)
+        // 도착지 좌표 및 ID 결정
+        const lastCoord = getWaypointCoord(lastWaypointId);
+        let endCoord: LatLng | undefined;
+        let endId: string | undefined;
+        console.log(
+          `[extractSegments Day ${dayIndex + 1}] isLastDay:`,
+          isLastDay,
+          "lodging:",
+          lodging,
+          "end:",
+          end,
+        );
+    
+        if (isLastDay && end) {
+          // 마지막 날은 항상 도착지 사용
+          // (마지막 경유지와 도착지가 완전히 같은 좌표가 아니면 항상 추가)
+          const isSameAsLastWaypoint =
+            !!lastCoord &&
+            Math.abs(end.lat - lastCoord.lat) < 0.00001 &&
+            Math.abs(end.lng - lastCoord.lng) < 0.00001;
+    
+          if (!isSameAsLastWaypoint) {
+            endCoord = end;
+            endId = "__destination__";
+          }
+          // 마지막 경유지와 도착지가 완전히 같으면 순환 여행으로 간주하여 endCoord를 설정하지 않음
+        } else if (lodging) {
+          // 마지막 날이 아니고 숙소가 있으면 숙소
+          endCoord = lodging;
+          endId = "__accommodation_0__";
+        }
+        // 숙소가 없고 마지막 날이 아니면 endCoord를 설정하지 않음 (다음 날 이어짐)
 
     // 마지막 경유지에서 도착지로 가는 구간
     if (endCoord && endId && lastCoord) {

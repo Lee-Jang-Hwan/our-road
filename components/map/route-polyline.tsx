@@ -89,6 +89,12 @@ const TRANSPORT_COLORS: Record<TransportMode, string> = {
   car: "#22c55e", // green-500
 };
 
+// 숙소 마커 색상 (place-markers.tsx와 동일)
+const ACCOMMODATION_COLOR = "#a855f7"; // purple-500
+
+// 도착지 경로 색상 (하늘색)
+const DESTINATION_COLOR = "#06b6d4"; // cyan-500
+
 /**
  * 경로 폴리라인 컴포넌트
  */
@@ -347,6 +353,12 @@ interface RealRoutePolylineProps {
     encodedPath?: string;
     transportMode: TransportMode;
     segmentIndex?: number;
+    /** 숙소로 가는 경로 여부 */
+    isToAccommodation?: boolean;
+    /** 숙소에서 출발하는 경로 여부 */
+    isFromAccommodation?: boolean;
+    /** 도착지로 가는 경로 여부 */
+    isToDestination?: boolean;
   }>;
   /** 선 두께 */
   strokeWeight?: number;
@@ -363,6 +375,8 @@ interface RealRoutePolylineProps {
  * - 둘 다 없으면 직선으로 연결
  * - useSegmentColors가 true면 각 구간마다 다른 색상 사용
  * - 도보 구간(walking)은 항상 주황색으로 표시 (useSegmentColors와 관계없이)
+ * - 숙소로 가는 경로는 숙소 마커와 동일한 색상(#a855f7)으로 표시
+ * - 도착지로 가는 경로는 하늘색(#06b6d4)으로 표시
  */
 export function RealRoutePolyline({
   segments,
@@ -377,13 +391,19 @@ export function RealRoutePolyline({
   return (
     <>
       {segments.map((segment, index) => {
-        // 도보 구간은 항상 주황색 (이동 수단별 색상)
-        // 그 외 구간은 useSegmentColors에 따라 결정
-        const strokeColor = segment.transportMode === "walking"
-          ? TRANSPORT_COLORS.walking
-          : useSegmentColors
-            ? getSegmentColor(segment.segmentIndex ?? index)
-            : TRANSPORT_COLORS[segment.transportMode];
+        // 숙소로 가는 경로 또는 숙소에서 출발하는 경로는 숙소 색상 사용
+        const isAccommodationRoute =
+          segment.isToAccommodation || segment.isFromAccommodation;
+
+        // 구간별 색상 또는 이동 수단별 색상
+        // 우선순위: 숙소 경로 > 도착지 경로 > 구간별 색상 > 이동 수단별 색상
+        const strokeColor = isAccommodationRoute
+          ? ACCOMMODATION_COLOR
+          : segment.isToDestination
+            ? DESTINATION_COLOR
+            : useSegmentColors
+              ? getSegmentColor(segment.segmentIndex ?? index)
+              : TRANSPORT_COLORS[segment.transportMode];
 
         console.log(`  Segment ${index}:`, {
           transportMode: segment.transportMode,
@@ -391,6 +411,7 @@ export function RealRoutePolyline({
           hasPath: !!segment.path,
           pathLength: segment.path?.length,
           strokeColor,
+          isAccommodationRoute,
         });
 
         if (segment.encodedPath) {
@@ -423,9 +444,12 @@ export function RealRoutePolyline({
           );
         } else {
           // 직선 연결 (폴백)
+
           // 도보 구간은 실선, 그 외는 점선으로 표시
           const isWalkingFallback = segment.transportMode === "walking";
-          console.log(`    → 직선 연결 (폴백) - ${isWalkingFallback ? "도보" : "대중교통/자동차"}`);
+          console.log(
+            `    → 직선 연결 (폴백) - ${isWalkingFallback ? "도보" : "대중교통/자동차"}`,
+          );
           return (
             <RoutePolyline
               key={`route-${index}`}

@@ -327,15 +327,29 @@ function convertTripOutputToOptimizeResult(
       });
     }
 
-    // 마지막 장소 → 도착지/숙소 이동 정보
     let transportToDestination: DailyItinerary["transportToDestination"];
     if (dayPlan.waypointOrder.length > 0 && dayDestination) {
       const lastPlaceId = dayPlan.waypointOrder[dayPlan.waypointOrder.length - 1];
 
-      // destinationId 결정: 숙소 있으면 __accommodation_0__, 마지막 날은 __destination__
-      const destinationId = hasAccommodation ? "__accommodation_0__" : "__destination__";
+      // destinationId 결정: 마지막 날은 항상 __destination__, 그 외는 숙소 있으면 __accommodation_0__
+      const destinationId = isLastDay 
+        ? "__destination__" 
+        : (hasAccommodation ? "__accommodation_0__" : "__destination__");
       const segmentKey = `${lastPlaceId}:${destinationId}`;
       const segment = segmentMap.get(segmentKey);
+
+      if (!segment) {
+        console.warn(
+          `[convertTripOutputToOptimizeResult] Day ${dayIndex + 1}: Segment not found for key "${segmentKey}"`,
+          {
+            lastPlaceId,
+            destinationId,
+            isLastDay,
+            hasAccommodation,
+            availableKeys: Array.from(segmentMap.keys()).filter(k => k.includes(lastPlaceId) || k.includes(destinationId)).slice(0, 10),
+          }
+        );
+      }
 
       if (segment) {
         // transitDetails가 있으면 대중교통, 없으면 도보로 간주

@@ -52,7 +52,7 @@ function createNumberedMarkerSvg(
   isFixed: boolean,
   isSelected: boolean,
   size: "sm" | "md" | "lg",
-  customColor?: string
+  customColor?: string,
 ): string {
   const { width, height, fontSize } = MARKER_SIZES[size];
 
@@ -70,9 +70,11 @@ function createNumberedMarkerSvg(
 
   const strokeColor = isSelected ? "#1d4ed8" : "white";
   const strokeWidth = isSelected ? 3 : 2;
+  // 선택된 마커는 더 선명하게, 그 외는 반투명
+  const opacity = isSelected ? 4 : 0.8;
 
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+    <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" opacity="${opacity}">
       <path d="${createMarkerPath(width, height)}" fill="${bgColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}"/>
       <text x="${width / 2}" y="${height * 0.42}" text-anchor="middle" dominant-baseline="middle" fill="white" font-size="${fontSize}" font-weight="bold" font-family="system-ui, sans-serif">${order}</text>
     </svg>
@@ -125,16 +127,38 @@ export function PlaceMarkers({
 
     // 마커 생성 또는 업데이트
     markers.forEach((markerData) => {
-      const { id, coordinate, order = 1, isFixed = false, clickable = true, color } = markerData;
+      const {
+        id,
+        coordinate,
+        order = 1,
+        isFixed = false,
+        clickable = true,
+        color,
+      } = markerData;
       const isSelected = id === selectedId;
-      const position = new window.kakao.maps.LatLng(coordinate.lat, coordinate.lng);
+      const position = new window.kakao.maps.LatLng(
+        coordinate.lat,
+        coordinate.lng,
+      );
 
       // 마커 이미지 생성 (커스텀 색상 지원)
       const { width, height } = MARKER_SIZES[size];
-      const imageSrc = createNumberedMarkerSvg(order, isFixed, isSelected, size, color);
+      const imageSrc = createNumberedMarkerSvg(
+        order,
+        isFixed,
+        isSelected,
+        size,
+        color,
+      );
       const imageSize = new window.kakao.maps.Size(width, height);
-      const imageOption = { offset: new window.kakao.maps.Point(width / 2, height) };
-      const markerImage = new window.kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
+      const imageOption = {
+        offset: new window.kakao.maps.Point(width / 2, height),
+      };
+      const markerImage = new window.kakao.maps.MarkerImage(
+        imageSrc,
+        imageSize,
+        imageOption,
+      );
 
       let kakaoMarker = currentMarkers.get(id);
 
@@ -188,7 +212,13 @@ interface SingleMarkerProps {
   /** 좌표 */
   coordinate: Coordinate;
   /** 마커 타입 */
-  type?: "default" | "origin" | "destination" | "current" | "accommodation" | "lastPlace";
+  type?:
+    | "default"
+    | "origin"
+    | "destination"
+    | "current"
+    | "accommodation"
+    | "lastPlace";
   /** 클릭 핸들러 */
   onClick?: () => void;
 }
@@ -208,13 +238,20 @@ export function SingleMarker({
   React.useEffect(() => {
     if (!map || !isReady) return;
 
-    const position = new window.kakao.maps.LatLng(coordinate.lat, coordinate.lng);
+    const position = new window.kakao.maps.LatLng(
+      coordinate.lat,
+      coordinate.lng,
+    );
 
     // 타입별 마커 이미지
     const imageSrc = createSpecialMarkerSvg(type);
     const imageSize = new window.kakao.maps.Size(32, 38);
     const imageOption = { offset: new window.kakao.maps.Point(16, 38) };
-    const markerImage = new window.kakao.maps.MarkerImage(imageSrc, imageSize, imageOption);
+    const markerImage = new window.kakao.maps.MarkerImage(
+      imageSrc,
+      imageSize,
+      imageOption,
+    );
 
     if (markerRef.current) {
       markerRef.current.setPosition(position);
@@ -252,11 +289,20 @@ export function SingleMarker({
 /**
  * 특수 마커 SVG 생성 (출발지, 도착지, 현재 위치, 숙소, 전날 마지막 장소)
  */
-function createSpecialMarkerSvg(type: "default" | "origin" | "destination" | "current" | "accommodation" | "waypoint" | "lastPlace"): string {
+function createSpecialMarkerSvg(
+  type:
+    | "default"
+    | "origin"
+    | "destination"
+    | "current"
+    | "accommodation"
+    | "waypoint"
+    | "lastPlace",
+): string {
   const colors = {
     default: { bg: "#6b7280", stroke: "white" },
-    origin: { bg: "#22c55e", stroke: "white" },
-    destination: { bg: "#f97316", stroke: "white" },
+    origin: { bg: "#06b6d4", stroke: "white" },
+    destination: { bg: "#06b6d4", stroke: "white" },
     current: { bg: "#3b82f6", stroke: "white" },
     accommodation: { bg: "#a855f7", stroke: "white" }, // 보라색
     waypoint: { bg: "#10b981", stroke: "white" }, // 초록색 (전날 경유지)
@@ -267,16 +313,19 @@ function createSpecialMarkerSvg(type: "default" | "origin" | "destination" | "cu
     default: "M16 8a5 5 0 1 0 0 10 5 5 0 0 0 0-10z",
     origin: "M16 6l6 12H10l6-12z", // 삼각형 (위로)
     destination: "M10 6h12v12H10z", // 사각형
-    current: "M16 8a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM16 11a2 2 0 1 1 0 4 2 2 0 0 1 0-4z", // 도넛
+    current:
+      "M16 8a5 5 0 1 0 0 10 5 5 0 0 0 0-10zM16 11a2 2 0 1 1 0 4 2 2 0 0 1 0-4z", // 도넛
     accommodation: "M16 6l8 8v6H8v-6l8-8zm-4 12h8v-4l-4-4-4 4v4z", // 집 아이콘
     waypoint: "M16 8a5 5 0 1 0 0 10 5 5 0 0 0 0-10z", // 원 (경유지)
     lastPlace: "M16 8a5 5 0 1 0 0 10 5 5 0 0 0 0-10z", // 원 (기본 마커)
   };
 
   const { bg, stroke } = colors[type];
+  // 현재 위치 마커는 더 선명하게, 그 외는 반투명
+  const opacity = type === "current" ? 0.8 : 0.5;
 
   const svg = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="38" viewBox="0 0 32 38">
+    <svg xmlns="http://www.w3.org/2000/svg" width="32" height="38" viewBox="0 0 32 38" opacity="${opacity}">
       <path d="${createMarkerPath(32, 38)}" fill="${bg}" stroke="${stroke}" stroke-width="2"/>
       <path d="${icons[type]}" fill="white"/>
     </svg>
@@ -290,7 +339,7 @@ function createSpecialMarkerSvg(type: "default" | "origin" | "destination" | "cu
  */
 export function placesToMarkers(
   places: Place[],
-  fixedPlaceIds?: Set<string>
+  fixedPlaceIds?: Set<string>,
 ): MarkerData[] {
   return places.map((place, index) => ({
     id: place.id,

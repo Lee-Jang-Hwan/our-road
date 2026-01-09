@@ -176,6 +176,7 @@ export interface TransportInfoRow {
       station_count?: number;
       start_name?: string;
       end_name?: string;
+      polyline?: string;  // ← 추가 필요
       lane?: {
         name: string;
         bus_no?: string;

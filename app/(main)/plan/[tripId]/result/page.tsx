@@ -58,6 +58,8 @@ export default function ResultPage({ params }: ResultPageProps) {
   >([]);
   const [selectedDay, setSelectedDay] = useState(1);
 
+    // places를 ref로 관리하여 무한 루프 방지
+
   // 최적화 실행
   const runOptimization = useCallback(async () => {
     setIsOptimizing(true);
