@@ -52,6 +52,7 @@ import { getSegmentColor } from "@/lib/utils";
 import type { TripWithDetails, TripStatus, Coordinate } from "@/types";
 import type { ScheduleItem } from "@/types/schedule";
 import { calculateTripDuration } from "@/types/trip";
+import { AccommodationWarning } from "@/components/trip/accommodation-warning";
 
 interface TripDetailPageProps {
   params: Promise<{ tripId: string }>;
@@ -742,9 +743,23 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
         </div>
       </section>
 
+      {/* 숙소 누락 경고 */}
+      <AccommodationWarning
+        tripId={tripId}
+        startDate={trip.startDate}
+        endDate={trip.endDate}
+        accommodations={trip.accommodations}
+        lastPlaceName={
+          trip.places && trip.places.length > 0
+            ? trip.places[trip.places.length - 1]?.name
+            : undefined
+        }
+        className="mx-4 mt-4"
+      />
+
       {/* 카카오 맵 */}
       {hasItinerary && trip && (
-        <div className="w-full h-48 border-b relative overflow-hidden">
+        <div className="w-full h-64 border-b relative overflow-hidden">
           <KakaoMap
             center={mapCenter}
             level={7}

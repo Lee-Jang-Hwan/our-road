@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DayTabs, DayTabsContainer } from "@/components/itinerary/day-tabs";
 import { DayContentPanel } from "@/components/itinerary/day-content";
 import { UnassignedPlaces } from "@/components/itinerary/unassigned-places";
+import { AccommodationWarning } from "@/components/trip/accommodation-warning";
 import { KakaoMap } from "@/components/map/kakao-map";
 import {
   PlaceMarkers,
@@ -540,6 +541,23 @@ export default function ResultPage({ params }: ResultPageProps) {
             </div>
           </div>
         </div>
+      )}
+
+      {/* 숙소 누락 경고 */}
+      {trip && currentItinerary && (
+        <AccommodationWarning
+          tripId={tripId}
+          startDate={trip.startDate}
+          endDate={trip.endDate}
+          accommodations={trip.accommodations}
+          lastPlaceName={
+            currentItinerary.schedule.length > 0
+              ? currentItinerary.schedule[currentItinerary.schedule.length - 1]
+                  ?.placeName
+              : undefined
+          }
+          className="mx-4 mt-4"
+        />
       )}
 
       {/* 누락된 장소 경고 (호버 시 상세 이유 표시) */}
