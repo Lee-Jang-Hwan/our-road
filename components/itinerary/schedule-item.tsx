@@ -136,7 +136,7 @@ export function ScheduleItem({
                   {normalizeTime(item.arrivalTime)} - {normalizeTime(item.departureTime)}
                 </span>
               </div>
-              <span className="text-xs text-muted-foreground/70">
+              <span className="text-xs text-muted-foreground/50">
                 ({formatDuration(item.duration)})
               </span>
             </div>
@@ -174,17 +174,6 @@ export function ScheduleItem({
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-        </div>
-
-        {/* 시간 정보 */}
-        <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
-          <span className="flex items-center gap-1">
-            <Clock className="w-4 h-4" />
-            {item.arrivalTime} - {item.departureTime}
-          </span>
-          <span className="text-xs text-muted-foreground/70">
-            ({formatDuration(item.duration)})
-          </span>
         </div>
       </div>
 

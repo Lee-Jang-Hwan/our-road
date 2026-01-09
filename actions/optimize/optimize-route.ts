@@ -857,7 +857,7 @@ export async function optimizeRoute(
     // 17. 캐시 무효화
     revalidatePath("/my");
     revalidatePath(`/plan/${tripId}`);
-    revalidatePath(`/plan/${tripId}/result`);
+    revalidatePath(`/my/trips/${tripId}`);
 
     const endTime = Date.now();
     const duration = ((endTime - startTime) / 1000).toFixed(2);

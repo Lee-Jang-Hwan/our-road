@@ -592,7 +592,7 @@
   - [x] 장소 검색 및 추가
   - [x] 체류 시간 선택 (30분~12시간)
 - [x] `app/plan/[tripId]/schedule/page.tsx` - 고정 일정 설정
-- [x] `app/plan/[tripId]/result/page.tsx` - 최적화 결과
+- [x] `app/my/trips/[tripId]/page.tsx` - 최적화 결과 (기존 result 페이지 병합)
   - [x] **일자별 탭 네비게이션**
   - [x] 스와이프로 일자 전환
 

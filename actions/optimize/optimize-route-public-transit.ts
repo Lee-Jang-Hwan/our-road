@@ -62,7 +62,10 @@ export interface OptimizeRouteResult {
 /**
  * Place를 Waypoint로 변환
  */
-function placeToWaypoint(place: Place, fixedSchedules: FixedSchedule[]): Waypoint {
+function placeToWaypoint(
+  place: Place,
+  fixedSchedules: FixedSchedule[],
+): Waypoint {
   const fixedSchedule = fixedSchedules.find((s) => s.placeId === place.id);
 
   return {
@@ -105,7 +108,7 @@ function convertTripOutputToOptimizeResult(
   places: Place[],
   fixedSchedules: FixedSchedule[],
   errors: OptimizeError[],
-  startTime: number
+  startTime: number,
 ): OptimizeResult {
   const totalDays = getDaysBetween(trip.startDate, trip.endDate);
   const dates = generateDateRange(trip.startDate, totalDays);
@@ -114,13 +117,15 @@ function convertTripOutputToOptimizeResult(
 
   // Place ID로 매핑
   const placeMap = new Map(places.map((p) => [p.id, p]));
-  
+
   // 고정 일정 매핑 (placeId -> FixedSchedule)
-  const fixedScheduleMap = new Map(fixedSchedules.map((fs) => [fs.placeId, fs]));
+  const fixedScheduleMap = new Map(
+    fixedSchedules.map((fs) => [fs.placeId, fs]),
+  );
 
   // 제외된 장소 수집 (excludedWaypointIds)
   const allExcludedIds = output.dayPlans.flatMap(
-    (dayPlan) => dayPlan.excludedWaypointIds || []
+    (dayPlan) => dayPlan.excludedWaypointIds || [],
   );
   const uniqueExcludedIds = [...new Set(allExcludedIds)];
 
@@ -150,7 +155,7 @@ function convertTripOutputToOptimizeResult(
 
   // SegmentCost를 key로 매핑
   const segmentMap = new Map(
-    output.segmentCosts.map((s) => [`${s.key.fromId}:${s.key.toId}`, s])
+    output.segmentCosts.map((s) => [`${s.key.fromId}:${s.key.toId}`, s]),
   );
 
   // DailyItinerary 생성
@@ -189,7 +194,8 @@ function convertTripOutputToOptimizeResult(
       // 숙소가 없으면 전날 마지막 장소 사용
       const prevDayPlan = output.dayPlans[dayIndex - 1];
       if (prevDayPlan && prevDayPlan.waypointOrder.length > 0) {
-        const lastPlaceId = prevDayPlan.waypointOrder[prevDayPlan.waypointOrder.length - 1];
+        const lastPlaceId =
+          prevDayPlan.waypointOrder[prevDayPlan.waypointOrder.length - 1];
         const lastPlace = placeMap.get(lastPlaceId);
         if (lastPlace) {
           dayOrigin = {
@@ -206,7 +212,8 @@ function convertTripOutputToOptimizeResult(
 
     // 도착지 정보 (숙소가 있으면 모든 날 숙소, 없으면 마지막 날만 도착지)
     let dayDestination: DailyItinerary["dayDestination"];
-    const hasAccommodation = trip.accommodations && trip.accommodations.length > 0;
+    const hasAccommodation =
+      trip.accommodations && trip.accommodations.length > 0;
     const isLastDay = dayIndex === output.dayPlans.length - 1;
 
     if (hasAccommodation) {
@@ -232,7 +239,7 @@ function convertTripOutputToOptimizeResult(
     }
     // 숙소가 없고 마지막 날이 아니면 dayDestination은 undefined (다음 날 이어짐)
 
-      // 출발지 → 첫 장소 이동 정보
+    // 출발지 → 첫 장소 이동 정보
     // dayOrigin이 있는 경우에만 transportFromOrigin 생성
     let transportFromOrigin: DailyItinerary["transportFromOrigin"];
     if (dayOrigin && dayPlan.waypointOrder.length > 0) {
@@ -246,9 +253,10 @@ function convertTripOutputToOptimizeResult(
         originId = "__accommodation_0__";
       } else {
         const prevDayPlan = output.dayPlans[dayIndex - 1];
-        originId = prevDayPlan && prevDayPlan.waypointOrder.length > 0
-          ? prevDayPlan.waypointOrder[prevDayPlan.waypointOrder.length - 1]
-          : "__origin__";
+        originId =
+          prevDayPlan && prevDayPlan.waypointOrder.length > 0
+            ? prevDayPlan.waypointOrder[prevDayPlan.waypointOrder.length - 1]
+            : "__origin__";
       }
 
       const segmentKey = `${originId}:${firstPlaceId}`;
@@ -256,15 +264,17 @@ function convertTripOutputToOptimizeResult(
 
       if (segment) {
         // transitDetails가 있으면 대중교통, 없으면 도보로 간주
-        const isWalking = !segment.transitDetails ||
-                         (segment.transitDetails.subPaths.length === 1 &&
-                          segment.transitDetails.subPaths[0].trafficType === 3);
+        const isWalking =
+          !segment.transitDetails ||
+          (segment.transitDetails.subPaths.length === 1 &&
+            segment.transitDetails.subPaths[0].trafficType === 3);
 
         transportFromOrigin = {
           mode: isWalking ? "walking" : "public",
           distance: segment.distanceMeters || 0,
           duration: segment.durationMinutes,
-          polyline: typeof segment.polyline === "string" ? segment.polyline : undefined,
+          polyline:
+            typeof segment.polyline === "string" ? segment.polyline : undefined,
           transitDetails: segment.transitDetails,
         };
         currentTime += segment.durationMinutes;
@@ -281,7 +291,10 @@ function convertTripOutputToOptimizeResult(
       if (!place) continue;
 
       const arrivalTime = minutesToTime(currentTime);
-      const departureTime = addMinutesToTime(arrivalTime, place.estimatedDuration);
+      const departureTime = addMinutesToTime(
+        arrivalTime,
+        place.estimatedDuration,
+      );
 
       totalStayDuration += place.estimatedDuration;
 
@@ -294,15 +307,19 @@ function convertTripOutputToOptimizeResult(
 
         if (segment) {
           // transitDetails가 있으면 대중교통, 없으면 도보로 간주
-          const isWalking = !segment.transitDetails ||
-                           (segment.transitDetails.subPaths.length === 1 &&
-                            segment.transitDetails.subPaths[0].trafficType === 3);
+          const isWalking =
+            !segment.transitDetails ||
+            (segment.transitDetails.subPaths.length === 1 &&
+              segment.transitDetails.subPaths[0].trafficType === 3);
 
           transportToNext = {
             mode: isWalking ? "walking" : "public",
             distance: segment.distanceMeters || 0,
             duration: segment.durationMinutes,
-            polyline: typeof segment.polyline === "string" ? segment.polyline : undefined,
+            polyline:
+              typeof segment.polyline === "string"
+                ? segment.polyline
+                : undefined,
             transitDetails: segment.transitDetails,
           };
           currentTime = timeToMinutes(departureTime) + segment.durationMinutes;
@@ -329,12 +346,15 @@ function convertTripOutputToOptimizeResult(
 
     let transportToDestination: DailyItinerary["transportToDestination"];
     if (dayPlan.waypointOrder.length > 0 && dayDestination) {
-      const lastPlaceId = dayPlan.waypointOrder[dayPlan.waypointOrder.length - 1];
+      const lastPlaceId =
+        dayPlan.waypointOrder[dayPlan.waypointOrder.length - 1];
 
       // destinationId 결정: 마지막 날은 항상 __destination__, 그 외는 숙소 있으면 __accommodation_0__
-      const destinationId = isLastDay 
-        ? "__destination__" 
-        : (hasAccommodation ? "__accommodation_0__" : "__destination__");
+      const destinationId = isLastDay
+        ? "__destination__"
+        : hasAccommodation
+          ? "__accommodation_0__"
+          : "__destination__";
       const segmentKey = `${lastPlaceId}:${destinationId}`;
       const segment = segmentMap.get(segmentKey);
 
@@ -346,22 +366,28 @@ function convertTripOutputToOptimizeResult(
             destinationId,
             isLastDay,
             hasAccommodation,
-            availableKeys: Array.from(segmentMap.keys()).filter(k => k.includes(lastPlaceId) || k.includes(destinationId)).slice(0, 10),
-          }
+            availableKeys: Array.from(segmentMap.keys())
+              .filter(
+                (k) => k.includes(lastPlaceId) || k.includes(destinationId),
+              )
+              .slice(0, 10),
+          },
         );
       }
 
       if (segment) {
         // transitDetails가 있으면 대중교통, 없으면 도보로 간주
-        const isWalking = !segment.transitDetails ||
-                         (segment.transitDetails.subPaths.length === 1 &&
-                          segment.transitDetails.subPaths[0].trafficType === 3);
+        const isWalking =
+          !segment.transitDetails ||
+          (segment.transitDetails.subPaths.length === 1 &&
+            segment.transitDetails.subPaths[0].trafficType === 3);
 
         transportToDestination = {
           mode: isWalking ? "walking" : "public",
           distance: segment.distanceMeters || 0,
           duration: segment.durationMinutes,
-          polyline: typeof segment.polyline === "string" ? segment.polyline : undefined,
+          polyline:
+            typeof segment.polyline === "string" ? segment.polyline : undefined,
           transitDetails: segment.transitDetails,
         };
         totalDistance += segment.distanceMeters || 0;
@@ -371,9 +397,10 @@ function convertTripOutputToOptimizeResult(
 
     // startTime: 출발지 출발 시간 (dailyStartTime)
     const startTime = trip.dailyStartTime;
-    
+
     // endTime: 마지막 장소 출발 시간 + 도착지까지 이동 시간
-    let endTime = schedule[schedule.length - 1]?.departureTime ?? trip.dailyStartTime;
+    let endTime =
+      schedule[schedule.length - 1]?.departureTime ?? trip.dailyStartTime;
     if (transportToDestination) {
       endTime = addMinutesToTime(endTime, transportToDestination.duration);
     }
@@ -401,11 +428,17 @@ function convertTripOutputToOptimizeResult(
   const statistics: OptimizeStatistics = {
     totalPlaces: places.length,
     totalDays,
-    totalDistance: itinerary.reduce((sum, day) => sum + day.totalDistance, 0) / 1000, // km
+    totalDistance:
+      itinerary.reduce((sum, day) => sum + day.totalDistance, 0) / 1000, // km
     totalDuration: itinerary.reduce((sum, day) => sum + day.totalDuration, 0),
-    totalStayDuration: itinerary.reduce((sum, day) => sum + day.totalStayDuration, 0),
+    totalStayDuration: itinerary.reduce(
+      (sum, day) => sum + day.totalStayDuration,
+      0,
+    ),
     averageDailyDistance:
-      itinerary.reduce((sum, day) => sum + day.totalDistance, 0) / 1000 / totalDays,
+      itinerary.reduce((sum, day) => sum + day.totalDistance, 0) /
+      1000 /
+      totalDays,
     averageDailyPlaces:
       itinerary.reduce((sum, day) => sum + day.placeCount, 0) / totalDays,
     optimizationTimeMs: Date.now() - startTime,
@@ -430,7 +463,7 @@ function convertTripOutputToOptimizeResult(
  * 대중교통 모드 최적화 (신규 알고리즘)
  */
 export async function optimizePublicTransitRoute(
-  params: OptimizePublicTransitParams
+  params: OptimizePublicTransitParams,
 ): Promise<OptimizeRouteResult> {
   const {
     tripId,
@@ -466,11 +499,14 @@ export async function optimizePublicTransitRoute(
       dailyMaxMinutes: userOptions?.maxDailyMinutes,
     };
 
-    console.log("[OptimizePublicTransit] Calling generatePublicTransitRoute with:", {
-      tripId,
-      days: tripInput.days,
-      waypointsCount: tripInput.waypoints.length,
-    });
+    console.log(
+      "[OptimizePublicTransit] Calling generatePublicTransitRoute with:",
+      {
+        tripId,
+        days: tripInput.days,
+        waypointsCount: tripInput.waypoints.length,
+      },
+    );
 
     // 신규 알고리즘 실행
     const publicTransitOutput = await generatePublicTransitRoute(tripInput);
@@ -487,7 +523,7 @@ export async function optimizePublicTransitRoute(
       places,
       fixedSchedules,
       errors,
-      startTime
+      startTime,
     );
 
     // 여행 상태 업데이트
@@ -499,7 +535,7 @@ export async function optimizePublicTransitRoute(
     // 캐시 무효화
     revalidatePath("/my");
     revalidatePath(`/plan/${tripId}`);
-    revalidatePath(`/plan/${tripId}/result`);
+    revalidatePath(`/my/trips/${tripId}`);
 
     return {
       success: true,
