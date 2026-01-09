@@ -1,33 +1,19 @@
 "use client";
 
-import { use, useEffect, useState, useMemo, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { useUser } from "@clerk/nextjs";
+import { use, useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import {
-  LuChevronLeft,
-  LuPencil,
-  LuTrash2,
   LuShare2,
-  LuLoader,
   LuMapPin,
   LuCalendar,
   LuClock,
   LuRoute,
-  LuNavigation,
+  LuExternalLink,
 } from "react-icons/lu";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 
 import { DayTabsContainer } from "@/components/itinerary/day-tabs";
 import { DayContentPanel } from "@/components/itinerary/day-content";
@@ -38,49 +24,14 @@ import { RealRoutePolyline } from "@/components/map/route-polyline";
 import { OffScreenMarkers, FitBoundsButton } from "@/components/map/off-screen-markers";
 import { useSwipe } from "@/hooks/use-swipe";
 
-import { getTripWithDetails } from "@/actions/trips/get-trip";
-import { deleteTrip } from "@/actions/trips/delete-trip";
+import { getSharedTrip } from "@/actions/trips/get-shared-trip";
 import { getSegmentColor } from "@/lib/utils";
-import type { TripWithDetails, TripStatus, Coordinate } from "@/types";
+import type { TripWithDetails, Coordinate } from "@/types";
 import type { ScheduleItem } from "@/types/schedule";
 import { calculateTripDuration } from "@/types/trip";
 
-interface TripDetailPageProps {
+interface SharedTripPageProps {
   params: Promise<{ tripId: string }>;
-}
-
-/**
- * 상태별 배지 스타일
- */
-function getStatusBadge(status: TripStatus) {
-  switch (status) {
-    case "draft":
-      return (
-        <Badge variant="secondary" className="text-xs">
-          작성 중
-        </Badge>
-      );
-    case "optimizing":
-      return (
-        <Badge variant="secondary" className="text-xs bg-yellow-100 text-yellow-800">
-          최적화 중
-        </Badge>
-      );
-    case "optimized":
-      return (
-        <Badge variant="default" className="text-xs">
-          최적화 완료
-        </Badge>
-      );
-    case "completed":
-      return (
-        <Badge variant="outline" className="text-xs">
-          완료
-        </Badge>
-      );
-    default:
-      return null;
-  }
 }
 
 /**
@@ -113,26 +64,20 @@ function formatDuration(minutes: number): string {
   return mins > 0 ? `${hours}시간 ${mins}분` : `${hours}시간`;
 }
 
-export default function TripDetailPage({ params }: TripDetailPageProps) {
+export default function SharedTripPage({ params }: SharedTripPageProps) {
   const { tripId } = use(params);
-  const router = useRouter();
-  const { user, isLoaded } = useUser();
   const [trip, setTrip] = useState<TripWithDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState(1);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [isPending, startTransition] = useTransition();
 
   // 여행 상세 로드
   useEffect(() => {
     async function loadTrip() {
-      if (!user) return;
-
       setIsLoading(true);
       setError(null);
 
-      const result = await getTripWithDetails(tripId);
+      const result = await getSharedTrip(tripId);
 
       if (result.success && result.data) {
         setTrip(result.data);
@@ -143,12 +88,8 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
       setIsLoading(false);
     }
 
-    if (isLoaded && user) {
-      loadTrip();
-    } else if (isLoaded && !user) {
-      setIsLoading(false);
-    }
-  }, [user, isLoaded, tripId]);
+    loadTrip();
+  }, [tripId]);
 
   // 일자 탭 데이터
   const days = useMemo(() => {
@@ -194,30 +135,27 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
         name: item.placeName,
         isFixed: item.isFixed,
         clickable: true,
-        color: getSegmentColor(index), // 구간별 색상 적용
+        color: getSegmentColor(index),
       };
     });
   }, [currentItinerary, trip?.places]);
 
-  // 맵 중심점 계산 (출발지, 장소들, 도착지 모두 포함)
+  // 맵 중심점 계산
   const mapCenter = useMemo<Coordinate>(() => {
     const allCoords: Coordinate[] = [];
 
-    // 출발지 추가
     if (trip?.origin) {
       allCoords.push({ lat: trip.origin.lat, lng: trip.origin.lng });
     }
 
-    // 장소들 추가
     currentDayMarkers.forEach((m) => allCoords.push(m.coordinate));
 
-    // 도착지 추가
     if (trip?.destination) {
       allCoords.push({ lat: trip.destination.lat, lng: trip.destination.lng });
     }
 
     if (allCoords.length === 0) {
-      return { lat: 37.5665, lng: 126.978 }; // 서울 시청
+      return { lat: 37.5665, lng: 126.978 };
     }
 
     const sumLat = allCoords.reduce((sum, c) => sum + c.lat, 0);
@@ -228,8 +166,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
     };
   }, [currentDayMarkers, trip?.origin, trip?.destination]);
 
-  // 경로 구간 배열 (출발지 → 장소들 순서대로 → 도착지)
-  // 각 구간별 polyline(실제 경로) 또는 직선 연결, 구간별 색상 인덱스 포함
+  // 경로 구간 배열
   const routeSegments = useMemo(() => {
     if (!trip || !currentItinerary) return [];
 
@@ -245,7 +182,6 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
     const originCoord = { lat: trip.origin.lat, lng: trip.origin.lng };
     const destCoord = { lat: trip.destination.lat, lng: trip.destination.lng };
 
-    // 출발지 → 첫 장소 (첫 번째 장소 색상 사용)
     if (currentItinerary.schedule.length > 0 && currentDayMarkers.length > 0) {
       segments.push({
         from: originCoord,
@@ -256,7 +192,6 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
       });
     }
 
-    // 장소들 사이 (도착 장소의 색상 사용)
     for (let i = 0; i < currentItinerary.schedule.length - 1; i++) {
       const scheduleItem = currentItinerary.schedule[i];
       if (currentDayMarkers[i] && currentDayMarkers[i + 1]) {
@@ -270,7 +205,6 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
       }
     }
 
-    // 마지막 장소 → 도착지 (마지막 장소 색상 사용)
     if (currentItinerary.schedule.length > 0 && currentDayMarkers.length > 0) {
       const lastIndex = currentDayMarkers.length - 1;
       segments.push({
@@ -288,61 +222,34 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
   // 일정 항목 클릭
   const handleItemClick = (item: ScheduleItem) => {
     console.log("Item clicked:", item);
-    // TODO: 지도에서 해당 장소 표시
-  };
-
-  // 삭제 실행
-  const handleDeleteConfirm = () => {
-    startTransition(async () => {
-      const result = await deleteTrip(tripId);
-
-      if (result.success) {
-        router.push("/my");
-      } else {
-        setError(result.error || "삭제에 실패했습니다.");
-        setDeleteDialogOpen(false);
-      }
-    });
   };
 
   // 공유
   const handleShare = async () => {
     if (!trip) return;
 
-    // 공유용 URL 생성
-    const shareUrl = `${window.location.origin}/share/${tripId}`;
-
     try {
       await navigator.share({
         title: trip.title,
         text: `${trip.title} - ${formatDate(trip.startDate)} ~ ${formatDate(trip.endDate)}`,
-        url: shareUrl,
+        url: window.location.href,
       });
     } catch {
-      // 공유 API 미지원 시 URL 복사
-      await navigator.clipboard.writeText(shareUrl);
+      await navigator.clipboard.writeText(window.location.href);
       alert("링크가 클립보드에 복사되었습니다.");
     }
   };
 
-  // 네비게이션 시작
-  const handleStartNavigation = () => {
-    router.push(`/navigate/${tripId}`);
-  };
-
   // 로딩 중
-  if (!isLoaded || isLoading) {
+  if (isLoading) {
     return (
       <main className="flex flex-col min-h-[calc(100dvh-64px)]">
-        {/* 헤더 스켈레톤 */}
         <header className="flex items-center gap-3 px-4 py-3 border-b">
-          <Skeleton className="w-10 h-10 rounded-lg" />
           <Skeleton className="h-5 w-32" />
           <div className="flex-1" />
           <Skeleton className="w-10 h-10 rounded-lg" />
         </header>
 
-        {/* 여행 정보 스켈레톤 */}
         <div className="px-4 py-4 border-b space-y-3">
           <Skeleton className="h-6 w-40" />
           <Skeleton className="h-4 w-56" />
@@ -352,7 +259,6 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
           </div>
         </div>
 
-        {/* 컨텐츠 스켈레톤 */}
         <div className="flex-1 px-4 py-4 space-y-4">
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-24 w-full" />
@@ -362,42 +268,34 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
     );
   }
 
-  // 미로그인 상태
-  if (!user) {
-    return (
-      <main className="flex flex-col items-center justify-center min-h-[calc(100dvh-64px)] px-4 gap-4">
-        <p className="text-muted-foreground">로그인이 필요합니다</p>
-        <Link href="/sign-in">
-          <Button>로그인하기</Button>
-        </Link>
-      </main>
-    );
-  }
-
   // 에러 상태
-  if (error && !trip) {
+  if (error || !trip) {
     return (
       <main className="flex flex-col min-h-[calc(100dvh-64px)]">
         <header className="flex items-center gap-3 px-4 py-3 border-b">
-          <Link href="/my">
-            <Button variant="ghost" size="icon" className="shrink-0">
-              <LuChevronLeft className="w-5 h-5" />
-            </Button>
-          </Link>
-          <h1 className="font-semibold text-lg">여행 상세</h1>
+          <h1 className="font-semibold text-lg">공유된 여행</h1>
         </header>
-        <div className="flex-1 flex flex-col items-center justify-center px-4 gap-4">
-          <p className="text-destructive">{error}</p>
-          <Link href="/my">
-            <Button variant="outline">목록으로 돌아가기</Button>
+        <div className="flex-1 flex flex-col items-center justify-center px-4 gap-6">
+          <div className="w-20 h-20 rounded-full bg-muted flex items-center justify-center">
+            <LuRoute className="w-10 h-10 text-muted-foreground" />
+          </div>
+          <div className="text-center space-y-2">
+            <p className="text-lg font-medium text-foreground">
+              {error || "여행을 찾을 수 없습니다"}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              링크가 올바른지 확인해주세요
+            </p>
+          </div>
+          <Link href="/">
+            <Button variant="outline">
+              <LuExternalLink className="w-4 h-4 mr-2" />
+              홈으로 이동
+            </Button>
           </Link>
         </div>
       </main>
     );
-  }
-
-  if (!trip) {
-    return null;
   }
 
   const duration = calculateTripDuration(trip.startDate, trip.endDate);
@@ -407,29 +305,33 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
     <main className="flex flex-col min-h-[calc(100dvh-64px)]">
       {/* 헤더 */}
       <header className="flex items-center gap-3 px-4 py-3 border-b">
-        <Link href="/my">
-          <Button variant="ghost" size="icon" className="shrink-0">
-            <LuChevronLeft className="w-5 h-5" />
-          </Button>
-        </Link>
         <h1 className="font-semibold text-lg flex-1 line-clamp-1">{trip.title}</h1>
         <Button variant="ghost" size="icon" onClick={handleShare}>
           <LuShare2 className="w-5 h-5" />
         </Button>
       </header>
 
-      {/* 에러 메시지 */}
-      {error && (
-        <div className="mx-4 mt-4 p-3 bg-destructive/10 text-destructive rounded-lg text-sm">
-          {error}
+      {/* 공유 배너 */}
+      <div className="px-4 py-2 bg-primary/5 border-b">
+        <div className="flex items-center justify-between">
+          <span className="text-sm text-muted-foreground">
+            공유된 여행 일정입니다
+          </span>
+          <Link href="/sign-up">
+            <Button variant="link" size="sm" className="text-primary h-auto p-0">
+              나도 계획하기
+            </Button>
+          </Link>
         </div>
-      )}
+      </div>
 
       {/* 여행 정보 */}
       <section className="px-4 py-4 border-b space-y-3">
         <div className="flex items-center gap-2 flex-wrap">
           <h2 className="font-semibold text-lg">{trip.title}</h2>
-          {getStatusBadge(trip.status)}
+          <Badge variant="default" className="text-xs">
+            공유됨
+          </Badge>
         </div>
 
         <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
@@ -476,7 +378,6 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
             level={7}
             className="absolute inset-0 w-full h-full"
           >
-            {/* 경로 폴리라인 (출발지 → 장소들 → 도착지) - 구간별 색상 적용 */}
             {routeSegments.length > 0 && (
               <RealRoutePolyline
                 segments={routeSegments}
@@ -486,18 +387,15 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
               />
             )}
 
-            {/* 출발지 마커 */}
             <SingleMarker
               coordinate={{ lat: trip.origin.lat, lng: trip.origin.lng }}
               type="origin"
             />
 
-            {/* 장소 마커들 */}
             {currentDayMarkers.length > 0 && (
               <PlaceMarkers markers={currentDayMarkers} size="md" />
             )}
 
-            {/* 도착지 마커 */}
             <SingleMarker
               coordinate={{ lat: trip.destination.lat, lng: trip.destination.lng }}
               type="destination"
@@ -518,7 +416,6 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
           className="flex-1"
         >
           <div className="px-4 py-4" {...swipeHandlers}>
-            {/* 일일 요약 */}
             {currentItinerary && (
               <DaySummary
                 itinerary={currentItinerary}
@@ -526,7 +423,6 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
               />
             )}
 
-            {/* 일정 타임라인 */}
             <DayContentPanel
               itineraries={trip.itinerary!}
               selectedDay={selectedDay}
@@ -542,89 +438,22 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
           <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
             <LuRoute className="w-8 h-8 text-muted-foreground" />
           </div>
-          <h3 className="font-semibold text-lg mb-2">최적화된 일정이 없습니다</h3>
-          <p className="text-muted-foreground text-sm text-center mb-6">
-            {trip.places.length > 0
-              ? "장소가 추가되어 있습니다. 일정을 최적화해보세요."
-              : "장소를 추가하고 일정을 최적화해보세요."}
+          <h3 className="font-semibold text-lg mb-2">일정이 없습니다</h3>
+          <p className="text-muted-foreground text-sm text-center">
+            이 여행에는 아직 최적화된 일정이 없습니다.
           </p>
-          <Link href={`/plan/${tripId}`}>
-            <Button>
-              <LuPencil className="w-4 h-4 mr-2" />
-              편집하기
-            </Button>
-          </Link>
         </div>
       )}
 
-      {/* 하단 버튼 */}
+      {/* 하단 CTA */}
       <div className="sticky bottom-0 p-4 bg-background border-t safe-area-bottom">
-        <div className="flex gap-3">
-          <Button
-            variant="outline"
-            className="flex-1 h-12"
-            onClick={() => router.push(`/plan/${tripId}`)}
-          >
-            <LuPencil className="w-4 h-4 mr-2" />
-            편집하기
+        <Link href="/sign-up" className="block">
+          <Button className="w-full h-12">
+            <LuRoute className="w-4 h-4 mr-2" />
+            나도 여행 계획하기
           </Button>
-          {hasItinerary && (
-            <Button
-              className="flex-1 h-12"
-              onClick={handleStartNavigation}
-            >
-              <LuNavigation className="w-4 h-4 mr-2" />
-              네비게이션
-            </Button>
-          )}
-          {!hasItinerary && (
-            <Button
-              variant="destructive"
-              className="h-12"
-              onClick={() => setDeleteDialogOpen(true)}
-            >
-              <LuTrash2 className="w-4 h-4" />
-            </Button>
-          )}
-        </div>
+        </Link>
       </div>
-
-      {/* 삭제 확인 다이얼로그 */}
-      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>여행 삭제</DialogTitle>
-            <DialogDescription>
-              &quot;{trip.title}&quot; 여행을 삭제하시겠습니까?
-              <br />
-              삭제된 여행은 복구할 수 없습니다.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter className="gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
-              disabled={isPending}
-            >
-              취소
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeleteConfirm}
-              disabled={isPending}
-            >
-              {isPending ? (
-                <>
-                  <LuLoader className="w-4 h-4 mr-2 animate-spin" />
-                  삭제 중...
-                </>
-              ) : (
-                "삭제"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </main>
   );
 }
