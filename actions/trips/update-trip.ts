@@ -140,6 +140,22 @@ export async function updateTrip(
       updateData.status = validatedData.status;
     }
 
+    // 여행 정보가 변경되면 기존 최적화 결과가 무효화되므로 status를 draft로 변경
+    // 단, status가 명시적으로 전달된 경우는 제외 (명시적 상태 변경 허용)
+    if (validatedData.status === undefined && Object.keys(updateData).length > 0) {
+      // 현재 trip 상태 확인
+      const { data: currentTrip } = await supabase
+        .from("trips")
+        .select("status")
+        .eq("id", tripId)
+        .single();
+
+      // optimized 상태였다면 draft로 변경
+      if (currentTrip?.status === "optimized") {
+        updateData.status = "draft";
+      }
+    }
+
     // 7. 여행 수정 (RLS가 자동으로 본인 여행만 수정)
     const { data, error } = await supabase
       .from("trips")

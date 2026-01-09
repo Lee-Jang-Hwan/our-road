@@ -265,7 +265,11 @@ export default function TripEditPage({ params }: TripEditPageProps) {
             isFixedScheduleStep && trip.fixedSchedules.length > 0;
 
           return (
-            <Link key={step.title} href={step.href}>
+            <Link
+              key={step.title}
+              href={step.href}
+              className="block mb-2 last:mb-0"
+            >
               <Card className="transition-all duration-200 hover:border-primary hover:shadow-lg hover:bg-primary/10 hover:scale-[1.02] active:scale-[0.98] active:bg-primary/20 cursor-pointer">
                 <CardHeader className="flex flex-row items-start gap-4 pb-2">
                   <div
@@ -368,7 +372,7 @@ export default function TripEditPage({ params }: TripEditPageProps) {
       </div>
 
       {/* 하단 버튼 */}
-      <div className="sticky bottom-0 p-4 backdrop-blur-sm bg-background/80 border-t pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:static md:border-t-0 md:pt-4 md:pb-0">
+      <div className="sticky bottom-0 p-4 backdrop-blur-sm bg-background/80 border-t pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:static md:border-t-0 md:pt-4 md:pb-4">
         <Button
           className="w-full h-12"
           disabled={trip.placeCount === 0 || isOptimizing}

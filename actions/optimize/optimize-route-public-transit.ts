@@ -359,7 +359,20 @@ function convertTripOutputToOptimizeResult(
       const segment = segmentMap.get(segmentKey);
 
       if (!segment) {
-        // Segment not found - will use fallback
+        console.warn(
+          `[convertTripOutputToOptimizeResult] Day ${dayIndex + 1}: Segment not found for key "${segmentKey}"`,
+          {
+            lastPlaceId,
+            destinationId,
+            isLastDay,
+            hasAccommodation,
+            availableKeys: Array.from(segmentMap.keys())
+              .filter(
+                (k) => k.includes(lastPlaceId) || k.includes(destinationId),
+              )
+              .slice(0, 10),
+          },
+        );
       }
 
       if (segment) {
@@ -485,6 +498,15 @@ export async function optimizePublicTransitRoute(
       waypoints: places.map((place) => placeToWaypoint(place, fixedSchedules)),
       dailyMaxMinutes: userOptions?.maxDailyMinutes,
     };
+
+    console.log(
+      "[OptimizePublicTransit] Calling generatePublicTransitRoute with:",
+      {
+        tripId,
+        days: tripInput.days,
+        waypointsCount: tripInput.waypoints.length,
+      },
+    );
 
     // 신규 알고리즘 실행
     const publicTransitOutput = await generatePublicTransitRoute(tripInput);

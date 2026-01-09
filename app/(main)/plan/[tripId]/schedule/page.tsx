@@ -338,7 +338,7 @@ export default function SchedulePage({ params }: SchedulePageProps) {
       </div>
 
       {/* 하단 버튼 */}
-      <div className="sticky bottom-0 p-4 bg-background border-t safe-area-bottom">
+      <div className="sticky bottom-0 p-4 backdrop-blur-sm bg-background/80 border-t pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:static md:border-t-0 md:pt-4 md:pb-4">
         <Link href={`/plan/${tripId}`}>
           <Button variant="outline" className="w-full h-12">
             완료

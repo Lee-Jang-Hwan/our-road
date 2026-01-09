@@ -128,7 +128,7 @@ export function TripFormStep2({
               htmlFor="sameAsOrigin"
               className="text-sm text-muted-foreground cursor-pointer select-none"
             >
-              출발지와 동일
+              도착지 동일
             </label>
           </div>
         </div>

@@ -205,11 +205,10 @@ if (j === originIdx) continue;
 - ❌ `/plan/[tripId]` - 여행 편집
 - ❌ `/plan/[tripId]/places` - 장소 관리
 - ❌ `/plan/[tripId]/schedule` - 고정 일정 설정
-- ❌ `/plan/[tripId]/result` - 최적화 결과
 
 **마이페이지:**
 - ❌ `/my` - 저장된 여행 목록
-- ❌ `/my/trips/[tripId]` - 여행 상세
+- ❌ `/my/trips/[tripId]` - 여행 상세 (최적화 결과 포함)
 
 **네비게이션:**
 - ❌ `/navigate/[tripId]` - 실시간 네비게이션
@@ -272,7 +271,7 @@ if (j === originIdx) continue;
 3. **핵심 페이지**
    - `app/plan/page.tsx` - 여행 생성 페이지
    - `app/plan/[tripId]/places/page.tsx` - 장소 추가 페이지
-   - `app/plan/[tripId]/result/page.tsx` - 결과 페이지
+   - `app/my/trips/[tripId]/page.tsx` - 여행 상세 및 최적화 결과 페이지
 
 ### 🟡 중간 (사용성 개선)
 

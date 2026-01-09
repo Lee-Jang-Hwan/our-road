@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { MapPin, Crosshair, Loader2, X, Clock, Search } from "lucide-react";
+import { MapPin, Locate, Loader2, X, Clock, Search } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -259,7 +259,7 @@ export function LocationInput({
           {isGettingLocation ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <Crosshair className="size-4" />
+            <Locate className="size-4" />
           )}
         </Button>
       </div>

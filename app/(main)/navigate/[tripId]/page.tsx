@@ -20,13 +20,29 @@ import { Train, Bus, Footprints, ArrowRight, Ship } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { MapSkeleton, EmptyState, ErrorState } from "@/components/ux";
 
-import { KakaoMap, useKakaoMap, useMapBounds } from "@/components/map/kakao-map";
-import { PlaceMarkers, SingleMarker, type SingleMarkerProps } from "@/components/map/place-markers";
+import {
+  KakaoMap,
+  useKakaoMap,
+  useMapBounds,
+} from "@/components/map/kakao-map";
+import {
+  PlaceMarkers,
+  SingleMarker,
+  type SingleMarkerProps,
+} from "@/components/map/place-markers";
 import { RealRoutePolyline } from "@/components/map/route-polyline";
-import { CurrentLocationTracker, useCurrentLocation } from "@/components/map/current-location";
+import {
+  CurrentLocationTracker,
+  useCurrentLocation,
+} from "@/components/map/current-location";
 
 import { getTripWithDetails } from "@/actions/trips/get-trip";
 import { getSegmentColor } from "@/lib/utils";
@@ -135,7 +151,7 @@ function calculateDistance(from: Coordinate, to: Coordinate): number {
  */
 function openKakaoMapNavigation(
   destination: { name: string; coordinate: Coordinate },
-  origin?: Coordinate
+  origin?: Coordinate,
 ) {
   if (origin) {
     // 출발지 포함
@@ -153,7 +169,7 @@ function openKakaoMapNavigation(
  */
 function openNaverMapNavigation(
   destination: { name: string; coordinate: Coordinate },
-  origin?: Coordinate
+  origin?: Coordinate,
 ) {
   if (origin) {
     const url = `https://map.naver.com/v5/directions/${origin.lng},${origin.lat}/${destination.coordinate.lng},${destination.coordinate.lat}/-/transit`;
@@ -169,7 +185,7 @@ function openNaverMapNavigation(
  */
 function openGoogleMapNavigation(
   destination: { name: string; coordinate: Coordinate },
-  origin?: Coordinate
+  origin?: Coordinate,
 ) {
   if (origin) {
     const url = `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${destination.coordinate.lat},${destination.coordinate.lng}&travelmode=transit`;
@@ -206,14 +222,22 @@ function getTrafficIcon(trafficType: number) {
  */
 function getTrafficLabel(trafficType: number) {
   switch (trafficType) {
-    case 1: return "지하철";
-    case 2: return "버스";
-    case 3: return "도보";
-    case 10: return "열차";
-    case 11: return "고속버스";
-    case 12: return "시외버스";
-    case 14: return "해운";
-    default: return "대중교통";
+    case 1:
+      return "지하철";
+    case 2:
+      return "버스";
+    case 3:
+      return "도보";
+    case 10:
+      return "열차";
+    case 11:
+      return "고속버스";
+    case 12:
+      return "시외버스";
+    case 14:
+      return "해운";
+    default:
+      return "대중교통";
   }
 }
 
@@ -234,6 +258,7 @@ function NavigationBottomPanel({
   isExpanded,
   onToggleExpand,
   isOriginSegment,
+  isDestinationSegment,
   originName,
 }: {
   currentItem: ScheduleItem & { coordinate: Coordinate };
@@ -249,6 +274,7 @@ function NavigationBottomPanel({
   isExpanded: boolean;
   onToggleExpand: () => void;
   isOriginSegment?: boolean;
+  isDestinationSegment?: boolean;
   originName?: string;
 }) {
   const distanceToNext = useMemo(() => {
@@ -286,33 +312,27 @@ function NavigationBottomPanel({
 
           {/* 순서 번호 */}
           <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-lg shrink-0">
-            {currentItem.order}
+            {isOriginSegment
+              ? "출발"
+              : isDestinationSegment
+                ? "도착"
+                : currentItem.order}
           </div>
 
           {/* 장소 정보 */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h3 className="font-semibold text-lg truncate">{currentItem.placeName}</h3>
-              {currentItem.isFixed && (
-                <Badge variant="secondary" className="shrink-0">고정</Badge>
-              )}
+              <h3 className="font-semibold text-lg truncate">
+                {currentItem.placeName}
+              </h3>
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-2">
-                <h3 className="font-semibold text-base truncate">{originName}</h3>
-                <Badge variant="outline" className="shrink-0">출발지</Badge>
+
+            {distanceToNext !== null && (
+              <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                <LuRoute className="w-4 h-4" />
+                {formatDistance(distanceToNext)}
               </div>
-              <div className="flex items-center gap-2 text-sm">
-                <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                <span className="font-medium truncate">{currentItem.placeName}</span>
-              </div>
-              {distanceToNext !== null && (
-                <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
-                  <LuRoute className="w-4 h-4" />
-                  {formatDistance(distanceToNext)}
-                </div>
-              )}
-            </div>
+            )}
           </div>
 
           {/* 다음 버튼 */}
@@ -333,12 +353,16 @@ function NavigationBottomPanel({
             {/* 다음 목적지 미리보기 */}
             {nextItem && (
               <div className="p-3 bg-muted/50 rounded-lg">
-                <p className="text-xs text-muted-foreground mb-1">다음 목적지</p>
+                <p className="text-xs text-muted-foreground mb-1">
+                  다음 목적지
+                </p>
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-xs font-bold">
                     {nextItem.order}
                   </div>
-                  <span className="font-medium text-sm truncate">{nextItem.placeName}</span>
+                  <span className="font-medium text-sm truncate">
+                    {nextItem.placeName}
+                  </span>
                 </div>
               </div>
             )}
@@ -353,17 +377,21 @@ function NavigationBottomPanel({
                       {currentItem.transportToNext.mode === "walking"
                         ? "도보"
                         : currentItem.transportToNext.mode === "car"
-                        ? "자동차"
-                        : "대중교통"}
+                          ? "자동차"
+                          : "대중교통"}
                     </span>
                   </div>
                   <div className="flex items-center gap-1 text-muted-foreground">
                     <LuClock className="w-4 h-4" />
-                    <span>{formatDuration(currentItem.transportToNext.duration)}</span>
+                    <span>
+                      {formatDuration(currentItem.transportToNext.duration)}
+                    </span>
                   </div>
                   <div className="flex items-center gap-1 text-muted-foreground">
                     <LuRoute className="w-4 h-4" />
-                    <span>{formatDistance(currentItem.transportToNext.distance)}</span>
+                    <span>
+                      {formatDistance(currentItem.transportToNext.distance)}
+                    </span>
                   </div>
                 </div>
 
@@ -376,18 +404,23 @@ function NavigationBottomPanel({
                         {currentItem.transportToNext.transitDetails.subPaths
                           .filter((sp) => sp.trafficType !== 3)
                           .map((subPath, index) => (
-                            <div key={index} className="flex items-center gap-1">
+                            <div
+                              key={index}
+                              className="flex items-center gap-1"
+                            >
                               {index > 0 && (
                                 <ArrowRight className="w-3 h-3 text-muted-foreground" />
                               )}
                               <span
                                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium text-white"
                                 style={{
-                                  backgroundColor: subPath.lane?.lineColor || "#6b7280",
+                                  backgroundColor:
+                                    subPath.lane?.lineColor || "#6b7280",
                                 }}
                               >
                                 {getTrafficIcon(subPath.trafficType)}
-                                {subPath.lane?.name || getTrafficLabel(subPath.trafficType)}
+                                {subPath.lane?.name ||
+                                  getTrafficLabel(subPath.trafficType)}
                               </span>
                             </div>
                           ))}
@@ -395,20 +428,34 @@ function NavigationBottomPanel({
 
                       {/* 요금 및 환승 정보 */}
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        {currentItem.transportToNext.transitDetails.totalFare > 0 && (
+                        {currentItem.transportToNext.transitDetails.totalFare >
+                          0 && (
                           <span className="text-primary font-medium">
-                            ₩{currentItem.transportToNext.transitDetails.totalFare.toLocaleString()}
+                            ₩
+                            {currentItem.transportToNext.transitDetails.totalFare.toLocaleString()}
                           </span>
                         )}
-                        {currentItem.transportToNext.transitDetails.transferCount > 0 && (
+                        {currentItem.transportToNext.transitDetails
+                          .transferCount > 0 && (
                           <span>
-                            환승 {currentItem.transportToNext.transitDetails.transferCount}회
+                            환승{" "}
+                            {
+                              currentItem.transportToNext.transitDetails
+                                .transferCount
+                            }
+                            회
                           </span>
                         )}
-                        {currentItem.transportToNext.transitDetails.walkingTime > 0 && (
+                        {currentItem.transportToNext.transitDetails
+                          .walkingTime > 0 && (
                           <span className="flex items-center gap-1">
                             <Footprints className="w-3 h-3" />
-                            도보 {currentItem.transportToNext.transitDetails.walkingTime}분
+                            도보{" "}
+                            {
+                              currentItem.transportToNext.transitDetails
+                                .walkingTime
+                            }
+                            분
                           </span>
                         )}
                       </div>
@@ -484,7 +531,10 @@ function NavigationMapContent({
   // 마커 데이터 생성 (구간별 색상 적용)
   const markers = useMemo(() => {
     return currentDayItinerary.schedule.map((item, index) => {
-      const coordinate = placeCoordinates.get(item.placeId) || { lat: 0, lng: 0 };
+      const coordinate = placeCoordinates.get(item.placeId) || {
+        lat: 0,
+        lng: 0,
+      };
       return {
         id: item.placeId,
         coordinate,
@@ -515,51 +565,206 @@ function NavigationMapContent({
       from: Coordinate;
       to: Coordinate;
       encodedPath?: string;
+      path?: Coordinate[];
       transportMode: "walking" | "public" | "car";
       segmentIndex: number;
+      isToAccommodation?: boolean;
+      isFromAccommodation?: boolean;
+      isToDestination?: boolean;
     }> = [];
 
-    const transportMode = trip.transportModes.includes("car") ? "car" as const : "public" as const;
+    const isCarMode = trip.transportModes.includes("car");
+    const baseTransportMode = isCarMode
+      ? ("car" as const)
+      : ("public" as const);
 
-    // 출발지 → 첫 장소 (dayOrigin이 있고 transportFromOrigin이 있을 때만)
-    if (currentDayItinerary.dayOrigin && currentDayItinerary.transportFromOrigin && markers.length > 0) {
-      segments.push({
-        from: { lat: currentDayItinerary.dayOrigin.lat, lng: currentDayItinerary.dayOrigin.lng },
-        to: markers[0].coordinate,
-        encodedPath: currentDayItinerary.transportFromOrigin.polyline,
-        transportMode,
-        segmentIndex: 0,
-      });
-    }
+    // 숙소 위치 확인
+    const lodgingLocation = trip.accommodations?.[0]?.location;
+    const isAccommodationCoord = (coord: Coordinate) => {
+      if (!lodgingLocation) return false;
+      return (
+        Math.abs(coord.lat - lodgingLocation.lat) < 0.0001 &&
+        Math.abs(coord.lng - lodgingLocation.lng) < 0.0001
+      );
+    };
 
-    // 장소들 사이
-    for (let i = 0; i < currentDayItinerary.schedule.length - 1; i++) {
-      const scheduleItem = currentDayItinerary.schedule[i];
-      if (markers[i] && markers[i + 1]) {
+    // 출발지 → 첫 장소 (subPaths 분리)
+    if (
+      currentDayItinerary.dayOrigin &&
+      currentDayItinerary.transportFromOrigin &&
+      markers.length > 0
+    ) {
+      const transport = currentDayItinerary.transportFromOrigin;
+      const fromCoord = {
+        lat: currentDayItinerary.dayOrigin.lat,
+        lng: currentDayItinerary.dayOrigin.lng,
+      };
+      const toCoord = markers[0].coordinate;
+      const isFromAccommodation = isAccommodationCoord(fromCoord);
+
+      // subPaths가 있으면 분리, 없으면 전체 경로 사용
+      if (
+        transport.transitDetails?.subPaths &&
+        transport.transitDetails.subPaths.length > 0
+      ) {
+        const subPaths = transport.transitDetails.subPaths;
+        for (const subPath of subPaths) {
+          const subTransportMode =
+            subPath.trafficType === 3
+              ? ("walking" as const)
+              : baseTransportMode;
+          const subFrom = subPath.startCoord || fromCoord;
+          const subTo = subPath.endCoord || toCoord;
+
+          segments.push({
+            from: subFrom,
+            to: subTo,
+            encodedPath:
+              subPath.trafficType === 3
+                ? subPath.polyline
+                : subPath.polyline || transport.polyline,
+            transportMode: subTransportMode,
+            segmentIndex: 0,
+            isFromAccommodation,
+          });
+        }
+      } else {
+        // subPaths가 없으면 전체 경로 사용 (레거시)
         segments.push({
-          from: markers[i].coordinate,
-          to: markers[i + 1].coordinate,
-          encodedPath: scheduleItem.transportToNext?.polyline,
-          transportMode,
-          segmentIndex: i + 1,
+          from: fromCoord,
+          to: toCoord,
+          encodedPath: transport.polyline,
+          transportMode: baseTransportMode,
+          segmentIndex: 0,
+          isFromAccommodation,
         });
       }
     }
 
-    // 마지막 장소 → 도착지 (dayDestination이 있고 transportToDestination이 있을 때만)
-    if (currentDayItinerary.dayDestination && currentDayItinerary.transportToDestination && markers.length > 0) {
+    // 장소들 사이 (subPaths 분리)
+    for (let i = 0; i < currentDayItinerary.schedule.length - 1; i++) {
+      const scheduleItem = currentDayItinerary.schedule[i];
+      if (markers[i] && markers[i + 1]) {
+        const transport = scheduleItem.transportToNext;
+        if (!transport) continue;
+
+        const fromCoord = markers[i].coordinate;
+        const toCoord = markers[i + 1].coordinate;
+
+        // subPaths가 있으면 분리, 없으면 전체 경로 사용
+        if (
+          transport.transitDetails?.subPaths &&
+          transport.transitDetails.subPaths.length > 0
+        ) {
+          const subPaths = transport.transitDetails.subPaths;
+          for (const subPath of subPaths) {
+            const subTransportMode =
+              subPath.trafficType === 3
+                ? ("walking" as const)
+                : baseTransportMode;
+            const subFrom = subPath.startCoord || fromCoord;
+            const subTo = subPath.endCoord || toCoord;
+
+            // 대중교통 구간: passStopCoords가 있으면 path로 사용
+            let pathCoords: Coordinate[] | undefined;
+            if (
+              subPath.trafficType !== 3 &&
+              subPath.passStopCoords &&
+              subPath.passStopCoords.length > 0
+            ) {
+              pathCoords = [subFrom, ...subPath.passStopCoords, subTo];
+            }
+
+            segments.push({
+              from: subFrom,
+              to: subTo,
+              encodedPath:
+                subPath.trafficType === 3
+                  ? subPath.polyline
+                  : subPath.polyline || transport.polyline,
+              path: pathCoords,
+              transportMode: subTransportMode,
+              segmentIndex: i + 1,
+              isFromAccommodation: isAccommodationCoord(subFrom),
+              isToAccommodation: isAccommodationCoord(subTo),
+            });
+          }
+        } else {
+          // subPaths가 없으면 전체 경로 사용 (레거시)
+          segments.push({
+            from: fromCoord,
+            to: toCoord,
+            encodedPath: transport.polyline,
+            transportMode: baseTransportMode,
+            segmentIndex: i + 1,
+            isFromAccommodation: isAccommodationCoord(fromCoord),
+            isToAccommodation: isAccommodationCoord(toCoord),
+          });
+        }
+      }
+    }
+
+    // 마지막 장소 → 도착지 (subPaths 분리)
+    if (
+      currentDayItinerary.dayDestination &&
+      currentDayItinerary.transportToDestination &&
+      markers.length > 0
+    ) {
+      const transport = currentDayItinerary.transportToDestination;
       const lastIndex = markers.length - 1;
-      segments.push({
-        from: markers[lastIndex].coordinate,
-        to: { lat: currentDayItinerary.dayDestination.lat, lng: currentDayItinerary.dayDestination.lng },
-        encodedPath: currentDayItinerary.transportToDestination.polyline,
-        transportMode,
-        segmentIndex: lastIndex,
-      });
+      const fromCoord = markers[lastIndex].coordinate;
+      const toCoord = {
+        lat: currentDayItinerary.dayDestination.lat,
+        lng: currentDayItinerary.dayDestination.lng,
+      };
+      const isToAccommodation = isAccommodationCoord(toCoord);
+      const isToDestination =
+        !isToAccommodation &&
+        currentDayItinerary.dayDestination.type === "destination";
+
+      // subPaths가 있으면 분리, 없으면 전체 경로 사용
+      if (
+        transport.transitDetails?.subPaths &&
+        transport.transitDetails.subPaths.length > 0
+      ) {
+        const subPaths = transport.transitDetails.subPaths;
+        for (const subPath of subPaths) {
+          const subTransportMode =
+            subPath.trafficType === 3
+              ? ("walking" as const)
+              : baseTransportMode;
+          const subFrom = subPath.startCoord || fromCoord;
+          const subTo = subPath.endCoord || toCoord;
+
+          segments.push({
+            from: subFrom,
+            to: subTo,
+            encodedPath:
+              subPath.trafficType === 3
+                ? subPath.polyline
+                : subPath.polyline || transport.polyline,
+            transportMode: subTransportMode,
+            segmentIndex: lastIndex,
+            isToAccommodation,
+            isToDestination,
+          });
+        }
+      } else {
+        // subPaths가 없으면 전체 경로 사용 (레거시)
+        segments.push({
+          from: fromCoord,
+          to: toCoord,
+          encodedPath: transport.polyline,
+          transportMode: baseTransportMode,
+          segmentIndex: lastIndex,
+          isToAccommodation,
+          isToDestination,
+        });
+      }
     }
 
     return segments;
-  }, [currentDayItinerary, markers, trip.transportModes]);
+  }, [currentDayItinerary, markers, trip.transportModes, trip.accommodations]);
 
   // 초기 바운드 설정
   useEffect(() => {
@@ -577,7 +782,10 @@ function NavigationMapContent({
   useEffect(() => {
     if (!map || !isReady || !currentDestination) return;
 
-    const position = new window.kakao.maps.LatLng(currentDestination.lat, currentDestination.lng);
+    const position = new window.kakao.maps.LatLng(
+      currentDestination.lat,
+      currentDestination.lng,
+    );
     map.panTo(position);
   }, [map, isReady, currentDestination]);
 
@@ -604,7 +812,10 @@ function NavigationMapContent({
       {/* 출발지 마커 (dayOrigin이 있을 때만) */}
       {currentDayItinerary.dayOrigin && (
         <SingleMarker
-          coordinate={{ lat: currentDayItinerary.dayOrigin.lat, lng: currentDayItinerary.dayOrigin.lng }}
+          coordinate={{
+            lat: currentDayItinerary.dayOrigin.lat,
+            lng: currentDayItinerary.dayOrigin.lng,
+          }}
           type={
             (currentDayItinerary.dayOrigin.type === "waypoint"
               ? "default"
@@ -624,11 +835,15 @@ function NavigationMapContent({
       {/* 도착지 마커 (dayDestination이 있을 때만) */}
       {currentDayItinerary.dayDestination && (
         <SingleMarker
-          coordinate={{ lat: currentDayItinerary.dayDestination.lat, lng: currentDayItinerary.dayDestination.lng }}
+          coordinate={{
+            lat: currentDayItinerary.dayDestination.lat,
+            lng: currentDayItinerary.dayDestination.lng,
+          }}
           type={
             (currentDayItinerary.dayDestination.type === "waypoint"
               ? "default"
-              : currentDayItinerary.dayDestination.type) as SingleMarkerProps["type"]
+              : currentDayItinerary.dayDestination
+                  .type) as SingleMarkerProps["type"]
           }
         />
       )}
@@ -659,10 +874,11 @@ export default function NavigatePage({ params }: NavigatePageProps) {
   const [daySelectOpen, setDaySelectOpen] = useState(false);
 
   // 현재 위치 추적
-  const { coordinate: currentLocation, error: locationError } = useCurrentLocation({
-    enabled: true,
-    enableHighAccuracy: true,
-  });
+  const { coordinate: currentLocation, error: locationError } =
+    useCurrentLocation({
+      enabled: true,
+      enableHighAccuracy: true,
+    });
 
   // 여행 데이터 로드
   useEffect(() => {
@@ -680,13 +896,16 @@ export default function NavigatePage({ params }: NavigatePageProps) {
         // 오늘 날짜에 해당하는 일차 찾기
         if (result.data.itinerary && result.data.itinerary.length > 0) {
           const today = new Date().toISOString().split("T")[0];
-          const todayIndex = result.data.itinerary.findIndex((it) => it.date === today);
+          const todayIndex = result.data.itinerary.findIndex(
+            (it) => it.date === today,
+          );
           if (todayIndex !== -1) {
             setSelectedDayIndex(todayIndex);
           }
 
           // 초기 currentIndex 설정: dayOrigin이 있으면 -1, 없으면 0
-          const initialItinerary = result.data.itinerary[todayIndex !== -1 ? todayIndex : 0];
+          const initialItinerary =
+            result.data.itinerary[todayIndex !== -1 ? todayIndex : 0];
           if (initialItinerary?.dayOrigin) {
             setCurrentIndex(-1); // 출발지 → 첫 경유지 구간부터 시작
           } else {
@@ -728,33 +947,40 @@ export default function NavigatePage({ params }: NavigatePageProps) {
   // currentIndex = 0~N: 경유지들
   // currentIndex = schedule.length: 마지막 경유지 → 도착지
   const currentItemWithCoordinate = useMemo(() => {
-    if (!currentDayItinerary || currentDayItinerary.schedule.length === 0) return null;
+    if (!currentDayItinerary || currentDayItinerary.schedule.length === 0)
+      return null;
 
     // 출발지 → 첫 경유지 구간
     if (currentIndex === -1 && currentDayItinerary.dayOrigin) {
-      const firstPlace = currentDayItinerary.schedule[0];
-      const coordinate = placeCoordinates.get(firstPlace.placeId);
-      if (!coordinate) return null;
-
+      // 출발지 정보 반환
       return {
-        placeId: firstPlace.placeId,
-        placeName: firstPlace.placeName,
-        coordinate,
-        arrivalTime: firstPlace.arrivalTime,
-        departureTime: firstPlace.departureTime,
-        duration: firstPlace.duration,
-        isFixed: firstPlace.isFixed,
-        order: firstPlace.order,
-        transportToNext: firstPlace.transportToNext,
+        placeId: "origin",
+        placeName: currentDayItinerary.dayOrigin.name,
+        coordinate: {
+          lat: currentDayItinerary.dayOrigin.lat,
+          lng: currentDayItinerary.dayOrigin.lng,
+        },
+        arrivalTime: "",
+        departureTime: "",
+        duration: 0,
+        isFixed: false,
+        order: 0, // 출발지는 0번
+        transportToNext: currentDayItinerary.transportFromOrigin,
       };
     }
 
     // 마지막 경유지 → 도착지 구간
-    if (currentIndex === currentDayItinerary.schedule.length && currentDayItinerary.dayDestination) {
+    if (
+      currentIndex === currentDayItinerary.schedule.length &&
+      currentDayItinerary.dayDestination
+    ) {
       return {
         placeId: "destination",
         placeName: currentDayItinerary.dayDestination.name,
-        coordinate: { lat: currentDayItinerary.dayDestination.lat, lng: currentDayItinerary.dayDestination.lng },
+        coordinate: {
+          lat: currentDayItinerary.dayDestination.lat,
+          lng: currentDayItinerary.dayDestination.lng,
+        },
         arrivalTime: "",
         departureTime: "",
         duration: 0,
@@ -786,11 +1012,17 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     }
 
     // 마지막 경유지 직전이고 도착지가 있으면 도착지가 다음
-    if (currentIndex === currentDayItinerary.schedule.length - 1 && currentDayItinerary.dayDestination) {
+    if (
+      currentIndex === currentDayItinerary.schedule.length - 1 &&
+      currentDayItinerary.dayDestination
+    ) {
       return {
         placeId: "destination",
         placeName: currentDayItinerary.dayDestination.name,
-        coordinate: { lat: currentDayItinerary.dayDestination.lat, lng: currentDayItinerary.dayDestination.lng },
+        coordinate: {
+          lat: currentDayItinerary.dayDestination.lat,
+          lng: currentDayItinerary.dayDestination.lng,
+        },
         arrivalTime: "",
         departureTime: "",
         duration: 0,
@@ -801,7 +1033,8 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     }
 
     // 다음 경유지
-    if (currentIndex >= currentDayItinerary.schedule.length - 1) return undefined;
+    if (currentIndex >= currentDayItinerary.schedule.length - 1)
+      return undefined;
     const item = currentDayItinerary.schedule[currentIndex + 1];
     if (!item) return undefined;
     const coordinate = placeCoordinates.get(item.placeId);
@@ -810,13 +1043,18 @@ export default function NavigatePage({ params }: NavigatePageProps) {
   }, [currentDayItinerary, currentIndex, placeCoordinates]);
 
   // 마커 클릭 핸들러
-  const handleMarkerClick = useCallback((placeId: string) => {
-    if (!currentDayItinerary) return;
-    const index = currentDayItinerary.schedule.findIndex((item) => item.placeId === placeId);
-    if (index !== -1) {
-      setCurrentIndex(index);
-    }
-  }, [currentDayItinerary]);
+  const handleMarkerClick = useCallback(
+    (placeId: string) => {
+      if (!currentDayItinerary) return;
+      const index = currentDayItinerary.schedule.findIndex(
+        (item) => item.placeId === placeId,
+      );
+      if (index !== -1) {
+        setCurrentIndex(index);
+      }
+    },
+    [currentDayItinerary],
+  );
 
   // 현재 위치로 지도 이동
   const handleCenterToCurrentLocation = useCallback(() => {
@@ -849,8 +1087,11 @@ export default function NavigatePage({ params }: NavigatePageProps) {
   const handleOpenKakaoMap = useCallback(() => {
     if (!currentItemWithCoordinate) return;
     openKakaoMapNavigation(
-      { name: currentItemWithCoordinate.placeName, coordinate: currentItemWithCoordinate.coordinate },
-      currentLocation || undefined
+      {
+        name: currentItemWithCoordinate.placeName,
+        coordinate: currentItemWithCoordinate.coordinate,
+      },
+      currentLocation || undefined,
     );
   }, [currentItemWithCoordinate, currentLocation]);
 
@@ -858,8 +1099,11 @@ export default function NavigatePage({ params }: NavigatePageProps) {
   const handleOpenNaverMap = useCallback(() => {
     if (!currentItemWithCoordinate) return;
     openNaverMapNavigation(
-      { name: currentItemWithCoordinate.placeName, coordinate: currentItemWithCoordinate.coordinate },
-      currentLocation || undefined
+      {
+        name: currentItemWithCoordinate.placeName,
+        coordinate: currentItemWithCoordinate.coordinate,
+      },
+      currentLocation || undefined,
     );
   }, [currentItemWithCoordinate, currentLocation]);
 
@@ -867,8 +1111,11 @@ export default function NavigatePage({ params }: NavigatePageProps) {
   const handleOpenGoogleMap = useCallback(() => {
     if (!currentItemWithCoordinate) return;
     openGoogleMapNavigation(
-      { name: currentItemWithCoordinate.placeName, coordinate: currentItemWithCoordinate.coordinate },
-      currentLocation || undefined
+      {
+        name: currentItemWithCoordinate.placeName,
+        coordinate: currentItemWithCoordinate.coordinate,
+      },
+      currentLocation || undefined,
     );
   }, [currentItemWithCoordinate, currentLocation]);
 
@@ -943,7 +1190,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
           type="itinerary"
           description="최적화된 일정이 없습니다. 일정을 최적화한 후 네비게이션을 시작해주세요."
           actionLabel="일정 편집하기"
-          onAction={() => window.location.href = `/plan/${tripId}`}
+          onAction={() => (window.location.href = `/plan/${tripId}`)}
         />
       </main>
     );
@@ -977,8 +1224,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
 
   // 지도 초기 중심 좌표
   const initialCenter = currentItemWithCoordinate?.coordinate ||
-    (trip.places[0]?.coordinate) ||
-    { lat: 37.5665, lng: 126.978 };
+    trip.places[0]?.coordinate || { lat: 37.5665, lng: 126.978 };
 
   return (
     <main className="flex flex-col h-[calc(100dvh-64px)]">
@@ -1041,11 +1287,22 @@ export default function NavigatePage({ params }: NavigatePageProps) {
             onOpenGoogleMap={handleOpenGoogleMap}
             onPrevious={handlePrevious}
             onNext={handleNext}
-            hasPrevious={currentIndex > (currentDayItinerary.dayOrigin ? -1 : 0)}
-            hasNext={currentIndex < (currentDayItinerary.dayDestination ? currentDayItinerary.schedule.length : currentDayItinerary.schedule.length - 1)}
+            hasPrevious={
+              currentIndex > (currentDayItinerary.dayOrigin ? -1 : 0)
+            }
+            hasNext={
+              currentIndex <
+              (currentDayItinerary.dayDestination
+                ? currentDayItinerary.schedule.length
+                : currentDayItinerary.schedule.length - 1)
+            }
             isExpanded={isPanelExpanded}
             onToggleExpand={() => setIsPanelExpanded(!isPanelExpanded)}
             isOriginSegment={currentIndex === -1}
+            isDestinationSegment={
+              currentIndex === currentDayItinerary.schedule.length &&
+              !!currentDayItinerary.dayDestination
+            }
             originName={currentDayItinerary.dayOrigin?.name}
           />
         )}
@@ -1076,11 +1333,15 @@ export default function NavigatePage({ params }: NavigatePageProps) {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-semibold">{itinerary.dayNumber}일차</p>
-                    <p className={`text-sm ${index === selectedDayIndex ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                    <p
+                      className={`text-sm ${index === selectedDayIndex ? "text-primary-foreground/80" : "text-muted-foreground"}`}
+                    >
                       {formatDate(itinerary.date)}
                     </p>
                   </div>
-                  <div className={`text-sm ${index === selectedDayIndex ? "text-primary-foreground/80" : "text-muted-foreground"}`}>
+                  <div
+                    className={`text-sm ${index === selectedDayIndex ? "text-primary-foreground/80" : "text-muted-foreground"}`}
+                  >
                     {itinerary.placeCount}개 장소
                   </div>
                 </div>
