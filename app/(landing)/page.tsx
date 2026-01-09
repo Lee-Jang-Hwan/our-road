@@ -37,10 +37,14 @@ export default async function Home() {
         </div>
 
         {/* Headline */}
-        <h1 className="text-white text-[42px] font-extrabold tracking-tight leading-tight drop-shadow-lg mb-2">
-          RoAId
+        <h1 className="text-white text-[42px] font-extrabold tracking-tight leading-tight drop-shadow-lg mb-2 font-[family-name:var(--font-chango)]">
+          RootUs
         </h1>
 
+        {/* Tagline */}
+        <p className="text-white/90 text-lg drop-shadow-md font-[family-name:var(--font-single-day)]">
+          우리한테 딱 맞는 여행&데이트 코스
+        </p>
       </div>
 
       {/* Footer / Action Area */}

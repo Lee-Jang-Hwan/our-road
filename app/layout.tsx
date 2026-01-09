@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { koKR } from "@clerk/localizations";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Single_Day, Chango } from "next/font/google";
 
 import { SyncUserProvider } from "@/components/providers/sync-user-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -14,6 +14,17 @@ const geistSans = Geist({
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+const singleDay = Single_Day({
+  variable: "--font-single-day",
+  weight: "400",
+});
+
+const chango = Chango({
+  variable: "--font-chango",
+  weight: "400",
   subsets: ["latin"],
 });
 
@@ -45,7 +56,7 @@ export default function RootLayout({
           />
         </head>
         <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased desktop-background`}
+          className={`${geistSans.variable} ${geistMono.variable} ${singleDay.variable} ${chango.variable} antialiased desktop-background`}
         >
           <SyncUserProvider>
             <div className="app-container-safe">
