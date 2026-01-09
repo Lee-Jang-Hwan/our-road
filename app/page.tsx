@@ -1,6 +1,7 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@clerk/nextjs/server";
 import { Button } from "@/components/ui/button";
-import { SignedIn, SignedOut } from "@clerk/nextjs";
 import {
   LuMapPin,
   LuRoute,
@@ -9,7 +10,14 @@ import {
   LuChevronRight,
 } from "react-icons/lu";
 
-export default function Home() {
+export default async function Home() {
+  const { userId } = await auth();
+
+  // 로그인 상태면 /my로 리다이렉트
+  if (userId) {
+    redirect("/my");
+  }
+
   return (
     <main className="flex flex-col min-h-[calc(100dvh-64px)] px-4 pb-8">
       {/* Hero Section */}
@@ -57,34 +65,18 @@ export default function Home() {
 
       {/* CTA Section */}
       <section className="space-y-3 pt-4">
-        <SignedOut>
-          <Link href="/sign-in" className="block">
-            <Button className="w-full h-14 text-lg font-semibold">
-              시작하기
-              <LuChevronRight className="w-5 h-5 ml-1" />
-            </Button>
+        <Link href="/sign-in" className="block">
+          <Button className="w-full h-14 text-lg font-semibold">
+            시작하기
+            <LuChevronRight className="w-5 h-5 ml-1" />
+          </Button>
+        </Link>
+        <p className="text-center text-sm text-muted-foreground">
+          이미 계정이 있으신가요?{" "}
+          <Link href="/sign-in" className="text-primary underline">
+            로그인
           </Link>
-          <p className="text-center text-sm text-muted-foreground">
-            이미 계정이 있으신가요?{" "}
-            <Link href="/sign-in" className="text-primary underline">
-              로그인
-            </Link>
-          </p>
-        </SignedOut>
-
-        <SignedIn>
-          <Link href="/plan" className="block" replace>
-            <Button className="w-full h-14 text-lg font-semibold">
-              새 여행 계획하기
-              <LuChevronRight className="w-5 h-5 ml-1" />
-            </Button>
-          </Link>
-          <Link href="/my" className="block">
-            <Button variant="outline" className="w-full h-12">
-              내 여행 보기
-            </Button>
-          </Link>
-        </SignedIn>
+        </p>
       </section>
 
       {/* Footer */}
