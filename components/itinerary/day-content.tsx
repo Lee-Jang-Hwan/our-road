@@ -13,10 +13,10 @@ import type { TripLocation } from "@/types/trip";
 interface DayContentProps {
   /** 일자별 일정 */
   itinerary: DailyItinerary;
-  /** 출발지 정보 */
-  origin?: TripLocation;
-  /** 도착지 정보 */
-  destination?: TripLocation;
+  /** Trip-level origin (fallback when dayOrigin is missing) */
+  origin?: TripLocation | null;
+  /** Trip-level destination (fallback when dayDestination is missing) */
+  destination?: TripLocation | null;
   /** 항목 클릭 핸들러 */
   onItemClick?: (item: ScheduleItemType) => void;
   /** 수정 핸들러 */
@@ -50,6 +50,13 @@ export function DayContent({
   showHeader = true,
   className,
 }: DayContentProps) {
+  // Normalize type to prevent "waypoint" type from being passed to OriginDestinationItem
+  const normalizeEndpointType = (
+    type: NonNullable<DailyItinerary["dayOrigin"]>["type"]
+  ): "origin" | "accommodation" | "destination" | "lastPlace" => {
+    return type === "waypoint" ? "lastPlace" : type;
+  };
+
   const formattedDate = React.useMemo(() => {
     const date = new Date(itinerary.date);
     const month = date.getMonth() + 1;
@@ -58,6 +65,15 @@ export function DayContent({
     const dayName = dayNames[date.getDay()];
     return `${month}월 ${day}일 (${dayName})`;
   }, [itinerary.date]);
+
+  // Resolved origin: prioritize dayOrigin, fallback to trip origin
+  const resolvedOrigin: NonNullable<DailyItinerary["dayOrigin"]> | null =
+    itinerary.dayOrigin ?? (origin ? { ...origin, type: "origin" } : null);
+
+  // Resolved destination: prioritize dayDestination, fallback to trip destination
+  const resolvedDestination: NonNullable<DailyItinerary["dayDestination"]> | null =
+    itinerary.dayDestination ??
+    (destination ? { ...destination, type: "destination" } : null);
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -77,12 +93,12 @@ export function DayContent({
         <DayContentEmpty />
       ) : (
         <div className="space-y-1">
-          {/* 시작점 (출발지 또는 전날 숙소) - dayOrigin 우선 사용 */}
-          {(itinerary.dayOrigin || origin) && (
+          {/* 시작점 (출발지 또는 전날 숙소) - dayOrigin 우선, 없으면 trip origin 사용 */}
+          {resolvedOrigin && (
             <>
               <OriginDestinationItem
-                type={itinerary.dayOrigin?.type ?? "origin"}
-                name={itinerary.dayOrigin?.name ?? origin?.name ?? ""}
+                type={normalizeEndpointType(resolvedOrigin.type)}
+                name={resolvedOrigin.name}
                 time={itinerary.dailyStartTime || itinerary.startTime}
               />
               {/* 시작점 → 첫 장소 이동 */}
@@ -112,15 +128,15 @@ export function DayContent({
             </React.Fragment>
           ))}
 
-          {/* 끝점 (도착지 또는 숙소) - dayDestination 우선 사용 */}
-          {(itinerary.dayDestination || destination) && (
+          {/* 끝점 (도착지 또는 숙소) - dayDestination 우선, 없으면 trip destination 사용 */}
+          {resolvedDestination && (
             <>
               {itinerary.transportToDestination && (
                 <RouteSegmentConnector segment={itinerary.transportToDestination} />
               )}
               <OriginDestinationItem
-                type={itinerary.dayDestination?.type ?? "destination"}
-                name={itinerary.dayDestination?.name ?? destination?.name ?? ""}
+                type={normalizeEndpointType(resolvedDestination.type)}
+                name={resolvedDestination.name}
                 time={calculateDestinationArrivalTime(itinerary)}
               />
             </>
@@ -308,10 +324,10 @@ interface DayContentPanelProps {
   itineraries: DailyItinerary[];
   /** 현재 선택된 일차 */
   selectedDay: number;
-  /** 출발지 정보 */
-  origin?: TripLocation;
-  /** 도착지 정보 */
-  destination?: TripLocation;
+  /** Trip-level origin (fallback when dayOrigin is missing) */
+  origin?: TripLocation | null;
+  /** Trip-level destination (fallback when dayDestination is missing) */
+  destination?: TripLocation | null;
   /** 항목 클릭 핸들러 */
   onItemClick?: (item: ScheduleItemType) => void;
   /** 수정 핸들러 */

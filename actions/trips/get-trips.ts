@@ -182,9 +182,12 @@ export async function getTripList(
     // 4. 여행 목록 조회
     let tripsQuery = supabase
       .from("trips")
-      .select("id, title, start_date, end_date, status, created_at", {
-        count: "exact",
-      })
+      .select(
+        "id, title, start_date, end_date, status, created_at, trip_places(count)",
+        {
+          count: "exact",
+        }
+      )
       .order("created_at", { ascending: false });
 
     if (status) {
@@ -217,35 +220,14 @@ export async function getTripList(
       };
     }
 
-    // 5. 각 여행의 장소 수 조회
-    const tripIds = trips.map((t) => t.id);
-    const { data: placeCounts, error: placeCountError } = await supabase
-      .from("trip_places")
-      .select("trip_id")
-      .in("trip_id", tripIds);
-
-    if (placeCountError) {
-      console.error("장소 수 조회 오류:", placeCountError);
-      // 장소 수 조회 실패해도 목록은 반환
-    }
-
-    // 6. 장소 수 집계
-    const placeCountMap: Record<string, number> = {};
-    if (placeCounts) {
-      for (const place of placeCounts) {
-        placeCountMap[place.trip_id] =
-          (placeCountMap[place.trip_id] || 0) + 1;
-      }
-    }
-
-    // 7. 결과 변환
-    const tripListItems: TripListItem[] = trips.map((trip) => ({
+    // 5. 결과 변환
+    const tripListItems: TripListItem[] = trips.map((trip: any) => ({
       id: trip.id,
       title: trip.title,
       startDate: trip.start_date,
       endDate: trip.end_date,
       status: trip.status,
-      placeCount: placeCountMap[trip.id] || 0,
+      placeCount: trip.trip_places?.[0]?.count ?? 0,
       createdAt: trip.created_at,
     }));
 

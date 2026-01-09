@@ -3,14 +3,30 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
-import { LuChevronLeft, LuMapPin, LuCalendarClock, LuSparkles, LuSettings } from "react-icons/lu";
+import {
+  LuChevronLeft,
+  LuMapPin,
+  LuCalendarClock,
+  LuSparkles,
+  LuPencil,
+} from "react-icons/lu";
 import { Clock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTripDraft } from "@/hooks/use-trip-draft";
+import { useRouter } from "next/navigation";
+import { getTrip } from "@/actions/trips/get-trip";
+import { getPlaces } from "@/actions/places/get-places";
+import { getFixedSchedules } from "@/actions/schedules/get-fixed-schedules";
 import type { TripStatus } from "@/types/trip";
 import type { FixedSchedule } from "@/types/schedule";
 import type { Place } from "@/types/place";
@@ -21,7 +37,12 @@ interface TripEditPageProps {
 
 export default function TripEditPage({ params }: TripEditPageProps) {
   const { tripId } = use(params);
-  const { getDraftByTripId, isLoaded } = useTripDraft();
+  const router = useRouter();
+  const { getDraftByTripId, savePlaces, saveFixedSchedules, isLoaded } =
+    useTripDraft();
+  const handleBack = () => {
+    router.push("/my");
+  };
   const [tripData, setTripData] = useState<{
     id: string;
     title: string;
@@ -33,39 +54,96 @@ export default function TripEditPage({ params }: TripEditPageProps) {
     fixedSchedules: FixedSchedule[];
     places: Place[];
   } | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
 
-  // sessionStorage에서 여행 데이터 로드
+  // 초기 로드: DB에서 데이터 가져오기
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isLoaded || isInitialized) return;
 
-    const draft = getDraftByTripId(tripId);
-    if (draft) {
-      setTripData({
-        id: tripId,
-        title: draft.tripInfo.title,
-        startDate: draft.tripInfo.startDate,
-        endDate: draft.tripInfo.endDate,
-        status: "draft",
-        placeCount: draft.places.length,
-        fixedScheduleCount: draft.fixedSchedules?.length || 0,
-        fixedSchedules: draft.fixedSchedules || [],
-        places: draft.places || [],
-      });
-    } else {
-      // draft가 없으면 기본값 (직접 URL 접근 시)
-      setTripData({
-        id: tripId,
-        title: "새 여행",
-        startDate: new Date().toISOString().split("T")[0],
-        endDate: new Date().toISOString().split("T")[0],
-        status: "draft",
-        placeCount: 0,
-        fixedScheduleCount: 0,
-        fixedSchedules: [],
-        places: [],
-      });
-    }
-  }, [tripId, getDraftByTripId, isLoaded]);
+    const init = async () => {
+      // 먼저 DB에서 데이터 로드 시도
+      const [tripResult, placesResult, schedulesResult] = await Promise.all([
+        getTrip(tripId),
+        getPlaces(tripId),
+        getFixedSchedules(tripId),
+      ]);
+
+      let hasDBData = false;
+
+      // DB에서 여행 정보 로드
+      if (tripResult.success && tripResult.data) {
+        const places =
+          placesResult.success && placesResult.data ? placesResult.data : [];
+        const fixedSchedules =
+          schedulesResult.success && schedulesResult.data
+            ? schedulesResult.data
+            : [];
+
+        // DB 데이터를 sessionStorage에 저장
+        if (places.length > 0) {
+          savePlaces(places);
+        }
+        if (fixedSchedules.length > 0) {
+          saveFixedSchedules(fixedSchedules);
+        }
+
+        setTripData({
+          id: tripId,
+          title: tripResult.data.title,
+          startDate: tripResult.data.startDate,
+          endDate: tripResult.data.endDate,
+          status: tripResult.data.status,
+          placeCount: places.length,
+          fixedScheduleCount: fixedSchedules.length,
+          fixedSchedules: fixedSchedules,
+          places: places,
+        });
+        hasDBData = true;
+      }
+
+      // DB에 데이터가 없으면 sessionStorage에서 시도
+      if (!hasDBData) {
+        const draft = getDraftByTripId(tripId);
+        if (draft) {
+          setTripData({
+            id: tripId,
+            title: draft.tripInfo.title,
+            startDate: draft.tripInfo.startDate,
+            endDate: draft.tripInfo.endDate,
+            status: "draft",
+            placeCount: draft.places.length,
+            fixedScheduleCount: draft.fixedSchedules?.length || 0,
+            fixedSchedules: draft.fixedSchedules || [],
+            places: draft.places || [],
+          });
+        } else {
+          // 둘 다 없으면 기본값 (직접 URL 접근 시)
+          setTripData({
+            id: tripId,
+            title: "새 여행",
+            startDate: new Date().toISOString().split("T")[0],
+            endDate: new Date().toISOString().split("T")[0],
+            status: "draft",
+            placeCount: 0,
+            fixedScheduleCount: 0,
+            fixedSchedules: [],
+            places: [],
+          });
+        }
+      }
+
+      setIsInitialized(true);
+    };
+
+    init();
+  }, [
+    tripId,
+    getDraftByTripId,
+    isLoaded,
+    isInitialized,
+    savePlaces,
+    saveFixedSchedules,
+  ]);
 
   // 로딩 상태
   if (!isLoaded || !tripData) {
@@ -119,20 +197,28 @@ export default function TripEditPage({ params }: TripEditPageProps) {
       {/* 헤더 */}
       <header className="flex items-center justify-between px-4 py-3 border-b">
         <div className="flex items-center gap-3">
-          <Link href="/my">
-            <Button variant="ghost" size="icon" className="shrink-0">
-              <LuChevronLeft className="w-5 h-5" />
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0"
+            onClick={handleBack}
+          >
+            <LuChevronLeft className="w-5 h-5" />
+          </Button>
           <div>
             <h1 className="font-semibold text-lg">{trip.title}</h1>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground ">
               {trip.startDate} ~ {trip.endDate}
             </p>
           </div>
         </div>
-        <Button variant="ghost" size="icon">
-          <LuSettings className="w-5 h-5" />
+        <Button
+          variant="outline"
+          onClick={() => router.push(`/plan/${tripId}/edit`)}
+          className="touch-target"
+        >
+          <LuPencil className="w-4 h-4" />
+          수정하기
         </Button>
       </header>
 
@@ -147,16 +233,12 @@ export default function TripEditPage({ params }: TripEditPageProps) {
           const isPlaceStep = step.title === "장소 추가";
           const isFixedScheduleStep = step.title === "고정 일정 설정";
           const hasPlaces = isPlaceStep && trip.places.length > 0;
-          const hasFixedSchedules = isFixedScheduleStep && trip.fixedSchedules.length > 0;
+          const hasFixedSchedules =
+            isFixedScheduleStep && trip.fixedSchedules.length > 0;
 
           return (
-            <Link
-              key={step.title}
-              href={step.href}
-            >
-              <Card
-                className="transition-all hover:border-primary hover:shadow-sm"
-              >
+            <Link key={step.title} href={step.href}>
+              <Card className="transition-all duration-200 hover:border-primary hover:shadow-lg hover:bg-primary/10 hover:scale-[1.02] active:scale-[0.98] active:bg-primary/20 cursor-pointer">
                 <CardHeader className="flex flex-row items-start gap-4 pb-2">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
@@ -169,6 +251,7 @@ export default function TripEditPage({ params }: TripEditPageProps) {
                   </div>
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center gap-2">
+                      <Icon className="w-5 h-5 text-muted-foreground shrink-0" />
                       <CardTitle className="text-base">{step.title}</CardTitle>
                       {step.isOptional && (
                         <Badge variant="secondary" className="text-xs">
@@ -178,7 +261,6 @@ export default function TripEditPage({ params }: TripEditPageProps) {
                     </div>
                     <CardDescription>{step.description}</CardDescription>
                   </div>
-                  <Icon className="w-5 h-5 text-muted-foreground shrink-0" />
                 </CardHeader>
 
                 {/* 장소 미리보기 */}
@@ -217,7 +299,9 @@ export default function TripEditPage({ params }: TripEditPageProps) {
                   <CardContent className="pt-0 pb-3">
                     <div className="space-y-2">
                       {trip.fixedSchedules.slice(0, 3).map((schedule) => {
-                        const place = trip.places.find((p) => p.id === schedule.placeId);
+                        const place = trip.places.find(
+                          (p) => p.id === schedule.placeId,
+                        );
                         return (
                           <div
                             key={schedule.id}
@@ -231,7 +315,8 @@ export default function TripEditPage({ params }: TripEditPageProps) {
                                 {place?.name || "알 수 없는 장소"}
                               </p>
                               <p className="text-xs text-zinc-400">
-                                {format(new Date(schedule.date), "M월 d일")} {schedule.startTime}
+                                {format(new Date(schedule.date), "M월 d일")}{" "}
+                                {schedule.startTime}
                               </p>
                             </div>
                             <Badge className="bg-white/10 text-white text-xs border-0 shrink-0">
@@ -255,12 +340,9 @@ export default function TripEditPage({ params }: TripEditPageProps) {
       </div>
 
       {/* 하단 버튼 */}
-      <div className="sticky bottom-0 p-4 bg-background border-t safe-area-bottom">
+      <div className="sticky bottom-0 p-4 backdrop-blur-sm bg-background/80 border-t pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:static md:border-t-0 md:pt-4 md:pb-0">
         <Link href={`/plan/${tripId}/result`}>
-          <Button
-            className="w-full h-12"
-            disabled={trip.placeCount === 0}
-          >
+          <Button className="w-full h-12" disabled={trip.placeCount === 0}>
             <LuSparkles className="w-4 h-4 mr-2" />
             일정 최적화하기
           </Button>

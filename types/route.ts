@@ -226,6 +226,7 @@ export interface TripInput {
   end?: LatLng;
   lodging?: LatLng;
   dailyMaxMinutes?: number;
+  tripStartDate?: string; // 여행 시작 날짜 (YYYY-MM-DD) - 고정 일정 날짜 계산용
   waypoints: Waypoint[];
 }
 

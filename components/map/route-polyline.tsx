@@ -68,7 +68,16 @@ interface RoutePolylineProps {
   /** 선 투명도 (0-1) */
   strokeOpacity?: number;
   /** 선 스타일 */
-  strokeStyle?: "solid" | "shortdash" | "shortdot" | "shortdashdot" | "dot" | "dash" | "dashdot" | "longdash" | "longdashdot";
+  strokeStyle?:
+    | "solid"
+    | "shortdash"
+    | "shortdot"
+    | "shortdashdot"
+    | "dot"
+    | "dash"
+    | "dashdot"
+    | "longdash"
+    | "longdashdot";
   /** z-index */
   zIndex?: number;
 }
@@ -76,8 +85,8 @@ interface RoutePolylineProps {
 // 이동 수단별 색상
 const TRANSPORT_COLORS: Record<TransportMode, string> = {
   walking: "#f97316", // orange-500
-  public: "#3b82f6",  // blue-500
-  car: "#22c55e",     // green-500
+  public: "#3b82f6", // blue-500
+  car: "#22c55e", // green-500
 };
 
 /**
@@ -109,7 +118,7 @@ export function RoutePolyline({
     if (!map || !isReady || actualPath.length < 2) return;
 
     const linePath = actualPath.map(
-      (coord) => new window.kakao.maps.LatLng(coord.lat, coord.lng)
+      (coord) => new window.kakao.maps.LatLng(coord.lat, coord.lng),
     );
 
     const color = strokeColor || TRANSPORT_COLORS[transportMode];
@@ -136,7 +145,17 @@ export function RoutePolyline({
         zIndex,
       });
     }
-  }, [map, isReady, actualPath, transportMode, strokeWeight, strokeColor, strokeOpacity, strokeStyle, zIndex]);
+  }, [
+    map,
+    isReady,
+    actualPath,
+    transportMode,
+    strokeWeight,
+    strokeColor,
+    strokeOpacity,
+    strokeStyle,
+    zIndex,
+  ]);
 
   // cleanup
   React.useEffect(() => {
@@ -201,7 +220,7 @@ export function MultiRoutePolyline({
       if (path.length < 2) return;
 
       const linePath = path.map(
-        (coord) => new window.kakao.maps.LatLng(coord.lat, coord.lng)
+        (coord) => new window.kakao.maps.LatLng(coord.lat, coord.lng),
       );
 
       const isSelected = id === selectedSegmentId;
@@ -383,4 +402,10 @@ export function RealRoutePolyline({
   );
 }
 
-export type { RoutePolylineProps, RouteSegmentData, MultiRoutePolylineProps, DirectRoutePolylineProps, RealRoutePolylineProps };
+export type {
+  RoutePolylineProps,
+  RouteSegmentData,
+  MultiRoutePolylineProps,
+  DirectRoutePolylineProps,
+  RealRoutePolylineProps,
+};

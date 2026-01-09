@@ -24,12 +24,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { MapSkeleton, EmptyState, ErrorState } from "@/components/ux";
 
 import { KakaoMap, useKakaoMap, useMapBounds } from "@/components/map/kakao-map";
-import { PlaceMarkers } from "@/components/map/place-markers";
-import { DirectRoutePolyline } from "@/components/map/route-polyline";
+import { PlaceMarkers, SingleMarker, type SingleMarkerProps } from "@/components/map/place-markers";
+import { RealRoutePolyline } from "@/components/map/route-polyline";
 import { CurrentLocationTracker, useCurrentLocation } from "@/components/map/current-location";
 
 import { getTripWithDetails } from "@/actions/trips/get-trip";
 import { getSegmentColor } from "@/lib/utils";
+import { useSafeBack } from "@/hooks/use-safe-back";
 import type { TripWithDetails, Coordinate } from "@/types";
 import type { ScheduleItem, DailyItinerary } from "@/types/schedule";
 
@@ -232,6 +233,8 @@ function NavigationBottomPanel({
   hasNext,
   isExpanded,
   onToggleExpand,
+  isOriginSegment,
+  originName,
 }: {
   currentItem: ScheduleItem & { coordinate: Coordinate };
   nextItem?: ScheduleItem & { coordinate: Coordinate };
@@ -245,6 +248,8 @@ function NavigationBottomPanel({
   hasNext: boolean;
   isExpanded: boolean;
   onToggleExpand: () => void;
+  isOriginSegment?: boolean;
+  originName?: string;
 }) {
   const distanceToNext = useMemo(() => {
     if (!currentLocation || !currentItem) return null;
@@ -292,16 +297,20 @@ function NavigationBottomPanel({
                 <Badge variant="secondary" className="shrink-0">고정</Badge>
               )}
             </div>
-            <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
-              <span className="flex items-center gap-1">
-                <LuClock className="w-4 h-4" />
-                {currentItem.arrivalTime} - {currentItem.departureTime}
-              </span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-2">
+                <h3 className="font-semibold text-base truncate">{originName}</h3>
+                <Badge variant="outline" className="shrink-0">출발지</Badge>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                <span className="font-medium truncate">{currentItem.placeName}</span>
+              </div>
               {distanceToNext !== null && (
-                <span className="flex items-center gap-1">
+                <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
                   <LuRoute className="w-4 h-4" />
                   {formatDistance(distanceToNext)}
-                </span>
+                </div>
               )}
             </div>
           </div>
@@ -500,24 +509,57 @@ function NavigationMapContent({
     ? placeCoordinates.get(nextScheduleItem.placeId)
     : null;
 
-  // 경로 폴리라인 (현재 위치 → 현재 목적지 → 다음 목적지)
-  const routePath = useMemo(() => {
-    const path: Coordinate[] = [];
+  // 경로 구간 배열 (실제 대중교통 경로 표시)
+  const routeSegments = useMemo(() => {
+    const segments: Array<{
+      from: Coordinate;
+      to: Coordinate;
+      encodedPath?: string;
+      transportMode: "walking" | "public" | "car";
+      segmentIndex: number;
+    }> = [];
 
-    if (currentLocation) {
-      path.push(currentLocation);
+    const transportMode = trip.transportModes.includes("car") ? "car" as const : "public" as const;
+
+    // 출발지 → 첫 장소 (dayOrigin이 있고 transportFromOrigin이 있을 때만)
+    if (currentDayItinerary.dayOrigin && currentDayItinerary.transportFromOrigin && markers.length > 0) {
+      segments.push({
+        from: { lat: currentDayItinerary.dayOrigin.lat, lng: currentDayItinerary.dayOrigin.lng },
+        to: markers[0].coordinate,
+        encodedPath: currentDayItinerary.transportFromOrigin.polyline,
+        transportMode,
+        segmentIndex: 0,
+      });
     }
 
-    if (currentDestination) {
-      path.push(currentDestination);
+    // 장소들 사이
+    for (let i = 0; i < currentDayItinerary.schedule.length - 1; i++) {
+      const scheduleItem = currentDayItinerary.schedule[i];
+      if (markers[i] && markers[i + 1]) {
+        segments.push({
+          from: markers[i].coordinate,
+          to: markers[i + 1].coordinate,
+          encodedPath: scheduleItem.transportToNext?.polyline,
+          transportMode,
+          segmentIndex: i + 1,
+        });
+      }
     }
 
-    if (nextDestination) {
-      path.push(nextDestination);
+    // 마지막 장소 → 도착지 (dayDestination이 있고 transportToDestination이 있을 때만)
+    if (currentDayItinerary.dayDestination && currentDayItinerary.transportToDestination && markers.length > 0) {
+      const lastIndex = markers.length - 1;
+      segments.push({
+        from: markers[lastIndex].coordinate,
+        to: { lat: currentDayItinerary.dayDestination.lat, lng: currentDayItinerary.dayDestination.lng },
+        encodedPath: currentDayItinerary.transportToDestination.polyline,
+        transportMode,
+        segmentIndex: lastIndex,
+      });
     }
 
-    return path;
-  }, [currentLocation, currentDestination, nextDestination]);
+    return segments;
+  }, [currentDayItinerary, markers, trip.transportModes]);
 
   // 초기 바운드 설정
   useEffect(() => {
@@ -549,6 +591,28 @@ function NavigationMapContent({
         followLocation={false}
       />
 
+      {/* 경로 폴리라인 (실제 대중교통 경로) */}
+      {routeSegments.length > 0 && (
+        <RealRoutePolyline
+          segments={routeSegments}
+          strokeWeight={5}
+          strokeOpacity={0.9}
+          useSegmentColors={true}
+        />
+      )}
+
+      {/* 출발지 마커 (dayOrigin이 있을 때만) */}
+      {currentDayItinerary.dayOrigin && (
+        <SingleMarker
+          coordinate={{ lat: currentDayItinerary.dayOrigin.lat, lng: currentDayItinerary.dayOrigin.lng }}
+          type={
+            (currentDayItinerary.dayOrigin.type === "waypoint"
+              ? "default"
+              : currentDayItinerary.dayOrigin.type) as SingleMarkerProps["type"]
+          }
+        />
+      )}
+
       {/* 장소 마커들 */}
       <PlaceMarkers
         markers={markers}
@@ -557,15 +621,15 @@ function NavigationMapContent({
         size="md"
       />
 
-      {/* 경로 폴리라인 (현재 위치 → 목적지) - 현재 목적지 색상 적용 */}
-      {routePath.length >= 2 && (
-        <DirectRoutePolyline
-          origin={routePath[0]}
-          destination={routePath[routePath.length - 1]}
-          waypoints={routePath.slice(1, -1)}
-          transportMode="public"
-          straight={true}
-          strokeColor={getSegmentColor(currentIndex)}
+      {/* 도착지 마커 (dayDestination이 있을 때만) */}
+      {currentDayItinerary.dayDestination && (
+        <SingleMarker
+          coordinate={{ lat: currentDayItinerary.dayDestination.lat, lng: currentDayItinerary.dayDestination.lng }}
+          type={
+            (currentDayItinerary.dayDestination.type === "waypoint"
+              ? "default"
+              : currentDayItinerary.dayDestination.type) as SingleMarkerProps["type"]
+          }
         />
       )}
 
@@ -585,6 +649,7 @@ function NavigationMapContent({
 export default function NavigatePage({ params }: NavigatePageProps) {
   const { tripId } = use(params);
   const { user, isLoaded } = useUser();
+  const handleBack = useSafeBack(`/my/trips/${tripId}`);
   const [trip, setTrip] = useState<TripWithDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -619,6 +684,14 @@ export default function NavigatePage({ params }: NavigatePageProps) {
           if (todayIndex !== -1) {
             setSelectedDayIndex(todayIndex);
           }
+
+          // 초기 currentIndex 설정: dayOrigin이 있으면 -1, 없으면 0
+          const initialItinerary = result.data.itinerary[todayIndex !== -1 ? todayIndex : 0];
+          if (initialItinerary?.dayOrigin) {
+            setCurrentIndex(-1); // 출발지 → 첫 경유지 구간부터 시작
+          } else {
+            setCurrentIndex(0); // 첫 번째 경유지부터 시작
+          }
         }
       } else {
         setError(result.error || "여행 정보를 불러오는데 실패했습니다.");
@@ -651,8 +724,47 @@ export default function NavigatePage({ params }: NavigatePageProps) {
   }, [trip]);
 
   // 현재 일정 항목에 좌표 추가
+  // currentIndex = -1: 출발지 → 첫 경유지
+  // currentIndex = 0~N: 경유지들
+  // currentIndex = schedule.length: 마지막 경유지 → 도착지
   const currentItemWithCoordinate = useMemo(() => {
     if (!currentDayItinerary || currentDayItinerary.schedule.length === 0) return null;
+
+    // 출발지 → 첫 경유지 구간
+    if (currentIndex === -1 && currentDayItinerary.dayOrigin) {
+      const firstPlace = currentDayItinerary.schedule[0];
+      const coordinate = placeCoordinates.get(firstPlace.placeId);
+      if (!coordinate) return null;
+
+      return {
+        placeId: firstPlace.placeId,
+        placeName: firstPlace.placeName,
+        coordinate,
+        arrivalTime: firstPlace.arrivalTime,
+        departureTime: firstPlace.departureTime,
+        duration: firstPlace.duration,
+        isFixed: firstPlace.isFixed,
+        order: firstPlace.order,
+        transportToNext: firstPlace.transportToNext,
+      };
+    }
+
+    // 마지막 경유지 → 도착지 구간
+    if (currentIndex === currentDayItinerary.schedule.length && currentDayItinerary.dayDestination) {
+      return {
+        placeId: "destination",
+        placeName: currentDayItinerary.dayDestination.name,
+        coordinate: { lat: currentDayItinerary.dayDestination.lat, lng: currentDayItinerary.dayDestination.lng },
+        arrivalTime: "",
+        departureTime: "",
+        duration: 0,
+        isFixed: false,
+        order: currentDayItinerary.schedule.length + 1,
+        transportToNext: undefined,
+      };
+    }
+
+    // 일반 경유지
     const item = currentDayItinerary.schedule[currentIndex];
     if (!item) return null;
     const coordinate = placeCoordinates.get(item.placeId);
@@ -662,7 +774,34 @@ export default function NavigatePage({ params }: NavigatePageProps) {
 
   // 다음 일정 항목에 좌표 추가
   const nextItemWithCoordinate = useMemo(() => {
-    if (!currentDayItinerary || currentIndex >= currentDayItinerary.schedule.length - 1) return undefined;
+    if (!currentDayItinerary) return undefined;
+
+    // 출발지 구간에서는 첫 경유지가 다음
+    if (currentIndex === -1) {
+      const firstPlace = currentDayItinerary.schedule[0];
+      if (!firstPlace) return undefined;
+      const coordinate = placeCoordinates.get(firstPlace.placeId);
+      if (!coordinate) return undefined;
+      return { ...firstPlace, coordinate };
+    }
+
+    // 마지막 경유지 직전이고 도착지가 있으면 도착지가 다음
+    if (currentIndex === currentDayItinerary.schedule.length - 1 && currentDayItinerary.dayDestination) {
+      return {
+        placeId: "destination",
+        placeName: currentDayItinerary.dayDestination.name,
+        coordinate: { lat: currentDayItinerary.dayDestination.lat, lng: currentDayItinerary.dayDestination.lng },
+        arrivalTime: "",
+        departureTime: "",
+        duration: 0,
+        isFixed: false,
+        order: currentDayItinerary.schedule.length + 1,
+        transportToNext: undefined,
+      };
+    }
+
+    // 다음 경유지
+    if (currentIndex >= currentDayItinerary.schedule.length - 1) return undefined;
     const item = currentDayItinerary.schedule[currentIndex + 1];
     if (!item) return undefined;
     const coordinate = placeCoordinates.get(item.placeId);
@@ -687,14 +826,21 @@ export default function NavigatePage({ params }: NavigatePageProps) {
   }, []);
 
   // 이전/다음 장소로 이동
+  // currentIndex 범위: -1(출발지) ~ schedule.length(도착지)
   const handlePrevious = useCallback(() => {
-    if (currentIndex > 0) {
+    const minIndex = currentDayItinerary?.dayOrigin ? -1 : 0;
+    if (currentIndex > minIndex) {
       setCurrentIndex((prev) => prev - 1);
     }
-  }, [currentIndex]);
+  }, [currentIndex, currentDayItinerary]);
 
   const handleNext = useCallback(() => {
-    if (currentDayItinerary && currentIndex < currentDayItinerary.schedule.length - 1) {
+    if (!currentDayItinerary) return;
+    const maxIndex = currentDayItinerary.dayDestination
+      ? currentDayItinerary.schedule.length
+      : currentDayItinerary.schedule.length - 1;
+
+    if (currentIndex < maxIndex) {
       setCurrentIndex((prev) => prev + 1);
     }
   }, [currentDayItinerary, currentIndex]);
@@ -759,11 +905,14 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     return (
       <main className="flex flex-col h-[calc(100dvh-64px)]">
         <header className="flex items-center gap-3 px-4 py-3 border-b">
-          <Link href={`/my/trips/${tripId}`}>
-            <Button variant="ghost" size="icon" className="shrink-0 touch-target">
-              <LuChevronLeft className="w-5 h-5" />
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 touch-target"
+            onClick={handleBack}
+          >
+            <LuChevronLeft className="w-5 h-5" />
+          </Button>
           <h1 className="font-semibold text-lg">네비게이션</h1>
         </header>
         <ErrorState
@@ -780,11 +929,14 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     return (
       <main className="flex flex-col h-[calc(100dvh-64px)]">
         <header className="flex items-center gap-3 px-4 py-3 border-b">
-          <Link href={`/my/trips/${tripId}`}>
-            <Button variant="ghost" size="icon" className="shrink-0 touch-target">
-              <LuChevronLeft className="w-5 h-5" />
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 touch-target"
+            onClick={handleBack}
+          >
+            <LuChevronLeft className="w-5 h-5" />
+          </Button>
           <h1 className="font-semibold text-lg">{trip.title}</h1>
         </header>
         <EmptyState
@@ -802,11 +954,14 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     return (
       <main className="flex flex-col h-[calc(100dvh-64px)]">
         <header className="flex items-center gap-3 px-4 py-3 border-b">
-          <Link href={`/my/trips/${tripId}`}>
-            <Button variant="ghost" size="icon" className="shrink-0 touch-target">
-              <LuChevronLeft className="w-5 h-5" />
-            </Button>
-          </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 touch-target"
+            onClick={handleBack}
+          >
+            <LuChevronLeft className="w-5 h-5" />
+          </Button>
           <h1 className="font-semibold text-lg">{trip.title}</h1>
         </header>
         <EmptyState
@@ -829,11 +984,14 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     <main className="flex flex-col h-[calc(100dvh-64px)]">
       {/* 헤더 */}
       <header className="flex items-center gap-3 px-4 py-3 border-b bg-background z-10">
-        <Link href={`/my/trips/${tripId}`}>
-          <Button variant="ghost" size="icon" className="shrink-0 touch-target">
-            <LuChevronLeft className="w-5 h-5" />
-          </Button>
-        </Link>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0 touch-target"
+          onClick={handleBack}
+        >
+          <LuChevronLeft className="w-5 h-5" />
+        </Button>
         <div className="flex-1 min-w-0">
           <h1 className="font-semibold text-lg truncate">{trip.title}</h1>
         </div>
@@ -883,10 +1041,12 @@ export default function NavigatePage({ params }: NavigatePageProps) {
             onOpenGoogleMap={handleOpenGoogleMap}
             onPrevious={handlePrevious}
             onNext={handleNext}
-            hasPrevious={currentIndex > 0}
-            hasNext={currentIndex < currentDayItinerary.schedule.length - 1}
+            hasPrevious={currentIndex > (currentDayItinerary.dayOrigin ? -1 : 0)}
+            hasNext={currentIndex < (currentDayItinerary.dayDestination ? currentDayItinerary.schedule.length : currentDayItinerary.schedule.length - 1)}
             isExpanded={isPanelExpanded}
             onToggleExpand={() => setIsPanelExpanded(!isPanelExpanded)}
+            isOriginSegment={currentIndex === -1}
+            originName={currentDayItinerary.dayOrigin?.name}
           />
         )}
       </div>
@@ -908,7 +1068,8 @@ export default function NavigatePage({ params }: NavigatePageProps) {
                 }`}
                 onClick={() => {
                   setSelectedDayIndex(index);
-                  setCurrentIndex(0);
+                  // dayOrigin이 있으면 -1, 없으면 0부터 시작
+                  setCurrentIndex(itinerary.dayOrigin ? -1 : 0);
                   setDaySelectOpen(false);
                 }}
               >

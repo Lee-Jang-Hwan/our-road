@@ -43,7 +43,7 @@ export function PullToRefresh({
   disabled = false,
   threshold = 80,
   maxPull = 120,
-  pullText = "아래로 당겨서 새로고침",
+  pullText = "",
   releaseText = "놓으면 새로고침",
   refreshingText = "새로고침 중...",
   className,
@@ -170,27 +170,29 @@ export function PullToRefresh({
         }}
       >
         <div className="flex flex-col items-center gap-1.5">
-          {state === "refreshing" ? (
-            <LoaderCircle className="w-5 h-5 text-primary animate-spin" />
-          ) : (
-            <ArrowDown
-              className={cn(
-                "w-5 h-5 transition-transform duration-200",
-                state === "ready" && "text-primary"
-              )}
-              style={{
-                transform: `rotate(${iconRotation}deg)`,
-              }}
-            />
-          )}
-          <span className="text-xs text-muted-foreground">
-            {state === "refreshing"
-              ? refreshingText
-              : state === "ready"
-              ? releaseText
-              : pullText}
-          </span>
-        </div>
+  {state === "refreshing" ? (
+    <LoaderCircle className="w-5 h-5 text-primary animate-spin" />
+  ) : pullText ? (
+    <ArrowDown
+      className={cn(
+        "w-5 h-5 transition-transform duration-200",
+        state === "ready" && "text-primary"
+      )}
+      style={{
+        transform: `rotate(${iconRotation}deg)`,
+      }}
+    />
+  ) : null}
+  {(state === "refreshing" || state === "ready" || pullText) && (
+    <span className="text-xs text-muted-foreground">
+      {state === "refreshing"
+        ? refreshingText
+        : state === "ready"
+        ? releaseText
+        : pullText}
+    </span>
+  )}
+</div>
       </div>
 
       {/* 컨텐츠 */}

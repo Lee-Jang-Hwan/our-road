@@ -74,7 +74,7 @@ export function TransportSelector({
   const isSelected = (mode: TransportMode) => value.includes(mode);
 
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn("space-y-2 px-2", className)}>
       {label && (
         <label className="text-sm font-medium text-muted-foreground block">
           {label}
@@ -90,7 +90,7 @@ export function TransportSelector({
             disabled={disabled}
             onClick={() => handleSelect(option.value)}
             className={cn(
-              "h-auto flex-col items-center justify-center py-4 px-3 touch-target-lg relative",
+              "h-auto flex-col items-center justify-center py-3 px-2 touch-target-lg relative",
               isSelected(option.value) && "ring-2 ring-primary ring-offset-2"
             )}
           >

@@ -11,6 +11,10 @@ import { TripFormStep2 } from "./trip-form-step2";
 import { createTripSchema, type CreateTripInput } from "@/lib/schemas";
 
 interface TripFormWizardProps {
+  /** 현재 스텝 */
+  currentStep?: number;
+  /** 스텝 변경 핸들러 */
+  onStepChange?: (step: number) => void;
   /** 폼 제출 핸들러 */
   onSubmit: (data: CreateTripInput) => Promise<void>;
   /** 초기 데이터 (수정 모드) */
@@ -21,20 +25,29 @@ interface TripFormWizardProps {
   onCancel?: () => void;
   /** 추가 클래스 */
   className?: string;
+  /** 제출 버튼 텍스트 */
+  submitButtonText?: string;
 }
 
 type SlideDirection = "forward" | "backward";
 
 export function TripFormWizard({
+  currentStep: externalCurrentStep,
+  onStepChange,
   onSubmit,
   initialData,
   isLoading = false,
   onCancel,
   className,
+  submitButtonText = "여행 만들기",
 }: TripFormWizardProps) {
-  const [currentStep, setCurrentStep] = React.useState(1);
+  const [internalCurrentStep, setInternalCurrentStep] = React.useState(1);
   const [direction, setDirection] = React.useState<SlideDirection>("forward");
   const [isAnimating, setIsAnimating] = React.useState(false);
+
+  // 외부에서 currentStep을 제어하는 경우 외부 값 사용, 아니면 내부 상태 사용
+  const currentStep = externalCurrentStep ?? internalCurrentStep;
+  const setCurrentStep = onStepChange ?? setInternalCurrentStep;
 
   const form = useForm<CreateTripInput>({
     resolver: zodResolver(createTripSchema),
@@ -50,6 +63,26 @@ export function TripFormWizard({
       accommodations: initialData?.accommodations || [],
     },
   });
+
+  // initialData가 변경될 때 폼 값 업데이트
+  React.useEffect(() => {
+    if (initialData) {
+      const resetData = {
+        title: initialData.title || "",
+        startDate: initialData.startDate || "",
+        endDate: initialData.endDate || "",
+        origin: initialData.origin || undefined,
+        destination: initialData.destination || undefined,
+        dailyStartTime: initialData.dailyStartTime || "10:00",
+        dailyEndTime: initialData.dailyEndTime || "22:00",
+        transportModes: initialData.transportModes || ["public"],
+        accommodations: initialData.accommodations || [],
+      };
+
+      form.reset(resetData);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialData]); // form은 안정적이므로 의도적으로 제외
 
   // 다음 페이지로 이동
   const handleNext = async () => {
@@ -108,7 +141,7 @@ export function TripFormWizard({
       isAnimating &&
       direction === "forward" &&
       "-translate-x-full opacity-0",
-    currentStep === 2 && "hidden"
+    currentStep === 2 && "hidden",
   );
 
   // Step 2 애니메이션 클래스
@@ -119,27 +152,27 @@ export function TripFormWizard({
       isAnimating &&
       direction === "backward" &&
       "translate-x-full opacity-0",
-    currentStep === 1 && "hidden"
+    currentStep === 1 && "hidden",
   );
 
   return (
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(handleSubmit)}
-        className={cn("relative overflow-hidden", className)}
+        className={cn("relative", className)}
       >
         {/* 진행 표시 */}
         <div className="flex gap-2 mb-6">
           <div
             className={cn(
               "h-1 flex-1 rounded-full transition-colors",
-              currentStep >= 1 ? "bg-primary" : "bg-muted"
+              currentStep >= 1 ? "bg-primary" : "bg-muted",
             )}
           />
           <div
             className={cn(
               "h-1 flex-1 rounded-full transition-colors",
-              currentStep >= 2 ? "bg-primary" : "bg-muted"
+              currentStep >= 2 ? "bg-primary" : "bg-muted",
             )}
           />
         </div>
@@ -157,6 +190,7 @@ export function TripFormWizard({
               onBack={handleBack}
               nights={nights}
               isLoading={isLoading}
+              submitButtonText={submitButtonText}
             />
           </div>
         </div>

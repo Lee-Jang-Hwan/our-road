@@ -15,7 +15,15 @@ import {
 import { PlaceSearch } from "@/components/places/place-search";
 import { PlaceList, PlaceListHeader } from "@/components/places/place-list";
 import { useTripDraft } from "@/hooks/use-trip-draft";
-import { addPlace, removePlace, removePlaces, updatePlaceDuration, getPlaces, reorderPlaces } from "@/actions/places";
+import { useSafeBack } from "@/hooks/use-safe-back";
+import {
+  addPlace,
+  removePlace,
+  removePlaces,
+  updatePlaceDuration,
+  getPlaces,
+  reorderPlaces,
+} from "@/actions/places";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import type { Place, PlaceSearchResult } from "@/types/place";
 
@@ -39,6 +47,7 @@ const DURATION_OPTIONS = [
 export default function PlacesPage({ params }: PlacesPageProps) {
   const { tripId } = use(params);
   const { getDraftByTripId, savePlaces, isLoaded } = useTripDraft();
+  const handleBack = useSafeBack(`/plan/${tripId}`);
   const [places, setPlaces] = useState<Place[]>([]);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -117,8 +126,10 @@ export default function PlacesPage({ params }: PlacesPageProps) {
     // 즉시 UI 업데이트
     setPlaces((prev) =>
       prev.map((place) =>
-        place.id === placeId ? { ...place, estimatedDuration: duration } : place
-      )
+        place.id === placeId
+          ? { ...place, estimatedDuration: duration }
+          : place,
+      ),
     );
 
     try {
@@ -200,14 +211,17 @@ export default function PlacesPage({ params }: PlacesPageProps) {
   };
 
   return (
-    <main className="flex flex-col min-h-[calc(100dvh-64px)]">
+    <main className="flex flex-col pb-10 min-h-[calc(100dvh-64px)]">
       {/* 헤더 */}
       <header className="flex items-center gap-3 px-4 py-3 border-b">
-        <Link href={`/plan/${tripId}`}>
-          <Button variant="ghost" size="icon" className="shrink-0">
-            <LuChevronLeft className="w-5 h-5" />
-          </Button>
-        </Link>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="shrink-0"
+          onClick={handleBack}
+        >
+          <LuChevronLeft className="w-5 h-5" />
+        </Button>
         <h1 className="font-semibold text-lg flex-1">장소 관리</h1>
         <Button
           size="sm"
@@ -238,7 +252,7 @@ export default function PlacesPage({ params }: PlacesPageProps) {
 
       {/* 하단 버튼 */}
       {places.length > 0 && (
-        <div className="sticky bottom-0 p-4 bg-background border-t safe-area-bottom">
+        <div className="sticky bottom-0 p-4 backdrop-blur-sm bg-background/80 border-t pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:static md:border-t-0 md:pt-4 md:pb-0">
           <Link href={`/plan/${tripId}`}>
             <Button className="w-full h-12">
               {places.length}개 장소 저장 완료

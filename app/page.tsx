@@ -19,10 +19,10 @@ export default async function Home() {
   }
 
   return (
-    <main className="flex flex-col min-h-[calc(100dvh-64px)] px-4 pb-8">
+    <main className="flex flex-col min-h-[calc(100dvh-64px)] px-4">
       {/* Hero Section */}
-      <section className="flex-1 flex flex-col justify-center py-8">
-        <div className="space-y-6">
+      <section>
+        <div className="space-y-3">
           {/* 메인 타이틀 */}
           <div className="space-y-3">
             <h1 className="text-3xl font-bold leading-tight">
@@ -38,27 +38,29 @@ export default async function Home() {
           </div>
 
           {/* 주요 기능 */}
-          <div className="grid grid-cols-2 gap-3 py-4">
+          <div className="grid grid-cols-2 gap-3 py-1">
+          <FeatureCard
+              icon={<LuClock className="w-5 h-5" />}
+              title="날짜 선택"
+              description="여행 날짜를를 선택하세요"
+            />
             <FeatureCard
               icon={<LuMapPin className="w-5 h-5" />}
               title="장소 선택"
-              description="가고 싶은 곳만 고르세요"
+              description="가고 싶은 곳을 검색하세요"
             />
             <FeatureCard
               icon={<LuRoute className="w-5 h-5" />}
               title="동선 최적화"
               description="이동 시간을 최소화"
             />
-            <FeatureCard
-              icon={<LuClock className="w-5 h-5" />}
-              title="일정 조율"
-              description="영업시간 자동 반영"
-            />
+
             <FeatureCard
               icon={<LuNavigation className="w-5 h-5" />}
               title="네비게이션"
               description="길을 잃어 헤멜 걱정 없어요"
             />
+            
           </div>
         </div>
       </section>
@@ -80,7 +82,7 @@ export default async function Home() {
       </section>
 
       {/* Footer */}
-      <footer className="pt-8 pb-4">
+      <footer className="pt-16 pb-4">
         <p className="text-center text-xs text-muted-foreground">
           OurRoad - AI 기반 여행 동선 최적화 서비스
         </p>

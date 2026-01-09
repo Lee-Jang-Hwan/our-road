@@ -3,7 +3,12 @@
 // ============================================
 
 import { z } from "zod";
-import { dateSchema, timeSchema, uuidSchema } from "./common";
+import {
+  dateSchema,
+  timeSchema,
+  uuidSchema,
+  dateFormatValidator,
+} from "./common";
 
 /**
  * 여행 상태 스키마
@@ -67,10 +72,25 @@ export const createTripSchema = z
       .string()
       .min(1, "여행 제목은 필수입니다")
       .max(50, "여행 제목은 50자 이하여야 합니다"),
-    startDate: dateSchema,
-    endDate: dateSchema,
-    origin: tripLocationSchema,
-    destination: tripLocationSchema,
+
+    startDate: z
+      .string()
+      .min(1, "시작일을 선택해주세요")
+      .refine(dateFormatValidator),
+    endDate: z
+      .string()
+      .min(1, "종료일을 선택해주세요")
+      .refine(dateFormatValidator),
+      origin: tripLocationSchema
+      .optional()
+      .refine((val) => val !== undefined && val !== null, {
+        message: "출발지를 입력해주세요",
+      }),
+    destination: tripLocationSchema
+      .optional()
+      .refine((val) => val !== undefined && val !== null, {
+        message: "도착지를 입력해주세요",
+      }),
     dailyStartTime: timeSchema.default("10:00"),
     dailyEndTime: timeSchema.default("22:00"),
     transportModes: z
@@ -93,7 +113,7 @@ export const createTripSchema = z
     {
       message: "여행 기간은 최대 30일입니다",
       path: ["endDate"],
-    }
+    },
   )
   .refine((data) => data.dailyStartTime < data.dailyEndTime, {
     message: "일과 종료 시간은 시작 시간 이후여야 합니다",
@@ -120,6 +140,7 @@ export const updateTripSchema = z
       .array(transportModeSchema)
       .min(1, "최소 1개의 이동 수단을 선택해주세요")
       .optional(),
+    accommodations: z.array(dailyAccommodationSchema).optional(),
     status: tripStatusSchema.optional(),
   })
   .refine(
@@ -133,7 +154,7 @@ export const updateTripSchema = z
     {
       message: "종료일은 시작일 이후여야 합니다",
       path: ["endDate"],
-    }
+    },
   )
   .refine(
     (data) => {
@@ -150,7 +171,7 @@ export const updateTripSchema = z
     {
       message: "여행 기간은 최대 30일입니다",
       path: ["endDate"],
-    }
+    },
   )
   .refine(
     (data) => {
@@ -163,7 +184,7 @@ export const updateTripSchema = z
     {
       message: "일과 종료 시간은 시작 시간 이후여야 합니다",
       path: ["dailyEndTime"],
-    }
+    },
   );
 
 /**

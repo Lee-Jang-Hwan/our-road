@@ -2,11 +2,12 @@
 // Public Transit Algorithm Entry
 // ============================================
 
-import type { TripInput, TripOutput, Waypoint } from "@/types";
+import type { TripInput, TripOutput, Waypoint, Cluster } from "@/types";
 import { preprocessWaypoints, determineTripMode } from "./preprocess";
 import { balancedClustering } from "./clustering";
 import { chooseEndAnchor, orderClustersOneDirection } from "./cluster-ordering";
 import { generateDayPlans } from "./day-plan";
+import { calculateCentroid } from "../utils/geo";
 import {
   exceedsDailyLimitProxy,
   selectWorstComplexityPoint,
@@ -16,8 +17,87 @@ import {
   selectWaypointsToRemoveFromDay,
 } from "./complexity-removal";
 import { extractSegments, callRoutingAPIForSegments } from "./api-caller";
-import { detectAnomalousSegments, applyLocalFixes } from "./anomaly-detection";
 import { buildOutput } from "./output-builder";
+
+/**
+ * 고정 일정이 있는 장소를 날짜별로 그룹화
+ * @param waypoints 모든 경유지
+ * @param tripStartDate 여행 시작 날짜 (YYYY-MM-DD)
+ * @returns dayIndex -> waypoint[] 매핑
+ */
+function groupFixedWaypointsByDay(
+  waypoints: Waypoint[],
+  tripStartDate?: string
+): Map<number, Waypoint[]> {
+  const grouped = new Map<number, Waypoint[]>();
+  
+  if (!tripStartDate) {
+    return grouped;
+  }
+
+  const startDate = new Date(tripStartDate);
+  
+  for (const wp of waypoints) {
+    if (wp.isFixed && wp.fixedDate) {
+      const fixedDate = new Date(wp.fixedDate);
+      // 날짜 차이 계산 (일 단위)
+      const dayIndex = Math.floor(
+        (fixedDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+      );
+      
+      if (dayIndex >= 0) {
+        if (!grouped.has(dayIndex)) {
+          grouped.set(dayIndex, []);
+        }
+        grouped.get(dayIndex)!.push(wp);
+      }
+    }
+  }
+  
+  return grouped;
+}
+
+/**
+ * 클러스터에 고정 일정 장소를 강제 배정
+ * @param clusters 클러스터 목록
+ * @param fixedByDay 날짜별 고정 장소
+ * @param waypoints 전체 경유지 맵
+ */
+function assignFixedWaypointsToClusters(
+  clusters: Cluster[],
+  fixedByDay: Map<number, Waypoint[]>,
+  waypoints: Waypoint[]
+): void {
+  for (const [dayIndex, fixedWaypoints] of fixedByDay.entries()) {
+    if (dayIndex < clusters.length) {
+      const cluster = clusters[dayIndex];
+      
+      // 고정 장소를 클러스터에 추가 (중복 제거)
+      for (const fixedWp of fixedWaypoints) {
+        const exists = cluster.waypointIds.includes(fixedWp.id);
+        if (!exists) {
+          cluster.waypointIds.push(fixedWp.id);
+          console.log(
+            `[assignFixedWaypoints] Day ${dayIndex + 1}: Added fixed waypoint "${fixedWp.name}"`
+          );
+        }
+      }
+      
+      // centroid 재계산 (waypointIds를 사용하여 Waypoint 객체 찾기)
+      const clusterWaypoints = cluster.waypointIds
+        .map((id) => waypoints.find((wp) => wp.id === id))
+        .filter((wp): wp is Waypoint => wp !== undefined);
+      
+      if (clusterWaypoints.length > 0) {
+        cluster.centroid = calculateCentroid(clusterWaypoints.map((wp) => wp.coord));
+      }
+    } else {
+      console.warn(
+        `[assignFixedWaypoints] Fixed waypoint for day ${dayIndex + 1} exceeds trip duration`
+      );
+    }
+  }
+}
 
 export async function generatePublicTransitRoute(
   input: TripInput
@@ -56,6 +136,13 @@ export async function generatePublicTransitRoute(
   const targetPerDay = Math.ceil(waypoints.length / input.days);
   const fixedIds = waypoints.filter((wp) => wp.isFixed).map((wp) => wp.id);
 
+  // 고정 일정을 날짜별로 그룹화
+  const fixedByDay = groupFixedWaypointsByDay(waypoints, input.tripStartDate);
+  
+  console.log(
+    `[generatePublicTransitRoute] Fixed schedules: ${fixedByDay.size} days with fixed waypoints`
+  );
+
   // Perform clustering
   const clusters = balancedClustering({
     waypoints,
@@ -67,6 +154,9 @@ export async function generatePublicTransitRoute(
   if (clusters.length === 0) {
     throw new Error("Clustering produced no valid clusters");
   }
+
+  // 클러스터에 고정 일정 강제 배정
+  assignFixedWaypointsToClusters(clusters, fixedByDay, waypoints);
 
   // Order clusters with start position consideration
   const endAnchor = chooseEndAnchor(input.lodging, clusters, input.days);
@@ -234,11 +324,6 @@ export async function generatePublicTransitRoute(
         `[generatePublicTransitRoute] Reached max reoptimization rounds (${maxReoptimizationRounds}). Some days may still exceed time limit.`
       );
     }
-  }
-
-  const warnings = detectAnomalousSegments(segmentCosts);
-  if (warnings.length > 0) {
-    applyLocalFixes(dayPlans, warnings);
   }
 
   return buildOutput({

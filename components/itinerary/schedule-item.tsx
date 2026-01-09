@@ -67,7 +67,7 @@ export function ScheduleItem({
       className={cn(
         "relative flex items-center gap-2 p-3 rounded-lg transition-colors",
         item.isFixed
-          ? "bg-primary/5 border border-primary/20"
+          ? "bg-primary/10 border-2 border-primary/40 shadow-sm"
           : "bg-card border border-border",
         onClick && "cursor-pointer hover:bg-accent/50",
         className

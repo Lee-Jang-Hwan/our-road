@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
+import { useUser } from "@clerk/nextjs";
 import { useEffect, useRef } from "react";
 
 /**
@@ -22,20 +22,32 @@ import { useEffect, useRef } from "react";
  * ```
  */
 export function useSyncUser() {
-  const { isLoaded, userId } = useAuth();
+  const { isLoaded, isSignedIn, user } = useUser();
   const syncedRef = useRef(false);
 
   useEffect(() => {
     // 이미 동기화했거나, 로딩 중이거나, 로그인하지 않은 경우 무시
-    if (syncedRef.current || !isLoaded || !userId) {
+    if (syncedRef.current || !isLoaded || !isSignedIn || !user) {
       return;
     }
 
     // 동기화 실행
     const syncUser = async () => {
       try {
+        const email = user.primaryEmailAddress?.emailAddress;
+        const name = user.fullName || user.username || email || "Unknown";
+        const imageUrl = user.imageUrl;
+
         const response = await fetch("/api/sync-user", {
           method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email,
+            name,
+            imageUrl,
+          }),
         });
 
         if (!response.ok) {
@@ -50,5 +62,5 @@ export function useSyncUser() {
     };
 
     syncUser();
-  }, [isLoaded, userId]);
+  }, [isLoaded, isSignedIn, user]);
 }
