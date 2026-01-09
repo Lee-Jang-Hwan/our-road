@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Clock, Pin, MoreVertical, Edit, Trash2, GripVertical } from "lucide-react";
+import { Clock, Pin, MoreVertical, Edit, Trash2, GripVertical, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { normalizeTime } from "@/lib/optimize";
@@ -33,6 +33,12 @@ interface ScheduleItemProps {
   onEdit?: () => void;
   /** 삭제 핸들러 */
   onDelete?: () => void;
+  /** 이전 항목 이동 핸들러 */
+  onPrevious?: () => void;
+  /** 다음 항목 이동 핸들러 */
+  onNext?: () => void;
+  /** 네비게이션 버튼 표시 여부 */
+  showNavigation?: boolean;
   /** 드래그 가능 여부 */
   draggable?: boolean;
   /** 추가 클래스 */
@@ -49,6 +55,9 @@ export function ScheduleItem({
   onClick,
   onEdit,
   onDelete,
+  onPrevious,
+  onNext,
+  showNavigation = false,
   draggable = false,
   className,
 }: ScheduleItemProps) {
@@ -57,7 +66,7 @@ export function ScheduleItem({
   return (
     <div
       className={cn(
-        "relative flex items-start gap-3 p-3 rounded-lg transition-colors",
+        "relative flex items-center gap-2 p-3 rounded-lg transition-colors",
         item.isFixed
           ? "bg-primary/10 border-2 border-primary/40 shadow-sm"
           : "bg-card border border-border",
@@ -66,6 +75,22 @@ export function ScheduleItem({
       )}
       onClick={onClick}
     >
+      {/* 이전 버튼 */}
+      {showNavigation && (
+        <Button
+          variant="outline"
+          size="icon"
+          className="shrink-0 size-9"
+          onClick={(e) => {
+            e.stopPropagation();
+            onPrevious?.();
+          }}
+          disabled={!onPrevious}
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </Button>
+      )}
+
       {/* 드래그 핸들 */}
       {draggable && (
         <div className="flex items-center justify-center w-6 h-full cursor-grab active:cursor-grabbing text-muted-foreground/50 hover:text-muted-foreground">
@@ -76,10 +101,10 @@ export function ScheduleItem({
       {/* 순서 번호 */}
       <div
         className={cn(
-          "flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold shrink-0",
+          "flex items-center justify-center w-10 h-10 rounded-full text-lg font-bold shrink-0",
           item.isFixed
             ? "bg-primary text-primary-foreground"
-            : "bg-muted text-foreground"
+            : "bg-primary text-primary-foreground"
         )}
       >
         {item.order}
@@ -150,7 +175,67 @@ export function ScheduleItem({
             </DropdownMenu>
           )}
         </div>
+
+        {/* 시간 정보 */}
+        <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
+          <span className="flex items-center gap-1">
+            <Clock className="w-4 h-4" />
+            {item.arrivalTime} - {item.departureTime}
+          </span>
+          <span className="text-xs text-muted-foreground/70">
+            ({formatDuration(item.duration)})
+          </span>
+        </div>
       </div>
+
+      {/* 액션 메뉴 */}
+      {hasActions && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {onEdit && (
+              <DropdownMenuItem onClick={onEdit}>
+                <Edit className="h-4 w-4 mr-2" />
+                수정
+              </DropdownMenuItem>
+            )}
+            {onDelete && (
+              <DropdownMenuItem
+                onClick={onDelete}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                삭제
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
+
+      {/* 다음 버튼 */}
+      {showNavigation && (
+        <Button
+          variant="outline"
+          size="icon"
+          className="shrink-0 size-9"
+          onClick={(e) => {
+            e.stopPropagation();
+            onNext?.();
+          }}
+          disabled={!onNext}
+        >
+          <ChevronRight className="w-5 h-5" />
+        </Button>
+      )}
     </div>
   );
 }

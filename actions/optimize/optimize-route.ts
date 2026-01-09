@@ -356,6 +356,11 @@ export async function optimizeRoute(
   const startTime = Date.now();
   const errors: OptimizeError[] = [];
 
+  console.log("🚀 [최적화 서버 액션 시작] optimizeRoute 호출", {
+    tripId: input.tripId,
+    timestamp: new Date().toISOString(),
+  });
+
   try {
     // 1. 인증 확인
     const { userId } = await auth();
@@ -557,11 +562,28 @@ export async function optimizeRoute(
       destinationNode,
     ];
 
+    // 차량 모드일 때 거리 행렬 생성 전 로그
+    if (transportMode === "car") {
+      const estimatedApiCalls = allNodes.length * (allNodes.length - 1);
+      console.log("📊 [거리 행렬 생성 시작] API 기반 거리 행렬 생성", {
+        nodeCount: allNodes.length,
+        estimatedApiCalls,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
     const distanceMatrix = await createDistanceMatrix(allNodes, {
       mode: transportMode,
       useApi: true, // API 기반 실제 거리 사용
       batchSize: 3,
     });
+
+    if (transportMode === "car") {
+      console.log("✅ [거리 행렬 생성 완료] API 기반 거리 행렬 생성 완료", {
+        nodeCount: allNodes.length,
+        timestamp: new Date().toISOString(),
+      });
+    }
 
     // 10. 최적화 설정
     const optimizeConfig = {
@@ -837,6 +859,16 @@ export async function optimizeRoute(
     revalidatePath(`/plan/${tripId}`);
     revalidatePath(`/plan/${tripId}/result`);
 
+    const endTime = Date.now();
+    const duration = ((endTime - startTime) / 1000).toFixed(2);
+
+    console.log("✅ [최적화 서버 액션 완료] optimizeRoute 완료", {
+      tripId,
+      duration: `${duration}초`,
+      itineraryCount: itinerary.length,
+      timestamp: new Date().toISOString(),
+    });
+
     return {
       success: true,
       data: {
@@ -849,7 +881,11 @@ export async function optimizeRoute(
       },
     };
   } catch (error) {
-    console.error("최적화 실행 중 예외 발생:", error);
+    console.error("❌ [최적화 서버 액션 실패] optimizeRoute 실패", {
+      tripId: input.tripId,
+      error: error instanceof Error ? error.message : String(error),
+      timestamp: new Date().toISOString(),
+    });
     return {
       success: false,
       error: {

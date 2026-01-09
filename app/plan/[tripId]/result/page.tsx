@@ -2,14 +2,7 @@
 
 import { use, useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import {
-  LuChevronLeft,
-  LuShare2,
-  LuSave,
-  LuLoader,
-  LuSparkles,
-} from "react-icons/lu";
+import { LuChevronLeft, LuShare2, LuLoader, LuPencil } from "react-icons/lu";
 import { AlertCircle, MapPin, Clock, ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -18,9 +11,16 @@ import { DayTabs, DayTabsContainer } from "@/components/itinerary/day-tabs";
 import { DayContentPanel } from "@/components/itinerary/day-content";
 import { UnassignedPlaces } from "@/components/itinerary/unassigned-places";
 import { KakaoMap } from "@/components/map/kakao-map";
-import { PlaceMarkers, SingleMarker, type SingleMarkerProps } from "@/components/map/place-markers";
+import {
+  PlaceMarkers,
+  SingleMarker,
+  type SingleMarkerProps,
+} from "@/components/map/place-markers";
 import { RealRoutePolyline } from "@/components/map/route-polyline";
-import { OffScreenMarkers, FitBoundsButton } from "@/components/map/off-screen-markers";
+import {
+  OffScreenMarkers,
+  FitBoundsButton,
+} from "@/components/map/off-screen-markers";
 import { useSwipe } from "@/hooks/use-swipe";
 import { useSafeBack } from "@/hooks/use-safe-back";
 import { optimizeRoute } from "@/actions/optimize/optimize-route";
@@ -41,21 +41,25 @@ interface ResultPageProps {
 
 export default function ResultPage({ params }: ResultPageProps) {
   const { tripId } = use(params);
-  const router = useRouter();
   const handleBack = useSafeBack(`/plan/${tripId}`);
   const [selectedDay, setSelectedDay] = useState(1);
   const [isOptimizing, setIsOptimizing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [itineraries, setItineraries] = useState<DailyItinerary[]>([]);
   const [places, setPlaces] = useState<Place[]>([]);
   const [trip, setTrip] = useState<Trip | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasPlaces, setHasPlaces] = useState(true);
-  const [unassignedPlaceInfos, setUnassignedPlaceInfos] = useState<UnassignedPlaceInfo[]>([]);
+  const [unassignedPlaceInfos, setUnassignedPlaceInfos] = useState<
+    UnassignedPlaceInfo[]
+  >([]);
 
   // 최적화 실행
   const runOptimization = useCallback(async () => {
+    console.log("🚀 [최적화 시작] 일정 최적화를 시작합니다.", {
+      tripId,
+      timestamp: new Date().toISOString(),
+    });
     setIsOptimizing(true);
     setError(null);
 
@@ -63,6 +67,7 @@ export default function ResultPage({ params }: ResultPageProps) {
       const result = await optimizeRoute({ tripId });
 
       if (!result.success) {
+        console.error("❌ [최적화 실패]", result.error?.message);
         setError(result.error?.message || "최적화에 실패했습니다.");
         return;
       }
@@ -72,12 +77,15 @@ export default function ResultPage({ params }: ResultPageProps) {
 
         // 누락된 장소 확인 (상세 정보 포함)
         const unassignedError = result.data.errors?.find(
-          (e) => e.code === "EXCEEDS_DAILY_LIMIT"
+          (e) => e.code === "EXCEEDS_DAILY_LIMIT",
         );
 
         if (unassignedError?.details?.unassignedPlaceDetails) {
           // 상세 정보가 있는 경우
-          setUnassignedPlaceInfos(unassignedError.details.unassignedPlaceDetails as UnassignedPlaceInfo[]);
+          setUnassignedPlaceInfos(
+            unassignedError.details
+              .unassignedPlaceDetails as UnassignedPlaceInfo[],
+          );
         } else if (unassignedError?.details?.unassignedPlaces) {
           // 기존 방식: 장소 ID만 있는 경우 (후방 호환)
           const placeIds = unassignedError.details.unassignedPlaces as string[];
@@ -91,8 +99,11 @@ export default function ResultPage({ params }: ResultPageProps) {
               placeId,
               placeName: place?.name || "알 수 없는 장소",
               reasonCode: "TIME_EXCEEDED" as const,
-              reasonMessage: "일일 활동 시간이 부족하여 일정에 포함하지 못했습니다.",
-              details: place ? { estimatedDuration: place.estimatedDuration } : undefined,
+              reasonMessage:
+                "일일 활동 시간이 부족하여 일정에 포함하지 못했습니다.",
+              details: place
+                ? { estimatedDuration: place.estimatedDuration }
+                : undefined,
             };
           });
           setUnassignedPlaceInfos(infos);
@@ -100,10 +111,35 @@ export default function ResultPage({ params }: ResultPageProps) {
           setUnassignedPlaceInfos([]);
         }
 
-        showSuccessToast("일정이 최적화되었습니다!");
+        console.log("✅ [최적화 완료] 일정 최적화가 완료되었습니다.", {
+          itineraryCount: result.data.itinerary.length,
+          timestamp: new Date().toISOString(),
+        });
+
+        // 최적화 직후 자동 저장
+        console.log("💾 [자동 저장 시작] 최적화 결과를 DB에 저장합니다.");
+        try {
+          const saveResult = await saveItinerary({
+            tripId,
+            itinerary: result.data.itinerary,
+          });
+
+          if (!saveResult.success) {
+            console.error("❌ [저장 실패]", saveResult.error);
+            showErrorToast(saveResult.error || "저장에 실패했습니다.");
+            // 저장 실패해도 결과는 표시
+          } else {
+            console.log("✅ [저장 완료] 일정이 DB에 저장되었습니다.");
+            showSuccessToast("일정이 최적화되고 저장되었습니다!");
+          }
+        } catch (saveErr) {
+          console.error("❌ [저장 실패]", saveErr);
+          showErrorToast("저장 중 오류가 발생했습니다.");
+          // 저장 실패해도 결과는 표시
+        }
       }
     } catch (err) {
-      console.error("최적화 실패:", err);
+      console.error("❌ [최적화 실패]", err);
       setError("최적화 중 오류가 발생했습니다.");
     } finally {
       setIsOptimizing(false);
@@ -123,7 +159,11 @@ export default function ResultPage({ params }: ResultPageProps) {
 
       // 먼저 장소가 있는지 확인
       const placesResult = await getPlaces(tripId);
-      if (!placesResult.success || !placesResult.data || placesResult.data.length < 2) {
+      if (
+        !placesResult.success ||
+        !placesResult.data ||
+        placesResult.data.length < 2
+      ) {
         setHasPlaces(false);
         setError("최소 2개 이상의 장소가 필요합니다. 장소를 추가해주세요.");
         setIsLoading(false);
@@ -165,42 +205,7 @@ export default function ResultPage({ params }: ResultPageProps) {
   });
 
   // 일정 항목 클릭
-  const handleItemClick = (item: ScheduleItem) => {
-  };
-
-  // 재최적화
-  const handleReoptimize = async () => {
-    await runOptimization();
-  };
-
-  // 저장
-  const handleSave = async () => {
-    if (itineraries.length === 0) {
-      showErrorToast("저장할 일정이 없습니다.");
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const result = await saveItinerary({
-        tripId,
-        itinerary: itineraries,
-      });
-
-      if (!result.success) {
-        showErrorToast(result.error || "저장에 실패했습니다.");
-        return;
-      }
-
-      showSuccessToast("일정이 저장되었습니다!");
-      router.push("/my");
-    } catch (err) {
-      console.error("저장 실패:", err);
-      showErrorToast("저장 중 오류가 발생했습니다.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  const handleItemClick = (item: ScheduleItem) => {};
 
   // 공유
   const handleShare = async () => {
@@ -228,7 +233,7 @@ export default function ResultPage({ params }: ResultPageProps) {
 
   // 현재 선택된 일정
   const currentItinerary = itineraries.find(
-    (it) => it.dayNumber === selectedDay
+    (it) => it.dayNumber === selectedDay,
   );
 
   // 현재 일자의 시작점/끝점 좌표 계산 (dayOrigin/dayDestination만 사용)
@@ -243,7 +248,11 @@ export default function ResultPage({ params }: ResultPageProps) {
         ? { lat: dayOrigin.lat, lng: dayOrigin.lng, type: dayOrigin.type }
         : null,
       destination: dayDestination
-        ? { lat: dayDestination.lat, lng: dayDestination.lng, type: dayDestination.type }
+        ? {
+            lat: dayDestination.lat,
+            lng: dayDestination.lng,
+            type: dayDestination.type,
+          }
         : null,
     };
 
@@ -276,7 +285,10 @@ export default function ResultPage({ params }: ResultPageProps) {
 
     // 시작점 추가 (dayOrigin 또는 trip.origin)
     if (dayEndpoints.origin) {
-      allCoords.push({ lat: dayEndpoints.origin.lat, lng: dayEndpoints.origin.lng });
+      allCoords.push({
+        lat: dayEndpoints.origin.lat,
+        lng: dayEndpoints.origin.lng,
+      });
     }
 
     // 장소들 추가
@@ -284,7 +296,10 @@ export default function ResultPage({ params }: ResultPageProps) {
 
     // 끝점 추가 (dayDestination 또는 trip.destination)
     if (dayEndpoints.destination) {
-      allCoords.push({ lat: dayEndpoints.destination.lat, lng: dayEndpoints.destination.lng });
+      allCoords.push({
+        lat: dayEndpoints.destination.lat,
+        lng: dayEndpoints.destination.lng,
+      });
     }
 
     if (allCoords.length === 0) {
@@ -315,7 +330,9 @@ export default function ResultPage({ params }: ResultPageProps) {
     }> = [];
 
     const isCarMode = trip.transportModes.includes("car");
-    const baseTransportMode = isCarMode ? "car" as const : "public" as const;
+    const baseTransportMode = isCarMode
+      ? ("car" as const)
+      : ("public" as const);
 
     // 일자별 시작점/끝점 좌표 (안전한 체크 포함)
     const originCoord = dayEndpoints.origin
@@ -330,7 +347,7 @@ export default function ResultPage({ params }: ResultPageProps) {
       transport: RouteSegment | undefined,
       fromCoord: Coordinate,
       toCoord: Coordinate,
-      segmentIndex: number
+      segmentIndex: number,
     ) => {
       // 자동차 모드이거나 transitDetails가 없으면 기존 방식
       if (isCarMode || !transport?.transitDetails?.subPaths) {
@@ -349,12 +366,19 @@ export default function ResultPage({ params }: ResultPageProps) {
       for (const subPath of subPaths) {
         if (!subPath.startCoord || !subPath.endCoord) continue;
 
-        const subTransportMode = subPath.trafficType === 3 ? "walking" as const : "public" as const;
+        const subTransportMode =
+          subPath.trafficType === 3
+            ? ("walking" as const)
+            : ("public" as const);
 
         // 대중교통 구간: passStopCoords가 있으면 path로 사용
         // 도보 구간: polyline 사용 (TMap)
         let pathCoords: Coordinate[] | undefined;
-        if (subPath.trafficType !== 3 && subPath.passStopCoords && subPath.passStopCoords.length > 0) {
+        if (
+          subPath.trafficType !== 3 &&
+          subPath.passStopCoords &&
+          subPath.passStopCoords.length > 0
+        ) {
           // 대중교통 구간: 시작점 + 경유 정류장 + 끝점
           pathCoords = [
             subPath.startCoord,
@@ -386,12 +410,16 @@ export default function ResultPage({ params }: ResultPageProps) {
     };
 
     // 출발지 → 첫 장소 (dayOrigin이 있고 transportFromOrigin이 있을 때만)
-    if (originCoord && currentItinerary.transportFromOrigin && currentDayMarkers.length > 0) {
+    if (
+      originCoord &&
+      currentItinerary.transportFromOrigin &&
+      currentDayMarkers.length > 0
+    ) {
       extractSubPathSegments(
         currentItinerary.transportFromOrigin,
         originCoord,
         currentDayMarkers[0].coordinate,
-        0
+        0,
       );
     }
 
@@ -403,19 +431,23 @@ export default function ResultPage({ params }: ResultPageProps) {
           scheduleItem.transportToNext,
           currentDayMarkers[i].coordinate,
           currentDayMarkers[i + 1].coordinate,
-          i + 1
+          i + 1,
         );
       }
     }
 
     // 마지막 장소 → 도착지 (dayDestination이 있고 transportToDestination이 있을 때만)
-    if (destCoord && currentItinerary.transportToDestination && currentDayMarkers.length > 0) {
+    if (
+      destCoord &&
+      currentItinerary.transportToDestination &&
+      currentDayMarkers.length > 0
+    ) {
       const lastIndex = currentDayMarkers.length - 1;
       extractSubPathSegments(
         currentItinerary.transportToDestination,
         currentDayMarkers[lastIndex].coordinate,
         destCoord,
-        lastIndex
+        lastIndex,
       );
     }
 
@@ -464,7 +496,9 @@ export default function ResultPage({ params }: ResultPageProps) {
               <Button>장소 추가하러 가기</Button>
             </Link>
           ) : (
-            <Button onClick={handleReoptimize}>다시 시도</Button>
+            <Link href={`/plan/${tripId}`}>
+              <Button>편집 페이지로 돌아가기</Button>
+            </Link>
           )}
         </div>
       </main>
@@ -497,11 +531,15 @@ export default function ResultPage({ params }: ResultPageProps) {
               <MapPin className="h-4 w-4 shrink-0" />
               <span className="truncate max-w-[100px]">{trip.origin.name}</span>
               <ArrowRight className="h-4 w-4 shrink-0" />
-              <span className="truncate max-w-[100px]">{trip.destination.name}</span>
+              <span className="truncate max-w-[100px]">
+                {trip.destination.name}
+              </span>
             </div>
             <div className="flex items-center gap-1 text-muted-foreground shrink-0">
               <Clock className="h-4 w-4" />
-              <span>{trip.dailyStartTime} - {trip.dailyEndTime}</span>
+              <span>
+                {trip.dailyStartTime} - {trip.dailyEndTime}
+              </span>
             </div>
           </div>
         </div>
@@ -531,7 +569,10 @@ export default function ResultPage({ params }: ResultPageProps) {
             {/* 시작점 마커 (출발지, 숙소, 또는 전날 마지막 장소) */}
             {dayEndpoints.origin && (
               <SingleMarker
-                coordinate={{ lat: dayEndpoints.origin.lat, lng: dayEndpoints.origin.lng }}
+                coordinate={{
+                  lat: dayEndpoints.origin.lat,
+                  lng: dayEndpoints.origin.lng,
+                }}
                 type={
                   (dayEndpoints.origin.type === "waypoint"
                     ? "default"
@@ -548,11 +589,15 @@ export default function ResultPage({ params }: ResultPageProps) {
             {/* 끝점 마커 (도착지 또는 숙소) */}
             {dayEndpoints.destination && (
               <SingleMarker
-                coordinate={{ lat: dayEndpoints.destination.lat, lng: dayEndpoints.destination.lng }}
+                coordinate={{
+                  lat: dayEndpoints.destination.lat,
+                  lng: dayEndpoints.destination.lng,
+                }}
                 type={
                   (dayEndpoints.destination.type === "waypoint"
                     ? "default"
-                    : dayEndpoints.destination.type) as SingleMarkerProps["type"]
+                    : dayEndpoints.destination
+                        .type) as SingleMarkerProps["type"]
                 }
               />
             )}
@@ -601,33 +646,16 @@ export default function ResultPage({ params }: ResultPageProps) {
 
       {/* 하단 버튼 */}
       <div className="sticky bottom-0 p-4 bg-background border-t safe-area-bottom">
-        <div className="flex gap-3">
+        <Link href={`/plan/${tripId}`}>
           <Button
-            variant="outline"
-            className="flex-1 h-12"
-            onClick={handleReoptimize}
-            disabled={isOptimizing || isSaving}
+            variant="default"
+            size="sm"
+            className="bg-black text-white hover:bg-gray-900 w-full"
           >
-            {isOptimizing ? (
-              <LuLoader className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <LuSparkles className="w-4 h-4 mr-2" />
-            )}
-            재최적화
+            <LuPencil className="w-4 h-4 mr-2" />
+            편집하기
           </Button>
-          <Button
-            className="flex-1 h-12"
-            onClick={handleSave}
-            disabled={isOptimizing || isSaving || itineraries.length === 0}
-          >
-            {isSaving ? (
-              <LuLoader className="w-4 h-4 mr-2 animate-spin" />
-            ) : (
-              <LuSave className="w-4 h-4 mr-2" />
-            )}
-            저장하기
-          </Button>
-        </div>
+        </Link>
       </div>
     </main>
   );

@@ -1,15 +1,23 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@clerk/nextjs/server";
 import { Button } from "@/components/ui/button";
-import { SignedIn, SignedOut } from "@clerk/nextjs";
 import {
   LuMapPin,
   LuRoute,
   LuClock,
-  LuSparkles,
+  LuNavigation,
   LuChevronRight,
 } from "react-icons/lu";
 
-export default function Home() {
+export default async function Home() {
+  const { userId } = await auth();
+
+  // 로그인 상태면 /my로 리다이렉트
+  if (userId) {
+    redirect("/my");
+  }
+
   return (
     <main className="flex flex-col min-h-[calc(100dvh-64px)] px-4">
       {/* Hero Section */}
@@ -48,9 +56,9 @@ export default function Home() {
             />
 
             <FeatureCard
-              icon={<LuSparkles className="w-5 h-5" />}
-              title="최고의 만족감"
-              description="이동 피로도를 고려한 루트"
+              icon={<LuNavigation className="w-5 h-5" />}
+              title="네비게이션"
+              description="길을 잃어 헤멜 걱정 없어요"
             />
             
           </div>
@@ -58,35 +66,19 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="space-y-3 py-8">
-        <SignedOut>
-          <Link href="/sign-in" className="block">
-            <Button className="w-full h-14 text-lg font-semibold">
-              시작하기
-              <LuChevronRight className="w-5 h-5 ml-1" />
-            </Button>
+      <section className="space-y-3 pt-4">
+        <Link href="/sign-in" className="block">
+          <Button className="w-full h-14 text-lg font-semibold">
+            시작하기
+            <LuChevronRight className="w-5 h-5 ml-1" />
+          </Button>
+        </Link>
+        <p className="text-center text-sm text-muted-foreground">
+          이미 계정이 있으신가요?{" "}
+          <Link href="/sign-in" className="text-primary underline">
+            로그인
           </Link>
-          <p className="text-center text-sm text-muted-foreground">
-            이미 계정이 있으신가요?{" "}
-            <Link href="/sign-in" className="text-primary underline">
-              로그인
-            </Link>
-          </p>
-        </SignedOut>
-
-        <SignedIn>
-          <Link href="/plan" className="block" replace>
-            <Button className="w-full h-14 text-lg font-semibold">
-              새 여행 만들기
-              <LuChevronRight className="w-5 h-5 ml-1" />
-            </Button>
-          </Link>
-          <Link href="/my" className="block">
-            <Button variant="outline" className="w-full h-12">
-              내 여행 보기
-            </Button>
-          </Link>
-        </SignedIn>
+        </p>
       </section>
 
       {/* Footer */}

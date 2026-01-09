@@ -34,7 +34,11 @@ import {
 import { DayTabsContainer } from "@/components/itinerary/day-tabs";
 import { DayContentPanel } from "@/components/itinerary/day-content";
 import { KakaoMap } from "@/components/map/kakao-map";
-import { PlaceMarkers, SingleMarker, type SingleMarkerProps } from "@/components/map/place-markers";
+import {
+  PlaceMarkers,
+  SingleMarker,
+  type SingleMarkerProps,
+} from "@/components/map/place-markers";
 import { RealRoutePolyline } from "@/components/map/route-polyline";
 import {
   OffScreenMarkers,
@@ -201,14 +205,24 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
       typeof lodgingLocation.lat === "number" &&
       typeof lodgingLocation.lng === "number";
 
-    console.log(`[dayEndpoints Day ${selectedDay}] isFirstDay:`, isFirstDay, 'trip.origin:', trip.origin);
+    console.log(
+      `[dayEndpoints Day ${selectedDay}] isFirstDay:`,
+      isFirstDay,
+      "trip.origin:",
+      trip.origin,
+    );
 
     // 신규 데이터: dayOrigin/dayDestination 사용
     let dayOrigin = currentItinerary.dayOrigin;
     let dayDestination = currentItinerary.dayDestination;
 
     // 레거시 데이터 fallback: dayOrigin/dayDestination이 없으면 계산
-    if (!dayOrigin && isFirstDay && trip.origin && typeof trip.origin.lat === 'number') {
+    if (
+      !dayOrigin &&
+      isFirstDay &&
+      trip.origin &&
+      typeof trip.origin.lat === "number"
+    ) {
       // Day 1: 전체 출발지 사용
       dayOrigin = {
         type: "origin" as const,
@@ -228,14 +242,22 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
       };
     } else if (!dayOrigin && !isFirstDay && !hasLodging) {
       // Day 2+, 숙소 없음: 전날 마지막 장소 사용
-      const prevDay = trip.itinerary?.find((it) => it.dayNumber === selectedDay - 1);
+      const prevDay = trip.itinerary?.find(
+        (it) => it.dayNumber === selectedDay - 1,
+      );
       if (prevDay && prevDay.schedule.length > 0) {
         const lastSchedule = prevDay.schedule[prevDay.schedule.length - 1];
-        const lastPlace = trip.places?.find((p) => p.id === lastSchedule.placeId);
-        const legacyCoord = lastPlace as unknown as { lat?: number; lng?: number } | undefined;
+        const lastPlace = trip.places?.find(
+          (p) => p.id === lastSchedule.placeId,
+        );
+        const legacyCoord = lastPlace as unknown as
+          | { lat?: number; lng?: number }
+          | undefined;
         const lastCoord =
           lastPlace?.coordinate ??
-          (legacyCoord && typeof legacyCoord.lat === "number" && typeof legacyCoord.lng === "number"
+          (legacyCoord &&
+          typeof legacyCoord.lat === "number" &&
+          typeof legacyCoord.lng === "number"
             ? { lat: legacyCoord.lat, lng: legacyCoord.lng }
             : undefined);
         if (lastCoord && typeof lastCoord.lat === "number") {
@@ -250,7 +272,13 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
       }
     }
 
-    if (!dayDestination && isLastDay && !hasLodging && trip.destination && typeof trip.destination.lat === 'number') {
+    if (
+      !dayDestination &&
+      isLastDay &&
+      !hasLodging &&
+      trip.destination &&
+      typeof trip.destination.lat === "number"
+    ) {
       // 마지막 날, 숙소 없음: 전체 도착지 사용 (단, 출발지와 완전히 같은 좌표가 아닌 경우만)
       dayDestination = {
         type: "destination" as const,
@@ -275,7 +303,11 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
         ? { lat: dayOrigin.lat, lng: dayOrigin.lng, type: dayOrigin.type }
         : null,
       destination: dayDestination
-        ? { lat: dayDestination.lat, lng: dayDestination.lng, type: dayDestination.type }
+        ? {
+            lat: dayDestination.lat,
+            lng: dayDestination.lng,
+            type: dayDestination.type,
+          }
         : null,
     };
   }, [currentItinerary, selectedDay, trip]);
@@ -286,9 +318,18 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
 
     const lodgingLocation = trip?.accommodations?.[0]?.location;
 
-    console.log(`[enrichedItinerary Day ${selectedDay}] currentItinerary.dayOrigin:`, currentItinerary.dayOrigin);
-    console.log(`[enrichedItinerary Day ${selectedDay}] currentItinerary.dayDestination:`, currentItinerary.dayDestination);
-    console.log(`[enrichedItinerary Day ${selectedDay}] dayEndpoints:`, dayEndpoints);
+    console.log(
+      `[enrichedItinerary Day ${selectedDay}] currentItinerary.dayOrigin:`,
+      currentItinerary.dayOrigin,
+    );
+    console.log(
+      `[enrichedItinerary Day ${selectedDay}] currentItinerary.dayDestination:`,
+      currentItinerary.dayDestination,
+    );
+    console.log(
+      `[enrichedItinerary Day ${selectedDay}] dayEndpoints:`,
+      dayEndpoints,
+    );
 
     // dayOrigin/dayDestination이 이미 완전히 있으면 그대로 반환
     const hasCompleteOrigin = currentItinerary.dayOrigin;
@@ -302,35 +343,58 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
     // fallback으로 계산된 값 주입 (없는 것만)
     return {
       ...currentItinerary,
-      dayOrigin: hasCompleteOrigin ? currentItinerary.dayOrigin :
-                 dayEndpoints.origin ? {
-        type: dayEndpoints.origin.type,
-        name: dayEndpoints.origin.type === "origin" ? (trip?.origin?.name || "출발지") :
-              dayEndpoints.origin.type === "accommodation" ? (lodgingLocation?.name || "숙소") :
-              dayEndpoints.origin.type === "destination" ? (trip?.destination?.name || "도착지") :
-              dayEndpoints.origin.type === "lastPlace" ? "이전 장소" :
-              "시작",
-        address: dayEndpoints.origin.type === "origin" ? (trip?.origin?.address || "") :
-                 dayEndpoints.origin.type === "accommodation" ? (lodgingLocation?.address || "") :
-                 dayEndpoints.origin.type === "destination" ? (trip?.destination?.address || "") :
-                 "",
-        lat: dayEndpoints.origin.lat,
-        lng: dayEndpoints.origin.lng,
-      } : undefined,
-      dayDestination: hasCompleteDestination ? currentItinerary.dayDestination :
-                      dayEndpoints.destination ? {
-        type: dayEndpoints.destination.type,
-        name: dayEndpoints.destination.type === "origin" ? (trip?.origin?.name || "출발지") :
-              dayEndpoints.destination.type === "accommodation" ? (lodgingLocation?.name || "숙소") :
-              dayEndpoints.destination.type === "destination" ? (trip?.destination?.name || "도착지") :
-              "종점",
-        address: dayEndpoints.destination.type === "origin" ? (trip?.origin?.address || "") :
-                 dayEndpoints.destination.type === "accommodation" ? (lodgingLocation?.address || "") :
-                 dayEndpoints.destination.type === "destination" ? (trip?.destination?.address || "") :
-                 "",
-        lat: dayEndpoints.destination.lat,
-        lng: dayEndpoints.destination.lng,
-      } : undefined,
+      dayOrigin: hasCompleteOrigin
+        ? currentItinerary.dayOrigin
+        : dayEndpoints.origin
+          ? {
+              type: dayEndpoints.origin.type,
+              name:
+                dayEndpoints.origin.type === "origin"
+                  ? trip?.origin?.name || "출발지"
+                  : dayEndpoints.origin.type === "accommodation"
+                    ? lodgingLocation?.name || "숙소"
+                    : dayEndpoints.origin.type === "destination"
+                      ? trip?.destination?.name || "도착지"
+                      : dayEndpoints.origin.type === "lastPlace"
+                        ? "이전 장소"
+                        : "시작",
+              address:
+                dayEndpoints.origin.type === "origin"
+                  ? trip?.origin?.address || ""
+                  : dayEndpoints.origin.type === "accommodation"
+                    ? lodgingLocation?.address || ""
+                    : dayEndpoints.origin.type === "destination"
+                      ? trip?.destination?.address || ""
+                      : "",
+              lat: dayEndpoints.origin.lat,
+              lng: dayEndpoints.origin.lng,
+            }
+          : undefined,
+      dayDestination: hasCompleteDestination
+        ? currentItinerary.dayDestination
+        : dayEndpoints.destination
+          ? {
+              type: dayEndpoints.destination.type,
+              name:
+                dayEndpoints.destination.type === "origin"
+                  ? trip?.origin?.name || "출발지"
+                  : dayEndpoints.destination.type === "accommodation"
+                    ? lodgingLocation?.name || "숙소"
+                    : dayEndpoints.destination.type === "destination"
+                      ? trip?.destination?.name || "도착지"
+                      : "종점",
+              address:
+                dayEndpoints.destination.type === "origin"
+                  ? trip?.origin?.address || ""
+                  : dayEndpoints.destination.type === "accommodation"
+                    ? lodgingLocation?.address || ""
+                    : dayEndpoints.destination.type === "destination"
+                      ? trip?.destination?.address || ""
+                      : "",
+              lat: dayEndpoints.destination.lat,
+              lng: dayEndpoints.destination.lng,
+            }
+          : undefined,
     };
   }, [currentItinerary, dayEndpoints, trip]);
 
@@ -368,7 +432,10 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
 
     // 시작점 추가 (dayOrigin)
     if (dayEndpoints.origin) {
-      allCoords.push({ lat: dayEndpoints.origin.lat, lng: dayEndpoints.origin.lng });
+      allCoords.push({
+        lat: dayEndpoints.origin.lat,
+        lng: dayEndpoints.origin.lng,
+      });
     }
 
     // 장소들 추가
@@ -376,7 +443,10 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
 
     // 끝점 추가 (dayDestination)
     if (dayEndpoints.destination) {
-      allCoords.push({ lat: dayEndpoints.destination.lat, lng: dayEndpoints.destination.lng });
+      allCoords.push({
+        lat: dayEndpoints.destination.lat,
+        lng: dayEndpoints.destination.lng,
+      });
     }
 
     if (allCoords.length === 0) {
@@ -411,9 +481,16 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
     const destCoord = { lat: trip.destination.lat, lng: trip.destination.lng };
 
     // 출발지 → 첫 장소 (dayOrigin이 있고 transportFromOrigin이 있을 때만)
-    if (currentItinerary.dayOrigin && currentItinerary.transportFromOrigin && currentDayMarkers.length > 0) {
+    if (
+      currentItinerary.dayOrigin &&
+      currentItinerary.transportFromOrigin &&
+      currentDayMarkers.length > 0
+    ) {
       segments.push({
-        from: { lat: currentItinerary.dayOrigin.lat, lng: currentItinerary.dayOrigin.lng },
+        from: {
+          lat: currentItinerary.dayOrigin.lat,
+          lng: currentItinerary.dayOrigin.lng,
+        },
         to: currentDayMarkers[0].coordinate,
         encodedPath: currentItinerary.transportFromOrigin.polyline,
         transportMode,
@@ -436,11 +513,18 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
     }
 
     // 마지막 장소 → 도착지 (dayDestination이 있고 transportToDestination이 있을 때만)
-    if (currentItinerary.dayDestination && currentItinerary.transportToDestination && currentDayMarkers.length > 0) {
+    if (
+      currentItinerary.dayDestination &&
+      currentItinerary.transportToDestination &&
+      currentDayMarkers.length > 0
+    ) {
       const lastIndex = currentDayMarkers.length - 1;
       segments.push({
         from: currentDayMarkers[lastIndex].coordinate,
-        to: { lat: currentItinerary.dayDestination.lat, lng: currentItinerary.dayDestination.lng },
+        to: {
+          lat: currentItinerary.dayDestination.lat,
+          lng: currentItinerary.dayDestination.lng,
+        },
         encodedPath: currentItinerary.transportToDestination.polyline,
         transportMode,
         segmentIndex: lastIndex,
@@ -679,7 +763,10 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
             {/* 출발지 마커 (dayEndpoints 사용) */}
             {dayEndpoints.origin && (
               <SingleMarker
-                coordinate={{ lat: dayEndpoints.origin.lat, lng: dayEndpoints.origin.lng }}
+                coordinate={{
+                  lat: dayEndpoints.origin.lat,
+                  lng: dayEndpoints.origin.lng,
+                }}
                 type={
                   (dayEndpoints.origin.type === "waypoint"
                     ? "default"
@@ -696,11 +783,15 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
             {/* 도착지 마커 (dayEndpoints 사용) */}
             {dayEndpoints.destination && (
               <SingleMarker
-                coordinate={{ lat: dayEndpoints.destination.lat, lng: dayEndpoints.destination.lng }}
+                coordinate={{
+                  lat: dayEndpoints.destination.lat,
+                  lng: dayEndpoints.destination.lng,
+                }}
                 type={
                   (dayEndpoints.destination.type === "waypoint"
                     ? "default"
-                    : dayEndpoints.destination.type) as SingleMarkerProps["type"]
+                    : dayEndpoints.destination
+                        .type) as SingleMarkerProps["type"]
                 }
               />
             )}
