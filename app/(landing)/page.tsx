@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { BackgroundMedia } from "@/components/landing/background-media";
@@ -25,17 +24,6 @@ export default async function Home() {
 
       {/* Main Content: Brand Identity */}
       <div className="relative z-10 flex flex-1 flex-col items-center justify-center px-6 text-center animate-float-slow">
-        {/* Icon/Logo Mark */}
-        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-xl ring-1 ring-white/10">
-          <Image
-            src="/2026.png"
-            alt="OurRoad 로고"
-            width={32}
-            height={32}
-            className="w-8 h-8"
-          />
-        </div>
-
         {/* Headline */}
         <h1 className="text-white text-[42px] font-extrabold tracking-tight leading-tight drop-shadow-lg mb-2 font-[family-name:var(--font-chango)]">
           RootUs
