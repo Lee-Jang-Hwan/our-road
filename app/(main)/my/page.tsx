@@ -12,7 +12,7 @@ import {
   LuLoader,
   LuMap,
 } from "react-icons/lu";
-import { Plane, BookOpen } from "lucide-react";
+import { Plane, Map } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -403,7 +403,7 @@ export default function MyTripsPage() {
       <header className="flex items-center justify-between px-4 py-3 border-b">
         <h1 className="font-semibold text-lg flex items-center gap-2">
           내 여행
-          <BookOpen className="w-5 h-5 text-purple-500" />
+          <Map className="w-5 h-5 text-black" />
         </h1>
         <Link href="/plan" className="group">
           <Button
