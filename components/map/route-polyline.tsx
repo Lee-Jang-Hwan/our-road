@@ -116,24 +116,13 @@ export function RoutePolyline({
   const actualPath = React.useMemo(() => {
     if (encodedPath) {
       const decoded = decodePolyline(encodedPath);
-      console.log("    📍 Polyline 디코딩:", decoded.length, "개 좌표");
       return decoded;
     }
-    console.log("    📍 Path 사용:", path?.length || 0, "개 좌표");
     return path || [];
   }, [encodedPath, path]);
 
   React.useEffect(() => {
-    console.log("    🗺️ RoutePolyline useEffect:", {
-      hasMap: !!map,
-      isReady,
-      actualPathLength: actualPath.length,
-      transportMode,
-      strokeColor,
-    });
-
     if (!map || !isReady || actualPath.length < 2) {
-      console.log("    ⚠️ 조건 미충족, polyline 그리지 않음");
       return;
     }
 
@@ -145,7 +134,6 @@ export function RoutePolyline({
 
     if (polylineRef.current) {
       // 기존 폴리라인 업데이트
-      console.log("    ✏️ 기존 polyline 업데이트", { color, strokeWeight });
       polylineRef.current.setPath(linePath);
       polylineRef.current.setOptions({
         strokeWeight,
@@ -156,11 +144,6 @@ export function RoutePolyline({
       });
     } else {
       // 새 폴리라인 생성
-      console.log("    ✨ 새 polyline 생성", {
-        color,
-        strokeWeight,
-        pathLength: linePath.length,
-      });
       polylineRef.current = new window.kakao.maps.Polyline({
         map,
         path: linePath,
@@ -384,10 +367,6 @@ export function RealRoutePolyline({
   strokeOpacity = 0.8,
   useSegmentColors = false,
 }: RealRoutePolylineProps) {
-  console.group("🖼️ [RealRoutePolyline 렌더링]");
-  console.log("받은 segments:", segments.length);
-  console.log("useSegmentColors:", useSegmentColors);
-
   return (
     <>
       {segments.map((segment, index) => {
@@ -405,18 +384,8 @@ export function RealRoutePolyline({
               ? getSegmentColor(segment.segmentIndex ?? index)
               : TRANSPORT_COLORS[segment.transportMode];
 
-        console.log(`  Segment ${index}:`, {
-          transportMode: segment.transportMode,
-          hasEncodedPath: !!segment.encodedPath,
-          hasPath: !!segment.path,
-          pathLength: segment.path?.length,
-          strokeColor,
-          isAccommodationRoute,
-        });
-
         if (segment.encodedPath) {
           // 실제 경로 (인코딩된 폴리라인)
-          console.log(`    → encodedPath 사용`);
           return (
             <RoutePolyline
               key={`route-${index}`}
@@ -430,7 +399,6 @@ export function RealRoutePolyline({
           );
         } else if (segment.path && segment.path.length > 1) {
           // 좌표 배열로 경로 표시
-          console.log(`    → path 사용 (${segment.path.length}개 좌표)`);
           return (
             <RoutePolyline
               key={`route-${index}`}
@@ -447,9 +415,6 @@ export function RealRoutePolyline({
 
           // 도보 구간은 실선, 그 외는 점선으로 표시
           const isWalkingFallback = segment.transportMode === "walking";
-          console.log(
-            `    → 직선 연결 (폴백) - ${isWalkingFallback ? "도보" : "대중교통/자동차"}`,
-          );
           return (
             <RoutePolyline
               key={`route-${index}`}
@@ -463,7 +428,6 @@ export function RealRoutePolyline({
           );
         }
       })}
-      {console.groupEnd()}
     </>
   );
 }

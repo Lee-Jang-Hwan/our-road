@@ -77,9 +77,6 @@ function assignFixedWaypointsToClusters(
         const exists = cluster.waypointIds.includes(fixedWp.id);
         if (!exists) {
           cluster.waypointIds.push(fixedWp.id);
-          console.log(
-            `[assignFixedWaypoints] Day ${dayIndex + 1}: Added fixed waypoint "${fixedWp.name}"`
-          );
         }
       }
       
@@ -138,10 +135,6 @@ export async function generatePublicTransitRoute(
 
   // 고정 일정을 날짜별로 그룹화
   const fixedByDay = groupFixedWaypointsByDay(waypoints, input.tripStartDate);
-  
-  console.log(
-    `[generatePublicTransitRoute] Fixed schedules: ${fixedByDay.size} days with fixed waypoints`
-  );
 
   // Perform clustering
   const clusters = balancedClustering({
@@ -219,8 +212,6 @@ export async function generatePublicTransitRoute(
   );
   let segmentCosts = await callRoutingAPIForSegments(segments);
 
-  console.log(`[generatePublicTransitRoute] Initial API calls: ${segments.length} segments`);
-
   // API-based time optimization (Phase 2)
   if (input.dailyMaxMinutes) {
     const maxReoptimizationRounds = 3;
@@ -244,7 +235,6 @@ export async function generatePublicTransitRoute(
 
       if (overloadedDays.length === 0) {
         // All days are within limit
-        console.log(`[generatePublicTransitRoute] All days within time limit after ${roundCount} rounds`);
         break;
       }
 
@@ -267,10 +257,6 @@ export async function generatePublicTransitRoute(
         break;
       }
 
-      console.log(
-        `[generatePublicTransitRoute] Round ${roundCount + 1}: Removing ${toRemove.length} waypoints from day ${mostOverloaded.dayIndex + 1}`
-      );
-
       // Remove waypoints
       for (const waypointId of toRemove) {
         removeWaypoint(dayPlans, waypointId);
@@ -290,10 +276,6 @@ export async function generatePublicTransitRoute(
         const key = `${seg.key.fromId}:${seg.key.toId}`;
         return !segmentCache.has(key);
       });
-
-      console.log(
-        `[generatePublicTransitRoute] Round ${roundCount + 1}: ${uncachedSegments.length} new segments to call API (${newSegments.length} total segments)`
-      );
 
       if (uncachedSegments.length > 0) {
         const newCosts = await callRoutingAPIForSegments(uncachedSegments);

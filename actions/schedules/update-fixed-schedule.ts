@@ -224,15 +224,6 @@ export async function updateFixedSchedule(
       .single();
 
     if (tripBeforeUpdate?.status === "optimized") {
-      console.log("🔄 [Trip Status Change] 고정 일정 수정으로 인한 상태 변경", {
-        tripId,
-        scheduleId,
-        from: "optimized",
-        to: "draft",
-        reason: "fixed_schedule_updated",
-        timestamp: new Date().toISOString(),
-      });
-
       const { error: statusUpdateError } = await supabase
         .from("trips")
         .update({ status: "draft" })
@@ -243,12 +234,6 @@ export async function updateFixedSchedule(
         console.error("❌ [Trip Status Change] 상태 변경 실패", {
           tripId,
           error: statusUpdateError,
-        });
-      } else {
-        console.log("✅ [Trip Status Change] 상태 변경 완료", {
-          tripId,
-          from: "optimized",
-          to: "draft",
         });
       }
     }
