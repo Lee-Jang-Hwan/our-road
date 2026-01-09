@@ -205,15 +205,18 @@ export default function ResultPage({ params }: ResultPageProps) {
 
   // 공유
   const handleShare = async () => {
+    // 공유용 URL 생성
+    const shareUrl = `${window.location.origin}/share/${tripId}`;
+
     try {
       if (navigator.share) {
         await navigator.share({
-          title: "여행 일정",
+          title: trip?.title || "여행 일정",
           text: "최적화된 여행 일정을 공유합니다.",
-          url: window.location.href,
+          url: shareUrl,
         });
       } else {
-        await navigator.clipboard.writeText(window.location.href);
+        await navigator.clipboard.writeText(shareUrl);
         showSuccessToast("링크가 클립보드에 복사되었습니다.");
       }
     } catch (err) {

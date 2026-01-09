@@ -474,15 +474,18 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
   const handleShare = async () => {
     if (!trip) return;
 
+    // 공유용 URL 생성
+    const shareUrl = `${window.location.origin}/share/${tripId}`;
+
     try {
       await navigator.share({
         title: trip.title,
         text: `${trip.title} - ${formatDate(trip.startDate)} ~ ${formatDate(trip.endDate)}`,
-        url: window.location.href,
+        url: shareUrl,
       });
     } catch {
       // 공유 API 미지원 시 URL 복사
-      await navigator.clipboard.writeText(window.location.href);
+      await navigator.clipboard.writeText(shareUrl);
       alert("링크가 클립보드에 복사되었습니다.");
     }
   };
