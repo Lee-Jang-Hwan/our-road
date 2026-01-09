@@ -363,47 +363,44 @@ export default function ResultPage({ params }: ResultPageProps) {
 
       // 대중교통 모드: subPath별로 세분화
       const subPaths = transport.transitDetails.subPaths;
-      for (const subPath of subPaths) {
-        if (!subPath.startCoord || !subPath.endCoord) continue;
-
-        const subTransportMode =
-          subPath.trafficType === 3
-            ? ("walking" as const)
-            : ("public" as const);
-
-        // 대중교통 구간: passStopCoords가 있으면 path로 사용
-        // 도보 구간: polyline 사용 (TMap)
-        let pathCoords: Coordinate[] | undefined;
-        if (
-          subPath.trafficType !== 3 &&
-          subPath.passStopCoords &&
-          subPath.passStopCoords.length > 0
-        ) {
-          // 대중교통 구간: 시작점 + 경유 정류장 + 끝점
-          pathCoords = [
-            subPath.startCoord,
-            ...subPath.passStopCoords,
-            subPath.endCoord,
-          ];
-        }
-
-        segments.push({
-          from: subPath.startCoord,
-          to: subPath.endCoord,
-          encodedPath: subPath.polyline, // 도보 구간의 TMap polyline
-          path: pathCoords, // 대중교통 구간의 passStopCoords 기반 경로
-          transportMode: subTransportMode,
-          segmentIndex,
-        });
-      }
 
       // subPath가 없으면 전체 polyline 사용 (폴백)
-      if (subPaths.length === 0) {
+      if (!subPaths || subPaths.length === 0) {
         segments.push({
           from: fromCoord,
           to: toCoord,
           encodedPath: transport?.polyline,
           transportMode: baseTransportMode,
+          segmentIndex,
+        });
+        return;
+      }
+
+      for (const subPath of subPaths) {
+        const subTransportMode = subPath.trafficType === 3 ? "walking" as const : "public" as const;
+
+        // 시작/끝 좌표 결정 (subPath 좌표 우선, 없으면 전체 구간 좌표 사용)
+        const subFrom = subPath.startCoord || fromCoord;
+        const subTo = subPath.endCoord || toCoord;
+
+        // 대중교통 구간: passStopCoords가 있으면 path로 사용
+        // 도보 구간: polyline 사용 (TMap), 없으면 직선 연결
+        let pathCoords: Coordinate[] | undefined;
+        if (subPath.trafficType !== 3 && subPath.passStopCoords && subPath.passStopCoords.length > 0) {
+          // 대중교통 구간: 시작점 + 경유 정류장 + 끝점
+          pathCoords = [
+            subFrom,
+            ...subPath.passStopCoords,
+            subTo,
+          ];
+        }
+
+        segments.push({
+          from: subFrom,
+          to: subTo,
+          encodedPath: subPath.polyline, // 도보 구간의 TMap polyline
+          path: pathCoords, // 대중교통 구간의 passStopCoords 기반 경로
+          transportMode: subTransportMode,
           segmentIndex,
         });
       }

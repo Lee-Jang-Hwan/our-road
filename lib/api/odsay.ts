@@ -493,9 +493,40 @@ function convertSubPathToTransitSubPath(subPath: ODsaySubPath): TransitSubPath {
 
 /**
  * ODsayPath에서 TransitDetails 추출
+ * 도보 구간에 좌표가 없는 경우 인접 구간의 좌표를 사용하여 보완
  */
 function extractTransitDetails(path: ODsayPath): TransitDetails {
   const subPaths = path.subPath.map(convertSubPathToTransitSubPath);
+
+  // 도보 구간에 좌표가 없는 경우 인접 구간의 좌표로 보완
+  for (let i = 0; i < subPaths.length; i++) {
+    const subPath = subPaths[i];
+
+    // 도보 구간(trafficType === 3)만 처리
+    if (subPath.trafficType !== 3) continue;
+
+    // startCoord가 없는 경우
+    if (!subPath.startCoord) {
+      // 이전 구간의 endCoord 사용
+      if (i > 0) {
+        const prevSubPath = subPaths[i - 1];
+        if (prevSubPath.endCoord) {
+          subPath.startCoord = { ...prevSubPath.endCoord };
+        }
+      }
+    }
+
+    // endCoord가 없는 경우
+    if (!subPath.endCoord) {
+      // 다음 구간의 startCoord 사용
+      if (i < subPaths.length - 1) {
+        const nextSubPath = subPaths[i + 1];
+        if (nextSubPath.startCoord) {
+          subPath.endCoord = { ...nextSubPath.startCoord };
+        }
+      }
+    }
+  }
 
   // 도보 시간/거리 계산
   const walkingInfo = path.subPath
@@ -758,13 +789,47 @@ export async function getBestTransitRouteWithDetails(
     subPathsCount: details.subPaths?.length,
   });
 
+  // 첫 번째/마지막 도보 구간에 출발지/도착지 좌표 보완
+  if (details.subPaths && details.subPaths.length > 0) {
+    const firstSubPath = details.subPaths[0];
+    const lastSubPath = details.subPaths[details.subPaths.length - 1];
+
+    // 첫 번째 구간이 도보이고 startCoord가 없으면 출발지 좌표 사용
+    if (firstSubPath.trafficType === 3 && !firstSubPath.startCoord) {
+      firstSubPath.startCoord = { lat: origin.lat, lng: origin.lng };
+      console.log("[ODsay] 첫 번째 도보 구간 startCoord 보완 (출발지):", firstSubPath.startCoord);
+    }
+
+    // 마지막 구간이 도보이고 endCoord가 없으면 도착지 좌표 사용
+    if (lastSubPath.trafficType === 3 && !lastSubPath.endCoord) {
+      lastSubPath.endCoord = { lat: destination.lat, lng: destination.lng };
+      console.log("[ODsay] 마지막 도보 구간 endCoord 보완 (도착지):", lastSubPath.endCoord);
+    }
+  }
+
   // 도보 구간에 TMap 도보 경로 polyline 추가
   if (details.subPaths) {
-    const walkingSubPaths = details.subPaths.filter(
-      (sp) => sp.trafficType === 3 && sp.startCoord && sp.endCoord
+    // 모든 도보 구간 확인 (좌표 유무 포함)
+    const allWalkingSubPaths = details.subPaths.filter(
+      (sp) => sp.trafficType === 3
     );
 
-    console.log("[ODsay] 도보 구간 수:", walkingSubPaths.length);
+    console.log("[ODsay] 전체 도보 구간 수:", allWalkingSubPaths.length);
+    allWalkingSubPaths.forEach((sp, idx) => {
+      console.log(`[ODsay] 도보 구간 ${idx + 1}:`, {
+        startCoord: sp.startCoord,
+        endCoord: sp.endCoord,
+        distance: sp.distance,
+        sectionTime: sp.sectionTime,
+      });
+    });
+
+    // 좌표가 있는 도보 구간만 TMap API 호출
+    const walkingSubPaths = allWalkingSubPaths.filter(
+      (sp) => sp.startCoord && sp.endCoord
+    );
+
+    console.log("[ODsay] 좌표가 있는 도보 구간 수:", walkingSubPaths.length);
 
     // 도보 구간에 대해 병렬로 TMap API 호출
     await Promise.all(
@@ -772,6 +837,11 @@ export async function getBestTransitRouteWithDetails(
         if (!subPath.startCoord || !subPath.endCoord) return;
 
         try {
+          console.log("[ODsay] TMap API 호출 시작:", {
+            from: subPath.startCoord,
+            to: subPath.endCoord,
+          });
+
           const walkingRoute = await getTmapWalkingRoute(
             subPath.startCoord,
             subPath.endCoord
@@ -779,11 +849,15 @@ export async function getBestTransitRouteWithDetails(
 
           if (walkingRoute?.polyline) {
             subPath.polyline = walkingRoute.polyline;
-            console.log("[ODsay] 도보 구간 polyline 추가:", {
-              from: subPath.startName,
-              to: subPath.endName,
+            console.log("[ODsay] 도보 구간 polyline 추가 완료:", {
+              from: subPath.startName || "출발지",
+              to: subPath.endName || "도착지",
               polylineLength: walkingRoute.polyline.length,
+              distance: walkingRoute.totalDistance,
+              duration: walkingRoute.totalDuration,
             });
+          } else {
+            console.warn("[ODsay] TMap API 응답에 polyline 없음");
           }
         } catch (error) {
           console.warn("[ODsay] TMap 도보 경로 조회 실패:", error);

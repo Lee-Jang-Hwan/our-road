@@ -342,6 +342,7 @@ interface RealRoutePolylineProps {
  * - encodedPath가 있으면 인코딩된 폴리라인으로 경로 표시
  * - 둘 다 없으면 직선으로 연결
  * - useSegmentColors가 true면 각 구간마다 다른 색상 사용
+ * - 도보 구간(walking)은 항상 주황색으로 표시 (useSegmentColors와 관계없이)
  */
 export function RealRoutePolyline({
   segments,
@@ -352,10 +353,13 @@ export function RealRoutePolyline({
   return (
     <>
       {segments.map((segment, index) => {
-        // 구간별 색상 또는 이동 수단별 색상
-        const strokeColor = useSegmentColors
-          ? getSegmentColor(segment.segmentIndex ?? index)
-          : TRANSPORT_COLORS[segment.transportMode];
+        // 도보 구간은 항상 주황색 (이동 수단별 색상)
+        // 그 외 구간은 useSegmentColors에 따라 결정
+        const strokeColor = segment.transportMode === "walking"
+          ? TRANSPORT_COLORS.walking
+          : useSegmentColors
+            ? getSegmentColor(segment.segmentIndex ?? index)
+            : TRANSPORT_COLORS[segment.transportMode];
 
         if (segment.encodedPath) {
           // 실제 경로 (인코딩된 폴리라인)
@@ -385,14 +389,16 @@ export function RealRoutePolyline({
           );
         } else {
           // 직선 연결 (폴백)
+          // 도보 구간은 실선, 그 외는 점선으로 표시
+          const isWalkingFallback = segment.transportMode === "walking";
           return (
             <RoutePolyline
               key={`route-${index}`}
               path={[segment.from, segment.to]}
               strokeColor={strokeColor}
-              strokeWeight={strokeWeight}
+              strokeWeight={isWalkingFallback ? strokeWeight : strokeWeight - 1}
               strokeOpacity={strokeOpacity}
-              strokeStyle="shortdash"
+              strokeStyle={isWalkingFallback ? "solid" : "shortdash"}
               zIndex={index + 1}
             />
           );
