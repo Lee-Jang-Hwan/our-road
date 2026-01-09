@@ -2,8 +2,8 @@
 
 import { use, useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { LuChevronLeft, LuShare2, LuLoader, LuPencil } from "react-icons/lu";
-import { AlertCircle, MapPin, Clock, ArrowRight } from "lucide-react";
+import { LuChevronLeft, LuShare2, LuLoader, LuPencil, LuHotel } from "react-icons/lu";
+import { AlertCircle, MapPin, Clock, ArrowRight, AlertTriangle } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -34,9 +34,70 @@ import type { Coordinate, Place } from "@/types/place";
 import type { Trip } from "@/types/trip";
 import type { UnassignedPlaceInfo } from "@/types/optimize";
 import type { RouteSegment } from "@/types/route";
+import type { DailyAccommodation } from "@/types/accommodation";
 
 interface ResultPageProps {
   params: Promise<{ tripId: string }>;
+}
+
+/**
+ * 숙소 누락 날짜를 확인하는 함수
+ */
+function getMissingAccommodationDates(
+  startDate: string,
+  endDate: string,
+  accommodations?: DailyAccommodation[]
+): string[] {
+  if (!accommodations || accommodations.length === 0) {
+    // 숙소가 전혀 없는 경우 - 모든 숙박 날짜가 누락됨
+    const missingDates: string[] = [];
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const nights = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+    
+    // 숙박은 시작일부터 (종료일 - 1) 까지
+    for (let i = 0; i < nights; i++) {
+      const date = new Date(start);
+      date.setDate(start.getDate() + i);
+      missingDates.push(date.toISOString().split('T')[0]);
+    }
+    return missingDates;
+  }
+
+  // 필요한 모든 숙박 날짜 계산
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const nights = Math.floor((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
+  
+  const requiredDates = new Set<string>();
+  for (let i = 0; i < nights; i++) {
+    const date = new Date(start);
+    date.setDate(start.getDate() + i);
+    requiredDates.add(date.toISOString().split('T')[0]);
+  }
+
+  // 숙소가 커버하는 날짜 제거
+  accommodations.forEach(acc => {
+    const accStart = new Date(acc.startDate);
+    const accEnd = new Date(acc.endDate);
+    const accNights = Math.floor((accEnd.getTime() - accStart.getTime()) / (1000 * 60 * 60 * 24));
+    
+    for (let i = 0; i < accNights; i++) {
+      const date = new Date(accStart);
+      date.setDate(accStart.getDate() + i);
+      requiredDates.delete(date.toISOString().split('T')[0]);
+    }
+  });
+
+  return Array.from(requiredDates).sort();
+}
+
+/**
+ * 날짜를 "M월 D일" 형식으로 포맷
+ */
+function formatDateKorean(dateStr: string): string {
+  const date = new Date(dateStr);
+  return `${date.getMonth() + 1}월 ${date.getDate()}일`;
 }
 
 export default function ResultPage({ params }: ResultPageProps) {
@@ -544,6 +605,72 @@ export default function ResultPage({ params }: ResultPageProps) {
           </div>
         </div>
       )}
+
+      {/* 숙소 누락 경고 */}
+      {trip && (() => {
+        const missingDates = getMissingAccommodationDates(
+          trip.startDate,
+          trip.endDate,
+          trip.accommodations
+        );
+        
+        if (missingDates.length > 0) {
+          // 연속된 날짜를 그룹화
+          const groups: string[][] = [];
+          let currentGroup: string[] = [missingDates[0]];
+          
+          for (let i = 1; i < missingDates.length; i++) {
+            const prevDate = new Date(missingDates[i - 1]);
+            const currDate = new Date(missingDates[i]);
+            const diff = (currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24);
+            
+            if (diff === 1) {
+              currentGroup.push(missingDates[i]);
+            } else {
+              groups.push(currentGroup);
+              currentGroup = [missingDates[i]];
+            }
+          }
+          groups.push(currentGroup);
+          
+          return (
+            <div className="mx-4 mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-5 w-5 text-yellow-600 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-yellow-800 mb-1">
+                    숙소 설정이 필요합니다
+                  </p>
+                  <div className="text-sm text-yellow-700 space-y-1">
+                    {groups.map((group, idx) => {
+                      if (group.length === 1) {
+                        return (
+                          <p key={idx}>
+                            • {formatDateKorean(group[0])} 숙소가 설정되지 않았습니다.
+                          </p>
+                        );
+                      } else {
+                        return (
+                          <p key={idx}>
+                            • {formatDateKorean(group[0])} ~ {formatDateKorean(group[group.length - 1])} 숙소가 설정되지 않았습니다.
+                          </p>
+                        );
+                      }
+                    })}
+                  </div>
+                  <Link href={`/plan/${tripId}/edit`} className="mt-2 inline-block">
+                    <Button variant="outline" size="sm" className="h-8 text-xs bg-white hover:bg-yellow-50">
+                      <LuHotel className="w-3.5 h-3.5 mr-1.5" />
+                      숙소 설정하기
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          );
+        }
+        return null;
+      })()}
 
       {/* 누락된 장소 경고 (호버 시 상세 이유 표시) */}
       <UnassignedPlaces places={unassignedPlaceInfos} />
