@@ -409,3 +409,47 @@
 .animate-spin-slow {
   animation: spin-slow 2s linear infinite;
 }
+
+/* =========================================
+   Landing Page 스타일
+   ========================================= */
+
+/* 랜딩 페이지 float 애니메이션 (6초 주기) */
+@keyframes float-slow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.animate-float-slow {
+  animation: float-slow 6s ease-in-out infinite;
+}
+
+/* 랜딩 페이지 배경 오버레이 */
+.landing-overlay {
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.2) 0%,
+    rgba(0, 0, 0, 0.1) 50%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
+}
+
+/* 랜딩 페이지 글래스모피즘 버튼 */
+.glass-button {
+  @apply bg-white/20 backdrop-blur-xl border border-white/30;
+  transition: all 0.3s ease;
+}
+
+.glass-button:hover {
+  @apply bg-white/30;
+  transform: scale(1.02);
+}
+
+.glass-button:active {
+  transform: scale(0.98);
+}

@@ -137,8 +137,11 @@ export interface TripListItem {
   startDate: string;
   endDate: string;
   status: TripStatus;
+  transportModes: TransportMode[];
+  accommodations?: DailyAccommodation[];
   placeCount: number;
   createdAt: string;
+  updatedAt: string;
 }
 
 /**
@@ -190,7 +193,7 @@ export function convertTripRowToTrip(row: TripRow): Trip {
  */
 export function calculateTripDuration(
   startDate: string,
-  endDate: string
+  endDate: string,
 ): TripDuration {
   const start = new Date(startDate);
   const end = new Date(endDate);
