@@ -43,7 +43,6 @@ import {
   PullToRefresh,
 } from "@/components/ux";
 import { showSuccessToast, showErrorToast } from "@/lib/toast";
-import { AccommodationWarning } from "@/components/trip/accommodation-warning";
 
 import { getTripList } from "@/actions/trips/get-trips";
 import { deleteTrip } from "@/actions/trips/delete-trip";
@@ -279,16 +278,6 @@ function TripCard({
               {formatRelativeTime(trip.updatedAt)}
             </span>
           </div>
-
-          {/* 숙소 누락 경고 */}
-          <AccommodationWarning
-            tripId={trip.id}
-            startDate={trip.startDate}
-            endDate={trip.endDate}
-            accommodations={trip.accommodations}
-            isMobile
-            showButton={false}
-          />
         </div>
       </CardContent>
     </Card>
