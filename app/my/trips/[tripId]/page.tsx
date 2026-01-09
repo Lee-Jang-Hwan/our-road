@@ -759,7 +759,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
 
       {/* 카카오 맵 */}
       {hasItinerary && trip && (
-        <div className="w-full h-48 border-b relative overflow-hidden">
+        <div className="w-full h-64 border-b relative overflow-hidden">
           <KakaoMap
             center={mapCenter}
             level={7}
