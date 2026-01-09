@@ -5,7 +5,7 @@ import {
   LuMapPin,
   LuRoute,
   LuClock,
-  LuSparkles,
+  LuNavigation,
   LuChevronRight,
 } from "react-icons/lu";
 
@@ -47,9 +47,9 @@ export default function Home() {
               description="영업시간 자동 반영"
             />
             <FeatureCard
-              icon={<LuSparkles className="w-5 h-5" />}
-              title="AI 추천"
-              description="주변 맛집/명소 추천"
+              icon={<LuNavigation className="w-5 h-5" />}
+              title="네비게이션"
+              description="길을 잃어 헤멜 걱정 없어요"
             />
           </div>
         </div>
