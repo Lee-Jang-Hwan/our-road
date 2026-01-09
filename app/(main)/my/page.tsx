@@ -5,17 +5,14 @@ import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import {
-  LuPlus,
   LuMapPin,
   LuCalendar,
   LuEllipsisVertical,
   LuTrash2,
   LuLoader,
   LuMap,
-  LuChevronLeft,
 } from "react-icons/lu";
-
-import { useSafeBack } from "@/hooks/use-safe-back";
+import { Plane, BookOpen } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -309,7 +306,6 @@ function LoadingSkeleton() {
 export default function MyTripsPage() {
   const router = useRouter();
   const { user, isLoaded } = useUser();
-  const handleBack = useSafeBack("/");
   const [trips, setTrips] = useState<TripListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -405,20 +401,36 @@ export default function MyTripsPage() {
     <main className="flex flex-col min-h-[calc(100dvh-64px)]">
       {/* 헤더 */}
       <header className="flex items-center justify-between px-4 py-3 border-b">
-        <div className="flex items-center gap-2">
+        <h1 className="font-semibold text-lg flex items-center gap-2">
+          내 여행
+          <BookOpen className="w-5 h-5 text-purple-500" />
+        </h1>
+        <Link href="/plan" className="group">
           <Button
-            size="icon"
-            variant="ghost"
-            className="touch-target"
-            onClick={handleBack}
+            className="
+              relative overflow-hidden touch-target
+              bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500
+              hover:from-violet-600 hover:via-purple-600 hover:to-fuchsia-600
+              text-white font-semibold text-sm
+              px-4 py-2 rounded-full
+              shadow-lg shadow-purple-500/30
+              hover:shadow-xl hover:shadow-purple-500/40
+              hover:scale-105 active:scale-95
+              transition-all duration-300 ease-out
+              border-0
+            "
           >
-            <LuChevronLeft className="w-5 h-5" />
-          </Button>
-          <h1 className="font-semibold text-lg">내 여행</h1>
-        </div>
-        <Link href="/plan">
-          <Button size="icon" variant="ghost" className="touch-target">
-            <LuPlus className="w-5 h-5" />
+            {/* 반짝이는 배경 효과 */}
+            <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out" />
+
+            {/* 글로우 효과 */}
+            <span className="absolute inset-0 rounded-full bg-gradient-to-r from-violet-400 via-purple-400 to-fuchsia-400 opacity-0 group-hover:opacity-50 blur-xl transition-opacity duration-300" />
+
+            {/* 컨텐츠 */}
+            <span className="relative flex items-center gap-1.5">
+              <span className="animate-[pulse_2s_ease-in-out_infinite]">새 일정</span>
+              <Plane className="w-4 h-4 animate-[float_3s_ease-in-out_infinite] group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-300" />
+            </span>
           </Button>
         </Link>
       </header>

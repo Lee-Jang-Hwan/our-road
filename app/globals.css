@@ -385,10 +385,16 @@
 @keyframes float {
   0%,
   100% {
-    transform: translateY(0);
+    transform: translateY(0) translateX(0) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-2px) translateX(1px) rotate(2deg);
   }
   50% {
-    transform: translateY(-8px);
+    transform: translateY(-4px) translateX(0) rotate(0deg);
+  }
+  75% {
+    transform: translateY(-2px) translateX(-1px) rotate(-2deg);
   }
 }
 
