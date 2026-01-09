@@ -3,7 +3,6 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { koKR } from "@clerk/localizations";
 import { Geist, Geist_Mono } from "next/font/google";
 
-import Navbar from "@/components/Navbar";
 import { SyncUserProvider } from "@/components/providers/sync-user-provider";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
@@ -50,7 +49,6 @@ export default function RootLayout({
         >
           <SyncUserProvider>
             <div className="app-container-safe">
-              <Navbar />
               {children}
             </div>
             <Toaster position="top-center" richColors closeButton />
