@@ -635,6 +635,7 @@ export default function ResultPage({ params }: ResultPageProps) {
                   origin={trip?.origin}
                   destination={trip?.destination}
                   onItemClick={handleItemClick}
+                  showNavigation={false}
                   isLoading={false}
                 />
               </>

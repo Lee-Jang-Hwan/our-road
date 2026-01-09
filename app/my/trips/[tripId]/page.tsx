@@ -822,6 +822,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
               itineraries={enrichedItineraries}
               selectedDay={selectedDay}
               onItemClick={handleItemClick}
+              showNavigation={false}
               isLoading={false}
             />
           </div>
