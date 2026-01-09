@@ -220,7 +220,6 @@ export async function getWalkingRoute(
     }
 
     // 5. TMAP 실패 시 Fallback: Haversine 기반 추정
-    console.log("TMAP API 실패, Haversine fallback 사용");
 
     const duration = calculateWalkingDuration(estimatedDistance);
     const polyline = createSimplePolyline(origin, destination);

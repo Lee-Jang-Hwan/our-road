@@ -37,8 +37,6 @@ export function detectOutliers(
 ): OutlierWarning[] {
   const warnings: OutlierWarning[] = [];
 
-  console.log(`[detectOutliers] Checking ${clusters.length} clusters`);
-
   for (let i = 0; i < clusters.length; i++) {
     const cluster = clusters[i];
 
@@ -74,10 +72,6 @@ export function detectOutliers(
       // If singleton is >10km from nearest waypoint in other clusters
       if (nearestDistance > 10000) {
         const estimatedExtraTime = Math.round((nearestDistance / 1000 / 20) * 60) + 15;
-
-        console.log(
-          `[detectOutliers] Singleton outlier detected: ${wp.name} (${Math.round(nearestDistance / 1000)}km from nearest)`
-        );
 
         warnings.push({
           waypointId: wp.id,
@@ -142,10 +136,6 @@ export function detectOutliers(
     const avgCentroidDistance =
       centroidDistances.reduce((sum, d) => sum + d, 0) / centroidDistances.length;
 
-    console.log(
-      `[detectOutliers] Cluster ${i}: ${clusterWaypoints.length} waypoints, ${pairwiseOutliers.size} pairwise outliers, avg centroid distance: ${Math.round(avgCentroidDistance / 1000)}km`
-    );
-
     // Validate and create warnings
     for (const wp of clusterWaypoints) {
       const isPairwiseOutlier = pairwiseOutliers.has(wp.id);
@@ -173,8 +163,6 @@ export function detectOutliers(
       }
     }
   }
-
-  console.log(`[detectOutliers] Total warnings: ${warnings.length}`);
 
   return warnings;
 }

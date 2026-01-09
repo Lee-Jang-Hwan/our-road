@@ -30,12 +30,10 @@ export function extractSegments(
   lodging?: LatLng,
 ): SegmentRequest[] {
   if (!Array.isArray(dayPlans) || dayPlans.length === 0) {
-    console.warn("[extractSegments] No day plans provided");
     return [];
   }
 
   if (!waypoints || waypoints.size === 0) {
-    console.warn("[extractSegments] No waypoints provided");
     return [];
   }
 
@@ -54,7 +52,6 @@ export function extractSegments(
   for (let dayIndex = 0; dayIndex < dayPlans.length; dayIndex++) {
     const dayPlan = dayPlans[dayIndex];
     if (!dayPlan || !Array.isArray(dayPlan.waypointOrder)) {
-      console.warn(`[extractSegments] Invalid day plan at index ${dayIndex}`);
       continue;
     }
     if (dayPlan.waypointOrder.length === 0) continue;
@@ -85,9 +82,6 @@ export function extractSegments(
         !prevDayPlan.waypointOrder ||
         prevDayPlan.waypointOrder.length === 0
       ) {
-        console.warn(
-          `[extractSegments] Day ${dayIndex + 1}: No previous day waypoints, using origin`,
-        );
         startCoord = start;
         startId = "__origin__";
       } else {
@@ -96,9 +90,6 @@ export function extractSegments(
         const prevLastWaypoint = getWaypointCoord(prevLastWaypointId);
 
         if (!prevLastWaypoint) {
-          console.warn(
-            `[extractSegments] Day ${dayIndex + 1}: Cannot find coordinates for waypoint ${prevLastWaypointId}, using origin`,
-          );
           startCoord = start;
           startId = "__origin__";
         } else {
@@ -134,44 +125,33 @@ export function extractSegments(
       }
     }
 
-        // 도착지 좌표 및 ID 결정
-        const lastCoord = getWaypointCoord(lastWaypointId);
-        let endCoord: LatLng | undefined;
-        let endId: string | undefined;
-        console.log(
-          `[extractSegments Day ${dayIndex + 1}] isLastDay:`,
-          isLastDay,
-          "lodging:",
-          lodging,
-          "end:",
-          end,
-        );
-    
-        if (isLastDay && end) {
-          // 마지막 날은 항상 도착지 사용
-          // (마지막 경유지와 도착지가 완전히 같은 좌표가 아니면 항상 추가)
-          const isSameAsLastWaypoint =
-            !!lastCoord &&
-            Math.abs(end.lat - lastCoord.lat) < 0.00001 &&
-            Math.abs(end.lng - lastCoord.lng) < 0.00001;
-    
-          if (!isSameAsLastWaypoint) {
-            endCoord = end;
-            endId = "__destination__";
-          }
-          // 마지막 경유지와 도착지가 완전히 같으면 순환 여행으로 간주하여 endCoord를 설정하지 않음
-        } else if (lodging) {
-          // 마지막 날이 아니고 숙소가 있으면 숙소
-          endCoord = lodging;
-          endId = "__accommodation_0__";
-        }
-        // 숙소가 없고 마지막 날이 아니면 endCoord를 설정하지 않음 (다음 날 이어짐)
+    // 도착지 좌표 및 ID 결정
+    const lastCoord = getWaypointCoord(lastWaypointId);
+    let endCoord: LatLng | undefined;
+    let endId: string | undefined;
+
+    if (isLastDay && end) {
+      // 마지막 날은 항상 도착지 사용
+      // (마지막 경유지와 도착지가 완전히 같은 좌표가 아니면 항상 추가)
+      const isSameAsLastWaypoint =
+        !!lastCoord &&
+        Math.abs(end.lat - lastCoord.lat) < 0.00001 &&
+        Math.abs(end.lng - lastCoord.lng) < 0.00001;
+
+      if (!isSameAsLastWaypoint) {
+        endCoord = end;
+        endId = "__destination__";
+      }
+      // 마지막 경유지와 도착지가 완전히 같으면 순환 여행으로 간주하여 endCoord를 설정하지 않음
+    } else if (lodging) {
+      // 마지막 날이 아니고 숙소가 있으면 숙소
+      endCoord = lodging;
+      endId = "__accommodation_0__";
+    }
+    // 숙소가 없고 마지막 날이 아니면 endCoord를 설정하지 않음 (다음 날 이어짐)
 
     // 마지막 경유지에서 도착지로 가는 구간
     if (endCoord && endId && lastCoord) {
-      console.log(
-        `[extractSegments Day ${dayIndex + 1}] Adding destination segment: ${lastWaypointId} -> ${endId}`,
-      );
       segments.push({
         key: { fromId: lastWaypointId, toId: endId },
         fromCoord: lastCoord,
@@ -235,18 +215,12 @@ function recordFailure(): void {
       circuitBreaker.failureCount,
       "Reopening circuit after failure in HALF_OPEN state",
     );
-    console.warn(
-      "[CircuitBreaker] Reopening circuit after failure in HALF_OPEN state",
-    );
   } else if (circuitBreaker.failureCount >= CIRCUIT_BREAKER_THRESHOLD) {
     circuitBreaker.state = "OPEN";
     logCircuitBreaker(
       "OPEN",
       circuitBreaker.failureCount,
       `Opening circuit after ${CIRCUIT_BREAKER_THRESHOLD} failures`,
-    );
-    console.warn(
-      `[CircuitBreaker] Opening circuit after ${CIRCUIT_BREAKER_THRESHOLD} failures`,
     );
   }
 }
@@ -265,21 +239,14 @@ async function fetchSingleSegment(
   // Check cache first
   const cached = segmentCache.get(segment.fromCoord, segment.toCoord);
   if (cached) {
-    console.log(`[Cache HIT] ${segment.key.fromId} -> ${segment.key.toId}`);
     // Return cached data with original segment key
     return { ...cached, key: segment.key };
   }
-
-  console.log(`[Cache MISS] ${segment.key.fromId} -> ${segment.key.toId}`);
 
   const distanceMeters = calculateDistance(segment.fromCoord, segment.toCoord);
 
   // 700 이하만: 도보 API 호출
   if (distanceMeters <= 700) {
-    console.log(
-      `[callRoutingAPI] Walking distance (${Math.round(distanceMeters)}m) for ${segment.key.fromId} -> ${segment.key.toId}, calling TMAP API`,
-    );
-
     try {
       const walkingRoute = await getTmapWalkingRoute(
         segment.fromCoord,
@@ -298,29 +265,24 @@ async function fetchSingleSegment(
             transferCount: 0,
             walkingTime: walkingRoute.totalDuration,
             walkingDistance: walkingRoute.totalDistance,
-            subPaths: [{
-              trafficType: 3, // 도보
-              distance: walkingRoute.totalDistance,
-              sectionTime: walkingRoute.totalDuration,
-              startCoord: segment.fromCoord,
-              endCoord: segment.toCoord,
-              polyline: walkingRoute.polyline,
-            }],
+            subPaths: [
+              {
+                trafficType: 3, // 도보
+                distance: walkingRoute.totalDistance,
+                sectionTime: walkingRoute.totalDuration,
+                startCoord: segment.fromCoord,
+                endCoord: segment.toCoord,
+                polyline: walkingRoute.polyline,
+              },
+            ],
           },
         };
         // Cache the result
         segmentCache.set(segment.fromCoord, segment.toCoord, result);
         return result;
       }
-      console.warn(
-        `[callRoutingAPI] TMAP returned no route for ${segment.key.fromId} -> ${segment.key.toId}`,
-        { from: segment.fromCoord, to: segment.toCoord },
-      );
     } catch (error) {
-      console.warn(
-        `[callRoutingAPI] TMAP API failed for ${segment.key.fromId} -> ${segment.key.toId}, using fallback calculation`,
-        error,
-      );
+      // TMAP API failed, will use fallback
     }
 
     // TMAP API 실패 시 fallback
@@ -330,9 +292,6 @@ async function fetchSingleSegment(
   // 700m 초과과: 대중교통 API 호출
   // Check circuit breaker
   if (!checkCircuitBreaker()) {
-    console.warn(
-      `[callRoutingAPI] Circuit breaker is OPEN, using fallback for ${segment.key.fromId} -> ${segment.key.toId}`,
-    );
     return fallbackSegmentCost(segment, distanceMeters);
   }
 
@@ -346,9 +305,6 @@ async function fetchSingleSegment(
 
       if (!route) {
         if (attempt === maxRetries) {
-          console.warn(
-            `[callRoutingAPI] No route found for ${segment.key.fromId} -> ${segment.key.toId} after ${maxRetries} retries, using fallback`,
-          );
           recordFailure();
           return fallbackSegmentCost(segment, distanceMeters);
         }
@@ -385,9 +341,6 @@ async function fetchSingleSegment(
       }
       // Exponential backoff: 200ms, 400ms, 800ms
       const delay = Math.pow(2, attempt) * 200;
-      console.log(
-        `[callRoutingAPI] Retry ${attempt + 1}/${maxRetries} for ${segment.key.fromId} -> ${segment.key.toId} after ${delay}ms`,
-      );
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
   }
@@ -408,18 +361,10 @@ export async function callRoutingAPIForSegments(
     return [];
   }
 
-  console.log(
-    `[callRoutingAPIForSegments] Processing ${segments.length} segments`,
-  );
-
   // Fetch all segments with concurrency limit
   const results = await Promise.all(
     segments.map((segment) => apiLimit(() => fetchSingleSegment(segment))),
   );
-
-  // Log cache statistics
-  const stats = segmentCache.getStats();
-  console.log(`[SegmentCache] Size: ${stats.size}/${stats.maxSize} entries`);
 
   return results;
 }
@@ -442,10 +387,6 @@ function calculateWalkingSegmentCostWithDetails(
   // Ensure minimum duration (1 minute)
   const finalDuration = Math.max(1, durationMinutes);
 
-  console.log(
-    `[calculateWalkingSegmentCost] ${segment.key.fromId} -> ${segment.key.toId}: ${Math.round(distanceMeters)}m, ${finalDuration}분 (도보)`,
-  );
-
   return {
     key: segment.key,
     durationMinutes: finalDuration,
@@ -456,14 +397,16 @@ function calculateWalkingSegmentCostWithDetails(
       transferCount: 0,
       walkingTime: finalDuration,
       walkingDistance: distanceMeters,
-      subPaths: [{
-        trafficType: 3, // 도보
-        distance: distanceMeters,
-        sectionTime: finalDuration,
-        startCoord: segment.fromCoord,
-        endCoord: segment.toCoord,
-        // polyline 없음 = 직선 연결
-      }],
+      subPaths: [
+        {
+          trafficType: 3, // 도보
+          distance: distanceMeters,
+          sectionTime: finalDuration,
+          startCoord: segment.fromCoord,
+          endCoord: segment.toCoord,
+          // polyline 없음 = 직선 연결
+        },
+      ],
     },
   };
 }
@@ -485,10 +428,6 @@ function fallbackSegmentCost(
 
   // Ensure minimum duration
   const finalDuration = Math.max(1, durationMinutes);
-
-  console.warn(
-    `[fallbackSegmentCost] ${segment.key.fromId} -> ${segment.key.toId}: ${Math.round(distanceMeters)}m, ${finalDuration}분 (추정)`,
-  );
 
   return {
     key: segment.key,

@@ -126,22 +126,11 @@ async function getRouteInfo(
 
   switch (mode) {
     case "car": {
-      console.log("📡 [거리 행렬 API 호출] 자동차 경로 조회", {
-        from: `${origin.lat.toFixed(6)}, ${origin.lng.toFixed(6)}`,
-        to: `${destination.lat.toFixed(6)}, ${destination.lng.toFixed(6)}`,
-        timestamp: new Date().toISOString(),
-      });
-
       const route = await tryOrNull(() =>
         getCarRoute({ origin, destination })
       );
       
       if (route) {
-        console.log("✅ [거리 행렬 API 호출 성공]", {
-          duration: route.totalDuration,
-          distance: route.totalDistance,
-          timestamp: new Date().toISOString(),
-        });
         return {
           distance: route.totalDistance,
           duration: route.totalDuration,

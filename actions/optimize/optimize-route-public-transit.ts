@@ -511,11 +511,6 @@ export async function optimizePublicTransitRoute(
     // 신규 알고리즘 실행
     const publicTransitOutput = await generatePublicTransitRoute(tripInput);
 
-    console.log("[OptimizePublicTransit] Result:", {
-      dayPlansCount: publicTransitOutput.dayPlans.length,
-      segmentsCount: publicTransitOutput.segmentCosts.length,
-    });
-
     // TripOutput → OptimizeResult 변환
     const optimizeResult = convertTripOutputToOptimizeResult(
       publicTransitOutput,

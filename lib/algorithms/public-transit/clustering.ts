@@ -102,8 +102,6 @@ export function balanceClusterSizes(
   const minSize = Math.max(1, Math.floor(targetPerDay * (1 - flexibilityRange)));
   const maxSize = Math.ceil(targetPerDay * (1 + flexibilityRange));
 
-  console.log(`[balanceClusterSizes] Target: ${targetPerDay}, Range: ${minSize}-${maxSize}`);
-
   for (let iteration = 0; iteration < maxIterations; iteration++) {
     clusters.sort((a, b) => b.waypoints.length - a.waypoints.length);
 
@@ -114,17 +112,11 @@ export function balanceClusterSizes(
 
     // Stop if balanced enough OR largest is within acceptable range
     if (sizeDiff <= 1 || largest.waypoints.length <= maxSize) {
-      console.log(
-        `[balanceClusterSizes] Balanced after ${iteration} iterations (size diff: ${sizeDiff})`
-      );
       break;
     }
 
     // Only force balancing if largest exceeds max threshold significantly
     if (largest.waypoints.length <= maxSize + 1) {
-      console.log(
-        `[balanceClusterSizes] Stopped - largest cluster (${largest.waypoints.length}) within acceptable range`
-      );
       break;
     }
 
@@ -138,7 +130,6 @@ export function balanceClusterSizes(
     );
 
     if (movableWaypoints.length === 0) {
-      console.log(`[balanceClusterSizes] No movable waypoints in largest cluster`);
       break;
     }
 
@@ -159,9 +150,6 @@ export function balanceClusterSizes(
 
     // Don't move if it's >3x closer to current cluster
     if (candidate.distance > distanceFromLargest * 3) {
-      console.log(
-        `[balanceClusterSizes] Skipping move - would create detour (${Math.round(candidate.distance)}m vs ${Math.round(distanceFromLargest)}m)`
-      );
       break;
     }
 
@@ -170,10 +158,6 @@ export function balanceClusterSizes(
     );
     smallest.waypoints.push(candidate.wp);
   }
-
-  // Log final cluster sizes
-  const sizes = clusters.map((c) => c.waypoints.length).join(", ");
-  console.log(`[balanceClusterSizes] Final sizes: [${sizes}]`);
 }
 
 export function ensureFixedWaypointsIncluded(
