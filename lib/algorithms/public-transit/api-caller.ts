@@ -287,11 +287,26 @@ async function fetchSingleSegment(
       );
 
       if (walkingRoute) {
+        // 도보 구간도 transitDetails 형태로 제공 (지도 표시를 위해)
         const result: SegmentCost = {
           key: segment.key,
           durationMinutes: walkingRoute.totalDuration,
           distanceMeters: walkingRoute.totalDistance,
           polyline: walkingRoute.polyline,
+          transitDetails: {
+            totalFare: 0,
+            transferCount: 0,
+            walkingTime: walkingRoute.totalDuration,
+            walkingDistance: walkingRoute.totalDistance,
+            subPaths: [{
+              trafficType: 3, // 도보
+              distance: walkingRoute.totalDistance,
+              sectionTime: walkingRoute.totalDuration,
+              startCoord: segment.fromCoord,
+              endCoord: segment.toCoord,
+              polyline: walkingRoute.polyline,
+            }],
+          },
         };
         // Cache the result
         segmentCache.set(segment.fromCoord, segment.toCoord, result);
@@ -309,7 +324,7 @@ async function fetchSingleSegment(
     }
 
     // TMAP API 실패 시 fallback
-    return calculateWalkingSegmentCost(segment, distanceMeters);
+    return calculateWalkingSegmentCostWithDetails(segment, distanceMeters);
   }
 
   // 700m 초과과: 대중교통 API 호출
@@ -413,8 +428,9 @@ export async function callRoutingAPIForSegments(
  * Calculate walking segment cost for short distances (<= 700m)
  * - Walking speed: 4 km/h (약 67m/분)
  * - No API call required
+ * - transitDetails 포함 (지도에서 도보 경로로 표시하기 위해)
  */
-function calculateWalkingSegmentCost(
+function calculateWalkingSegmentCostWithDetails(
   segment: SegmentRequest,
   distanceMeters: number,
 ): SegmentCost {
@@ -434,7 +450,21 @@ function calculateWalkingSegmentCost(
     key: segment.key,
     durationMinutes: finalDuration,
     distanceMeters,
-    // transitDetails 없음 = 도보 구간
+    // TMap polyline 없이 직선 연결 (from-to 좌표로 지도에 표시)
+    transitDetails: {
+      totalFare: 0,
+      transferCount: 0,
+      walkingTime: finalDuration,
+      walkingDistance: distanceMeters,
+      subPaths: [{
+        trafficType: 3, // 도보
+        distance: distanceMeters,
+        sectionTime: finalDuration,
+        startCoord: segment.fromCoord,
+        endCoord: segment.toCoord,
+        // polyline 없음 = 직선 연결
+      }],
+    },
   };
 }
 
