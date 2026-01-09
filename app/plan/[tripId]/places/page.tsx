@@ -24,6 +24,7 @@ import {
   getPlaces,
   reorderPlaces,
 } from "@/actions/places";
+import { updateTrip } from "@/actions/trips/update-trip";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import type { Place, PlaceSearchResult } from "@/types/place";
 
@@ -65,6 +66,19 @@ export default function PlacesPage({ params }: PlacesPageProps) {
       console.error("장소 로드 실패:", error);
     }
   }, [tripId, savePlaces]);
+
+  // 저장 완료 처리
+  const handleSaveComplete = async () => {
+    try {
+      // Trip 상태를 'optimizing'으로 변경
+      await updateTrip(tripId, { status: "optimizing" });
+      // 편집 페이지로 돌아가기
+      window.location.href = `/plan/${tripId}`;
+    } catch (error) {
+      console.error("저장 완료 처리 실패:", error);
+      showErrorToast("오류가 발생했습니다.");
+    }
+  };
 
   // 초기 로드: DB에서 장소 가져오기
   useEffect(() => {
@@ -253,11 +267,9 @@ export default function PlacesPage({ params }: PlacesPageProps) {
       {/* 하단 버튼 */}
       {places.length > 0 && (
         <div className="sticky bottom-0 p-4 backdrop-blur-sm bg-background/80 border-t pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:static md:border-t-0 md:pt-4 md:pb-0">
-          <Link href={`/plan/${tripId}`}>
-            <Button className="w-full h-12">
-              {places.length}개 장소 저장 완료
-            </Button>
-          </Link>
+          <Button className="w-full h-12" onClick={handleSaveComplete}>
+            {places.length}개 장소 저장 완료
+          </Button>
         </div>
       )}
 

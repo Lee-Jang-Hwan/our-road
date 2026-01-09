@@ -1,6 +1,13 @@
 "use client";
 
-import { use, useEffect, useState, useMemo, useTransition } from "react";
+import {
+  use,
+  useEffect,
+  useState,
+  useMemo,
+  useTransition,
+  useCallback,
+} from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
@@ -22,6 +29,7 @@ import { useSafeBack } from "@/hooks/use-safe-back";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AlertCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -33,6 +41,7 @@ import {
 
 import { DayTabsContainer } from "@/components/itinerary/day-tabs";
 import { DayContentPanel } from "@/components/itinerary/day-content";
+import { UnassignedPlaces } from "@/components/itinerary/unassigned-places";
 import { KakaoMap } from "@/components/map/kakao-map";
 import {
   PlaceMarkers,
@@ -48,9 +57,15 @@ import { useSwipe } from "@/hooks/use-swipe";
 
 import { getTripWithDetails } from "@/actions/trips/get-trip";
 import { deleteTrip } from "@/actions/trips/delete-trip";
+import { getPlaces } from "@/actions/places";
+import { optimizeRoute } from "@/actions/optimize/optimize-route";
+import { saveItinerary } from "@/actions/optimize/save-itinerary";
 import { getSegmentColor } from "@/lib/utils";
+import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import type { TripWithDetails, TripStatus, Coordinate } from "@/types";
 import type { ScheduleItem } from "@/types/schedule";
+import type { Place } from "@/types/place";
+import type { UnassignedPlaceInfo } from "@/types/optimize";
 import { calculateTripDuration } from "@/types/trip";
 
 interface TripDetailPageProps {
@@ -136,6 +151,120 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+  // 최적화 관련 상태
+  const [isOptimizing, setIsOptimizing] = useState(false);
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [unassignedPlaceInfos, setUnassignedPlaceInfos] = useState<
+    UnassignedPlaceInfo[]
+  >([]);
+  const [optimizeError, setOptimizeError] = useState<{
+    message: string;
+    code?: string;
+    retryCount: number;
+  } | null>(null);
+  const MAX_RETRY_COUNT = 2;
+
+  // 최적화 실행
+  const runOptimization = useCallback(async () => {
+    console.log("🚀 [최적화 시작] 일정 최적화를 시작합니다.", {
+      tripId,
+      timestamp: new Date().toISOString(),
+    });
+    setIsOptimizing(true);
+    setOptimizeError(null);
+
+    try {
+      const result = await optimizeRoute({ tripId });
+
+      if (!result.success) {
+        console.error("❌ [최적화 실패]", result.error?.message);
+        const currentRetryCount = optimizeError?.retryCount || 0;
+        setOptimizeError({
+          message: result.error?.message || "최적화에 실패했습니다.",
+          code: result.error?.code,
+          retryCount: currentRetryCount + 1,
+        });
+        return;
+      }
+
+      if (result.data?.itinerary) {
+        // 누락된 장소 확인 (상세 정보 포함)
+        const unassignedError = result.data.errors?.find(
+          (e) => e.code === "EXCEEDS_DAILY_LIMIT",
+        );
+
+        if (unassignedError?.details?.unassignedPlaceDetails) {
+          // 상세 정보가 있는 경우
+          setUnassignedPlaceInfos(
+            unassignedError.details
+              .unassignedPlaceDetails as UnassignedPlaceInfo[],
+          );
+        } else if (unassignedError?.details?.unassignedPlaces) {
+          // 기존 방식: 장소 ID만 있는 경우 (후방 호환)
+          const placeIds = unassignedError.details.unassignedPlaces as string[];
+          const infos: UnassignedPlaceInfo[] = placeIds.map((placeId) => {
+            const place = places.find((p) => p.id === placeId);
+            return {
+              placeId,
+              placeName: place?.name || "알 수 없는 장소",
+              reasonCode: "TIME_EXCEEDED" as const,
+              reasonMessage:
+                "일일 활동 시간이 부족하여 일정에 포함하지 못했습니다.",
+              details: place
+                ? { estimatedDuration: place.estimatedDuration }
+                : undefined,
+            };
+          });
+          setUnassignedPlaceInfos(infos);
+        } else {
+          setUnassignedPlaceInfos([]);
+        }
+
+        console.log("✅ [최적화 완료] 일정 최적화가 완료되었습니다.", {
+          itineraryCount: result.data.itinerary.length,
+          timestamp: new Date().toISOString(),
+        });
+
+        // 최적화 직후 자동 저장
+        console.log("💾 [자동 저장 시작] 최적화 결과를 DB에 저장합니다.");
+        try {
+          const saveResult = await saveItinerary({
+            tripId,
+            itinerary: result.data.itinerary,
+          });
+
+          if (!saveResult.success) {
+            console.error("❌ [저장 실패]", saveResult.error);
+            showErrorToast(saveResult.error || "저장에 실패했습니다.");
+            // 저장 실패해도 결과는 표시
+          } else {
+            console.log("✅ [저장 완료] 일정이 DB에 저장되었습니다.");
+            showSuccessToast("일정이 최적화되고 저장되었습니다!");
+
+            // DB에서 최신 데이터 다시 로드
+            const reloadResult = await getTripWithDetails(tripId);
+            if (reloadResult.success && reloadResult.data) {
+              setTrip(reloadResult.data);
+            }
+          }
+        } catch (saveErr) {
+          console.error("❌ [저장 실패]", saveErr);
+          showErrorToast("저장 중 오류가 발생했습니다.");
+          // 저장 실패해도 결과는 표시
+        }
+      }
+    } catch (err) {
+      console.error("❌ [최적화 실패]", err);
+      const currentRetryCount = optimizeError?.retryCount || 0;
+      setOptimizeError({
+        message: "최적화 중 오류가 발생했습니다.",
+        retryCount: currentRetryCount + 1,
+      });
+    } finally {
+      setIsOptimizing(false);
+    }
+  }, [tripId, optimizeError, places]);
+
   // 여행 상세 로드
   useEffect(() => {
     async function loadTrip() {
@@ -148,6 +277,25 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
 
       if (result.success && result.data) {
         setTrip(result.data);
+
+        // 자동 최적화 조건: draft 또는 optimizing 상태면 무조건 재최적화
+        const shouldOptimize =
+          result.data.status === "draft" || result.data.status === "optimizing";
+
+        if (shouldOptimize) {
+          console.log(
+            `[자동 최적화] Trip 상태가 ${result.data.status}이므로 자동 최적화를 실행합니다.`,
+          );
+
+          // 장소 데이터 로드 (최적화에 필요)
+          const placesResult = await getPlaces(tripId);
+          if (placesResult.success && placesResult.data) {
+            setPlaces(placesResult.data);
+          }
+
+          // 최적화 실행
+          await runOptimization();
+        }
       } else {
         setError(result.error || "여행 정보를 불러오는데 실패했습니다.");
       }
@@ -160,7 +308,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
     } else if (isLoaded && !user) {
       setIsLoading(false);
     }
-  }, [user, isLoaded, tripId]);
+  }, [user, isLoaded, tripId, runOptimization]);
 
   // 일자 탭 데이터
   const days = useMemo(() => {
@@ -474,13 +622,12 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
       segmentIndex: number;
     }> = [];
 
-    const transportMode = trip.transportModes.includes("car")
+    const isCarMode = trip.transportModes.includes("car");
+    const baseTransportMode = isCarMode
       ? ("car" as const)
       : ("public" as const);
-    const originCoord = { lat: trip.origin.lat, lng: trip.origin.lng };
-    const destCoord = { lat: trip.destination.lat, lng: trip.destination.lng };
 
-    // 출발지 → 첫 장소 (dayOrigin이 있고 transportFromOrigin이 있을 때만)
+    // 출발지 → 첫 장소
     if (
       currentItinerary.dayOrigin &&
       currentItinerary.transportFromOrigin &&
@@ -493,12 +640,12 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
         },
         to: currentDayMarkers[0].coordinate,
         encodedPath: currentItinerary.transportFromOrigin.polyline,
-        transportMode,
+        transportMode: baseTransportMode,
         segmentIndex: 0,
       });
     }
 
-    // 장소들 사이 (도착 장소의 색상 사용)
+    // 장소들 사이
     for (let i = 0; i < currentItinerary.schedule.length - 1; i++) {
       const scheduleItem = currentItinerary.schedule[i];
       if (currentDayMarkers[i] && currentDayMarkers[i + 1]) {
@@ -506,13 +653,13 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
           from: currentDayMarkers[i].coordinate,
           to: currentDayMarkers[i + 1].coordinate,
           encodedPath: scheduleItem.transportToNext?.polyline,
-          transportMode,
+          transportMode: baseTransportMode,
           segmentIndex: i + 1,
         });
       }
     }
 
-    // 마지막 장소 → 도착지 (dayDestination이 있고 transportToDestination이 있을 때만)
+    // 마지막 장소 → 도착지
     if (
       currentItinerary.dayDestination &&
       currentItinerary.transportToDestination &&
@@ -526,7 +673,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
           lng: currentItinerary.dayDestination.lng,
         },
         encodedPath: currentItinerary.transportToDestination.polyline,
-        transportMode,
+        transportMode: baseTransportMode,
         segmentIndex: lastIndex,
       });
     }
@@ -578,6 +725,12 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
     router.push(`/navigate/${tripId}`);
   };
 
+  // 최적화 재시도
+  const handleRetryOptimization = () => {
+    setOptimizeError(null);
+    runOptimization();
+  };
+
   // 로딩 중
   if (!isLoaded || isLoading) {
     return (
@@ -605,6 +758,32 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-24 w-full" />
           <Skeleton className="h-24 w-full" />
+        </div>
+      </main>
+    );
+  }
+
+  // 최적화 중 로딩 화면
+  if (isOptimizing) {
+    return (
+      <main className="flex flex-col min-h-[calc(100dvh-64px)]">
+        <header className="flex items-center gap-3 px-4 py-3 border-b">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0"
+            onClick={handleBack}
+          >
+            <LuChevronLeft className="w-5 h-5" />
+          </Button>
+          <h1 className="font-semibold text-lg flex-1">여행 상세</h1>
+        </header>
+        <div className="flex flex-col items-center justify-center flex-1 py-12">
+          <LuLoader className="w-8 h-8 animate-spin text-primary mb-4" />
+          <p className="text-muted-foreground">일정 최적화 중...</p>
+          <p className="text-sm text-muted-foreground/70 mt-2">
+            장소 간 최적 경로를 계산하고 있습니다
+          </p>
         </div>
       </main>
     );
@@ -681,6 +860,52 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
         </div>
       )}
 
+      {/* 최적화 에러 UI */}
+      {optimizeError && (
+        <div className="mx-4 mt-4 p-4 bg-destructive/10 text-destructive rounded-lg">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="font-medium mb-1">최적화 실패</p>
+              <p className="text-sm">{optimizeError.message}</p>
+              {optimizeError.retryCount < MAX_RETRY_COUNT && (
+                <p className="text-xs mt-2 text-muted-foreground">
+                  재시도 {optimizeError.retryCount}/{MAX_RETRY_COUNT}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="flex gap-2 mt-4">
+            {optimizeError.retryCount < MAX_RETRY_COUNT ? (
+              <Button onClick={handleRetryOptimization} size="sm">
+                다시 시도
+              </Button>
+            ) : (
+              <>
+                <Button
+                  onClick={() => router.push(`/plan/${tripId}`)}
+                  size="sm"
+                >
+                  편집 페이지로
+                </Button>
+                <Button
+                  onClick={() => setOptimizeError(null)}
+                  variant="ghost"
+                  size="sm"
+                >
+                  닫기
+                </Button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 누락된 장소 경고 */}
+      {unassignedPlaceInfos.length > 0 && (
+        <UnassignedPlaces places={unassignedPlaceInfos} />
+      )}
+
       {/* 여행 정보 */}
       <section className="px-4 py-4 border-b space-y-3">
         <div className="flex items-center gap-2 flex-wrap">
@@ -751,14 +976,25 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
             className="absolute inset-0 w-full h-full"
           >
             {/* 경로 폴리라인 (출발지 → 장소들 → 도착지) - 구간별 색상 적용 */}
-            {routeSegments.length > 0 && (
-              <RealRoutePolyline
-                segments={routeSegments}
-                strokeWeight={5}
-                strokeOpacity={0.9}
-                useSegmentColors={true}
-              />
-            )}
+            {(() => {
+              console.log(
+                "🎨 RealRoutePolyline 렌더링:",
+                routeSegments.length,
+                "segments",
+              );
+              if (routeSegments.length === 0) {
+                console.log("⚠️ routeSegments가 비어있음");
+                return null;
+              }
+              return (
+                <RealRoutePolyline
+                  segments={routeSegments}
+                  strokeWeight={5}
+                  strokeOpacity={0.9}
+                  useSegmentColors={true}
+                />
+              );
+            })()}
 
             {/* 출발지 마커 (dayEndpoints 사용) */}
             {dayEndpoints.origin && (

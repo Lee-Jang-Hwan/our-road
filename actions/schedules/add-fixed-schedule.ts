@@ -194,7 +194,44 @@ export async function addFixedSchedule(
       };
     }
 
-    // 10. 캐시 무효화
+    // 10. 여행 상태를 draft로 변경 (optimized 상태일 때만)
+    const { data: tripBeforeUpdate } = await supabase
+      .from("trips")
+      .select("status")
+      .eq("id", validatedData.tripId)
+      .single();
+
+    if (tripBeforeUpdate?.status === "optimized") {
+      console.log("🔄 [Trip Status Change] 고정 일정 추가로 인한 상태 변경", {
+        tripId: validatedData.tripId,
+        scheduleId: data.id,
+        from: "optimized",
+        to: "draft",
+        reason: "fixed_schedule_added",
+        timestamp: new Date().toISOString(),
+      });
+
+      const { error: statusUpdateError } = await supabase
+        .from("trips")
+        .update({ status: "draft" })
+        .eq("id", validatedData.tripId)
+        .eq("status", "optimized");
+
+      if (statusUpdateError) {
+        console.error("❌ [Trip Status Change] 상태 변경 실패", {
+          tripId: validatedData.tripId,
+          error: statusUpdateError,
+        });
+      } else {
+        console.log("✅ [Trip Status Change] 상태 변경 완료", {
+          tripId: validatedData.tripId,
+          from: "optimized",
+          to: "draft",
+        });
+      }
+    }
+
+    // 11. 캐시 무효화
     revalidatePath(`/plan/${validatedData.tripId}`);
     revalidatePath(`/plan/${validatedData.tripId}/schedule`);
 
