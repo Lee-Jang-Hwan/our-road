@@ -1,12 +1,14 @@
 "use client";
 
 import * as React from "react";
-import { Clock, Hotel, MapPin } from "lucide-react";
+import { Clock, Hotel, MapPin, ChevronDown, ChevronUp } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { normalizeTime } from "@/lib/optimize";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScheduleItem } from "./schedule-item";
 import { RouteSegmentConnector } from "./route-segment";
+import { DaySummary } from "./day-summary";
 import type { DailyItinerary, ScheduleItem as ScheduleItemType } from "@/types/schedule";
 import type { TripLocation } from "@/types/trip";
 
@@ -50,6 +52,8 @@ export function DayContent({
   showHeader = true,
   className,
 }: DayContentProps) {
+  const [isSummaryExpanded, setIsSummaryExpanded] = React.useState(false);
+
   // Normalize type to prevent "waypoint" type from being passed to OriginDestinationItem
   const normalizeEndpointType = (
     type: NonNullable<DailyItinerary["dayOrigin"]>["type"]
@@ -79,13 +83,21 @@ export function DayContent({
     <div className={cn("space-y-4", className)}>
       {/* 헤더 */}
       {showHeader && (
-        <DayContentHeader
-          dayNumber={itinerary.dayNumber}
-          formattedDate={formattedDate}
-          placeCount={itinerary.placeCount}
-          startTime={itinerary.startTime}
-          endTime={itinerary.endTime}
-        />
+        <>
+          <DayContentHeader
+            dayNumber={itinerary.dayNumber}
+            formattedDate={formattedDate}
+            placeCount={itinerary.placeCount}
+            startTime={itinerary.startTime}
+            endTime={itinerary.endTime}
+            isExpanded={isSummaryExpanded}
+            onToggle={() => setIsSummaryExpanded(!isSummaryExpanded)}
+          />
+          {/* 토글 시에만 표시되는 요약 */}
+          {isSummaryExpanded && (
+            <DaySummary itinerary={itinerary} />
+          )}
+        </>
       )}
 
       {/* 일정 목록 */}
@@ -153,6 +165,8 @@ interface DayContentHeaderProps {
   placeCount: number;
   startTime: string;
   endTime: string;
+  isExpanded?: boolean;
+  onToggle?: () => void;
 }
 
 function DayContentHeader({
@@ -161,22 +175,37 @@ function DayContentHeader({
   placeCount,
   startTime,
   endTime,
+  isExpanded = false,
+  onToggle,
 }: DayContentHeaderProps) {
+  const Icon = isExpanded ? ChevronUp : ChevronDown;
+
   return (
-    <div className="flex items-center justify-between pb-3 border-b">
+    <div 
+      className={cn(
+        "flex items-center justify-between pb-3 border-b",
+        onToggle && "cursor-pointer hover:bg-muted/30 -mx-2 px-2 py-2 rounded-lg transition-colors"
+      )}
+      onClick={onToggle}
+    >
       <div>
         <h3 className="font-semibold text-lg">{dayNumber}일차</h3>
         <p className="text-sm text-muted-foreground">{formattedDate}</p>
       </div>
-      <div className="text-right text-sm text-muted-foreground">
-        <p className="flex items-center gap-1 justify-end">
-          <MapPin className="h-3.5 w-3.5" />
-          {placeCount}개 장소
-        </p>
-        <p className="flex items-center gap-1 justify-end">
-          <Clock className="h-3.5 w-3.5" />
-          {startTime} - {endTime}
-        </p>
+      <div className="flex items-center gap-3">
+        <div className="text-right text-sm text-muted-foreground">
+          <p className="flex items-center gap-1 justify-end">
+            <MapPin className="h-3.5 w-3.5" />
+            {placeCount}개 장소
+          </p>
+          <p className="flex items-center gap-1 justify-end">
+            <Clock className="h-3.5 w-3.5" />
+            {normalizeTime(startTime)} - {normalizeTime(endTime)}
+          </p>
+        </div>
+        {onToggle && (
+          <Icon className="h-5 w-5 text-muted-foreground shrink-0" />
+        )}
       </div>
     </div>
   );
@@ -264,7 +293,7 @@ function OriginDestinationItem({ type, name, time }: OriginDestinationItemProps)
         <p className="text-xs text-muted-foreground">{label}</p>
       </div>
       <div className="text-right shrink-0">
-        <p className="text-sm font-medium">{time}</p>
+        <p className="text-sm font-medium">{normalizeTime(time)}</p>
       </div>
     </div>
   );

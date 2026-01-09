@@ -118,6 +118,7 @@ export type {
 
 export {
   DEFAULT_OPTIMIZE_CONFIG,
+  normalizeTime,
   timeToMinutes,
   minutesToTime,
   getMinutesBetween,

@@ -4,6 +4,7 @@ import * as React from "react";
 import { Clock, Pin, MoreVertical, Edit, Trash2, GripVertical, ChevronLeft, ChevronRight } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { normalizeTime } from "@/lib/optimize";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -111,16 +112,67 @@ export function ScheduleItem({
 
       {/* 장소 정보 */}
       <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <h3 className="font-semibold text-lg truncate">{item.placeName}</h3>
-          {item.isFixed && (
-            <Badge
-              variant="secondary"
-              className="gap-0.5 text-[10px] h-5 bg-primary/10 text-primary shrink-0"
-            >
-              <Pin className="h-2.5 w-2.5" />
-              고정
-            </Badge>
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0 flex-1">
+            {/* 장소명 + 고정 배지 */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="font-medium truncate">{item.placeName}</span>
+              {item.isFixed && (
+                <Badge
+                  variant="secondary"
+                  className="gap-0.5 text-[10px] h-5 bg-primary/10 text-primary shrink-0"
+                >
+                  <Pin className="h-2.5 w-2.5" />
+                  고정
+                </Badge>
+              )}
+            </div>
+
+            {/* 시간 정보 */}
+            <div className="flex items-center gap-2 mt-1.5 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1">
+                <Clock className="h-3.5 w-3.5" />
+                <span>
+                  {normalizeTime(item.arrivalTime)} - {normalizeTime(item.departureTime)}
+                </span>
+              </div>
+              <span className="text-xs text-muted-foreground/70">
+                ({formatDuration(item.duration)})
+              </span>
+            </div>
+          </div>
+
+          {/* 액션 메뉴 */}
+          {hasActions && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 shrink-0"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MoreVertical className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {onEdit && (
+                  <DropdownMenuItem onClick={onEdit}>
+                    <Edit className="h-4 w-4 mr-2" />
+                    수정
+                  </DropdownMenuItem>
+                )}
+                {onDelete && (
+                  <DropdownMenuItem
+                    onClick={onDelete}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    삭제
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
         </div>
 
@@ -227,7 +279,7 @@ export function ScheduleItemCompact({
       </span>
       <span className="flex-1 truncate text-sm">{item.placeName}</span>
       <span className="text-xs text-muted-foreground shrink-0">
-        {item.arrivalTime}
+        {normalizeTime(item.arrivalTime)}
       </span>
     </div>
   );
