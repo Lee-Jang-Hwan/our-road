@@ -67,6 +67,7 @@ function convertTransportToRow(transport: {
       stationCount?: number;
       startName?: string;
       endName?: string;
+      polyline?: string;
       lane?: {
         name: string;
         busNo?: string;
@@ -98,6 +99,7 @@ function convertTransportToRow(transport: {
             station_count: sp.stationCount,
             start_name: sp.startName,
             end_name: sp.endName,
+            polyline: sp.polyline,
             lane: sp.lane
               ? {
                   name: sp.lane.name,

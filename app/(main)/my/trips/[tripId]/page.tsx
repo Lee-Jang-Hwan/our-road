@@ -619,8 +619,12 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
       from: Coordinate;
       to: Coordinate;
       encodedPath?: string;
+      path?: Coordinate[];
       transportMode: "walking" | "public" | "car";
       segmentIndex: number;
+      isToAccommodation?: boolean;
+      isFromAccommodation?: boolean;
+      isToDestination?: boolean;
     }> = [];
 
     const isCarMode = trip.transportModes.includes("car");
@@ -628,55 +632,189 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
       ? ("car" as const)
       : ("public" as const);
 
-    // 출발지 → 첫 장소
+    // 숙소 위치 확인
+    const lodgingLocation = trip.accommodations?.[0]?.location;
+    const isAccommodationCoord = (coord: Coordinate) => {
+      if (!lodgingLocation) return false;
+      return (
+        Math.abs(coord.lat - lodgingLocation.lat) < 0.0001 &&
+        Math.abs(coord.lng - lodgingLocation.lng) < 0.0001
+      );
+    };
+
+    // 출발지 → 첫 장소 (subPaths 분리)
     if (
       currentItinerary.dayOrigin &&
       currentItinerary.transportFromOrigin &&
       currentDayMarkers.length > 0
     ) {
-      segments.push({
-        from: {
-          lat: currentItinerary.dayOrigin.lat,
-          lng: currentItinerary.dayOrigin.lng,
-        },
-        to: currentDayMarkers[0].coordinate,
-        encodedPath: currentItinerary.transportFromOrigin.polyline,
-        transportMode: baseTransportMode,
-        segmentIndex: 0,
-      });
-    }
+      const transport = currentItinerary.transportFromOrigin;
+      const fromCoord = {
+        lat: currentItinerary.dayOrigin.lat,
+        lng: currentItinerary.dayOrigin.lng,
+      };
+      const toCoord = currentDayMarkers[0].coordinate;
+      const isFromAccommodation = isAccommodationCoord(fromCoord);
 
-    // 장소들 사이
-    for (let i = 0; i < currentItinerary.schedule.length - 1; i++) {
-      const scheduleItem = currentItinerary.schedule[i];
-      if (currentDayMarkers[i] && currentDayMarkers[i + 1]) {
+      // subPaths가 있으면 분리, 없으면 전체 경로 사용
+      if (
+        transport.transitDetails?.subPaths &&
+        transport.transitDetails.subPaths.length > 0
+      ) {
+        const subPaths = transport.transitDetails.subPaths;
+        for (const subPath of subPaths) {
+          const subTransportMode =
+            subPath.trafficType === 3
+              ? ("walking" as const)
+              : baseTransportMode;
+          const subFrom = subPath.startCoord || fromCoord;
+          const subTo = subPath.endCoord || toCoord;
+
+          segments.push({
+            from: subFrom,
+            to: subTo,
+            encodedPath:
+              subPath.trafficType === 3
+                ? subPath.polyline
+                : subPath.polyline || transport.polyline,
+            transportMode: subTransportMode,
+            segmentIndex: 0,
+            isFromAccommodation,
+          });
+        }
+      } else {
+        // subPaths가 없으면 전체 경로 사용 (레거시)
         segments.push({
-          from: currentDayMarkers[i].coordinate,
-          to: currentDayMarkers[i + 1].coordinate,
-          encodedPath: scheduleItem.transportToNext?.polyline,
+          from: fromCoord,
+          to: toCoord,
+          encodedPath: transport.polyline,
           transportMode: baseTransportMode,
-          segmentIndex: i + 1,
+          segmentIndex: 0,
+          isFromAccommodation,
         });
       }
     }
 
-    // 마지막 장소 → 도착지
+    // 장소들 사이 (subPaths 분리)
+    for (let i = 0; i < currentItinerary.schedule.length - 1; i++) {
+      const scheduleItem = currentItinerary.schedule[i];
+      if (currentDayMarkers[i] && currentDayMarkers[i + 1]) {
+        const transport = scheduleItem.transportToNext;
+        if (!transport) continue;
+
+        const fromCoord = currentDayMarkers[i].coordinate;
+        const toCoord = currentDayMarkers[i + 1].coordinate;
+
+        // subPaths가 있으면 분리, 없으면 전체 경로 사용
+        if (
+          transport.transitDetails?.subPaths &&
+          transport.transitDetails.subPaths.length > 0
+        ) {
+          const subPaths = transport.transitDetails.subPaths;
+          for (const subPath of subPaths) {
+            const subTransportMode =
+              subPath.trafficType === 3
+                ? ("walking" as const)
+                : baseTransportMode;
+            const subFrom = subPath.startCoord || fromCoord;
+            const subTo = subPath.endCoord || toCoord;
+
+            // 대중교통 구간: passStopCoords가 있으면 path로 사용
+            let pathCoords: Coordinate[] | undefined;
+            if (
+              subPath.trafficType !== 3 &&
+              subPath.passStopCoords &&
+              subPath.passStopCoords.length > 0
+            ) {
+              pathCoords = [subFrom, ...subPath.passStopCoords, subTo];
+            }
+
+            segments.push({
+              from: subFrom,
+              to: subTo,
+              encodedPath:
+                subPath.trafficType === 3
+                  ? subPath.polyline
+                  : subPath.polyline || transport.polyline,
+              path: pathCoords,
+              transportMode: subTransportMode,
+              segmentIndex: i + 1,
+              isFromAccommodation: isAccommodationCoord(subFrom),
+              isToAccommodation: isAccommodationCoord(subTo),
+            });
+          }
+        } else {
+          // subPaths가 없으면 전체 경로 사용 (레거시)
+          segments.push({
+            from: fromCoord,
+            to: toCoord,
+            encodedPath: transport.polyline,
+            transportMode: baseTransportMode,
+            segmentIndex: i + 1,
+            isFromAccommodation: isAccommodationCoord(fromCoord),
+            isToAccommodation: isAccommodationCoord(toCoord),
+          });
+        }
+      }
+    }
+
+    // 마지막 장소 → 도착지 (subPaths 분리)
     if (
       currentItinerary.dayDestination &&
       currentItinerary.transportToDestination &&
       currentDayMarkers.length > 0
     ) {
+      const transport = currentItinerary.transportToDestination;
       const lastIndex = currentDayMarkers.length - 1;
-      segments.push({
-        from: currentDayMarkers[lastIndex].coordinate,
-        to: {
-          lat: currentItinerary.dayDestination.lat,
-          lng: currentItinerary.dayDestination.lng,
-        },
-        encodedPath: currentItinerary.transportToDestination.polyline,
-        transportMode: baseTransportMode,
-        segmentIndex: lastIndex,
-      });
+      const fromCoord = currentDayMarkers[lastIndex].coordinate;
+      const toCoord = {
+        lat: currentItinerary.dayDestination.lat,
+        lng: currentItinerary.dayDestination.lng,
+      };
+      const isToAccommodation = isAccommodationCoord(toCoord);
+      const isToDestination =
+        !isToAccommodation &&
+        currentItinerary.dayDestination.type === "destination";
+
+      // subPaths가 있으면 분리, 없으면 전체 경로 사용
+      if (
+        transport.transitDetails?.subPaths &&
+        transport.transitDetails.subPaths.length > 0
+      ) {
+        const subPaths = transport.transitDetails.subPaths;
+        for (const subPath of subPaths) {
+          const subTransportMode =
+            subPath.trafficType === 3
+              ? ("walking" as const)
+              : baseTransportMode;
+          const subFrom = subPath.startCoord || fromCoord;
+          const subTo = subPath.endCoord || toCoord;
+
+          segments.push({
+            from: subFrom,
+            to: subTo,
+            encodedPath:
+              subPath.trafficType === 3
+                ? subPath.polyline
+                : subPath.polyline || transport.polyline,
+            transportMode: subTransportMode,
+            segmentIndex: lastIndex,
+            isToAccommodation,
+            isToDestination,
+          });
+        }
+      } else {
+        // subPaths가 없으면 전체 경로 사용 (레거시)
+        segments.push({
+          from: fromCoord,
+          to: toCoord,
+          encodedPath: transport.polyline,
+          transportMode: baseTransportMode,
+          segmentIndex: lastIndex,
+          isToAccommodation,
+          isToDestination,
+        });
+      }
     }
 
     return segments;
@@ -1004,7 +1142,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
               return (
                 <RealRoutePolyline
                   segments={routeSegments}
-                  strokeWeight={5}
+                  strokeWeight={3}
                   strokeOpacity={0.9}
                   useSegmentColors={true}
                 />

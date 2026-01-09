@@ -37,6 +37,7 @@ function convertRowToTrip(row: TripRow): Trip {
     dailyEndTime: row.daily_end_time,
     transportModes: row.transport_mode,
     status: row.status,
+    accommodations: row.accommodations ?? undefined,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -64,7 +65,9 @@ function convertRowToPlace(row: TripPlaceRow): Place {
 /**
  * TransportInfoRow를 RouteSegment로 변환
  */
-function convertTransportInfo(info: TripItineraryRow["transport_from_origin"]): DailyItinerary["transportFromOrigin"] {
+function convertTransportInfo(
+  info: TripItineraryRow["transport_from_origin"],
+): DailyItinerary["transportFromOrigin"] {
   if (!info) return undefined;
 
   return {
@@ -87,6 +90,7 @@ function convertTransportInfo(info: TripItineraryRow["transport_from_origin"]): 
             stationCount: sp.station_count,
             startName: sp.start_name,
             endName: sp.end_name,
+            polyline: sp.polyline,
             lane: sp.lane
               ? {
                   name: sp.lane.name,
@@ -106,7 +110,12 @@ function convertTransportInfo(info: TripItineraryRow["transport_from_origin"]): 
 /**
  * TripItineraryRow를 DailyItinerary로 변환
  */
-function convertRowToItinerary(row: TripItineraryRow): DailyItinerary {
+function convertRowToItinerary(
+  row: TripItineraryRow,
+  trip: Trip,
+  allItineraries: DailyItinerary[],
+  places: Place[],
+): DailyItinerary {
   const schedule = row.schedule.map((item) => ({
     order: item.order,
     placeId: item.place_id,
@@ -118,16 +127,110 @@ function convertRowToItinerary(row: TripItineraryRow): DailyItinerary {
     transportToNext: convertTransportInfo(item.transport_to_next),
   }));
 
-  const transportToDestination = convertTransportInfo(row.transport_to_destination);
+  const transportToDestination = convertTransportInfo(
+    row.transport_to_destination,
+  );
 
   // startTime: 출발지 출발 시간 (dailyStartTime 또는 기본값)
   const startTime = row.daily_start_time ?? "10:00";
-  
+
   // endTime: 마지막 장소 출발 시간 + 도착지까지 이동 시간
   let endTime = schedule[schedule.length - 1]?.departureTime ?? "22:00";
   if (transportToDestination) {
     endTime = addMinutesToTime(endTime, transportToDestination.duration);
   }
+
+  // dayOrigin 계산
+  const dayIndex = row.day_number - 1;
+  const isFirstDay = dayIndex === 0;
+  const originCoord =
+    trip.origin &&
+    typeof trip.origin.lat === "number" &&
+    typeof trip.origin.lng === "number"
+      ? { lat: trip.origin.lat, lng: trip.origin.lng }
+      : undefined;
+  const destinationCoord =
+    trip.destination &&
+    typeof trip.destination.lat === "number" &&
+    typeof trip.destination.lng === "number"
+      ? { lat: trip.destination.lat, lng: trip.destination.lng }
+      : undefined;
+
+  let dayOrigin: DailyItinerary["dayOrigin"];
+  if (isFirstDay && originCoord) {
+    dayOrigin = {
+      name: trip.origin.name,
+      address: trip.origin.address,
+      lat: originCoord.lat,
+      lng: originCoord.lng,
+      type: "origin",
+    };
+  } else if (trip.accommodations && trip.accommodations.length > 0) {
+    const accom = trip.accommodations[0];
+    if (
+      accom.location &&
+      typeof accom.location.lat === "number" &&
+      typeof accom.location.lng === "number"
+    ) {
+      dayOrigin = {
+        name: accom.location.name,
+        address: accom.location.address,
+        lat: accom.location.lat,
+        lng: accom.location.lng,
+        type: "accommodation",
+      };
+    }
+  } else if (!isFirstDay) {
+    // 숙소가 없으면 전날 마지막 장소 사용
+    const prevDay = allItineraries[dayIndex - 1];
+    if (prevDay && prevDay.schedule.length > 0) {
+      const lastSchedule = prevDay.schedule[prevDay.schedule.length - 1];
+      const lastPlace = places.find((p) => p.id === lastSchedule.placeId);
+      if (lastPlace && lastPlace.coordinate) {
+        dayOrigin = {
+          name: lastPlace.name,
+          address: lastPlace.address,
+          lat: lastPlace.coordinate.lat,
+          lng: lastPlace.coordinate.lng,
+          type: "lastPlace",
+        };
+      }
+    }
+  }
+
+  // dayDestination 계산
+  const hasAccommodation =
+    trip.accommodations && trip.accommodations.length > 0;
+  const isLastDay = dayIndex === allItineraries.length - 1;
+
+  let dayDestination: DailyItinerary["dayDestination"];
+  if (isLastDay && trip.destination && destinationCoord) {
+    // 마지막 날은 항상 최종 도착지
+    dayDestination = {
+      name: trip.destination.name,
+      address: trip.destination.address,
+      lat: destinationCoord.lat,
+      lng: destinationCoord.lng,
+      type: "destination",
+    };
+  } else if (hasAccommodation) {
+    // 마지막 날이 아니고 숙소가 있으면 숙소
+    const accom = trip.accommodations[0];
+    if (
+      accom.location &&
+      typeof accom.location.lat === "number" &&
+      typeof accom.location.lng === "number"
+    ) {
+      dayDestination = {
+        name: accom.location.name,
+        address: accom.location.address,
+        lat: accom.location.lat,
+        lng: accom.location.lng,
+        type: "accommodation",
+      };
+    }
+  }
+  // 숙소가 없고 마지막 날이 아니면 dayDestination은 undefined (다음 날 이어짐)
 
   return {
     dayNumber: row.day_number,
@@ -143,6 +246,8 @@ function convertRowToItinerary(row: TripItineraryRow): DailyItinerary {
     transportToDestination,
     dailyStartTime: row.daily_start_time,
     dailyEndTime: row.daily_end_time,
+    dayOrigin,
+    dayDestination,
   };
 }
 
@@ -156,7 +261,7 @@ function convertRowToItinerary(row: TripItineraryRow): DailyItinerary {
  * @returns 여행 상세 정보 (장소, 일정표 포함) 또는 에러
  */
 export async function getSharedTrip(
-  tripId: string
+  tripId: string,
 ): Promise<GetSharedTripResult> {
   try {
     // 1. UUID 형식 검증
@@ -214,11 +319,57 @@ export async function getSharedTrip(
     // 6. 데이터 변환
     const trip = convertRowToTrip(tripResult.data as TripRow);
     const places = (placesResult.data ?? []).map((row) =>
-      convertRowToPlace(row as TripPlaceRow)
+      convertRowToPlace(row as TripPlaceRow),
     );
-    const itinerary = (itinerariesResult.data as TripItineraryRow[]).map(
-      convertRowToItinerary
-    );
+
+    // 일정 변환 (dayOrigin/dayDestination 계산을 위해 순차 처리)
+    let itinerary: DailyItinerary[] = [];
+    if (itinerariesResult.data && itinerariesResult.data.length > 0) {
+      const rows = itinerariesResult.data as TripItineraryRow[];
+      // 먼저 기본 정보만으로 변환
+      const baseItineraries = rows.map((row) => {
+        const schedule = row.schedule.map((item) => ({
+          order: item.order,
+          placeId: item.place_id,
+          placeName: item.place_name,
+          arrivalTime: item.arrival_time,
+          departureTime: item.departure_time,
+          duration: item.duration,
+          isFixed: item.is_fixed,
+          transportToNext: convertTransportInfo(item.transport_to_next),
+        }));
+
+        const transportToDestination = convertTransportInfo(
+          row.transport_to_destination,
+        );
+        const startTime = row.daily_start_time ?? "10:00";
+        let endTime = schedule[schedule.length - 1]?.departureTime ?? "22:00";
+        if (transportToDestination) {
+          endTime = addMinutesToTime(endTime, transportToDestination.duration);
+        }
+
+        return {
+          dayNumber: row.day_number,
+          date: row.date,
+          schedule,
+          totalDistance: row.total_distance ?? 0,
+          totalDuration: row.total_duration ?? 0,
+          totalStayDuration: row.total_stay_duration ?? 0,
+          placeCount: row.place_count ?? 0,
+          startTime,
+          endTime,
+          transportFromOrigin: convertTransportInfo(row.transport_from_origin),
+          transportToDestination,
+          dailyStartTime: row.daily_start_time,
+          dailyEndTime: row.daily_end_time,
+        } as DailyItinerary;
+      });
+
+      // 각 일정에 대해 dayOrigin/dayDestination 계산
+      itinerary = rows.map((row, index) =>
+        convertRowToItinerary(row, trip, baseItineraries, places),
+      );
+    }
 
     // 7. 민감한 정보 제거 (userId)
     const sanitizedTrip: TripWithDetails = {
