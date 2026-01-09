@@ -167,10 +167,6 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
 
   // 최적화 실행
   const runOptimization = useCallback(async () => {
-    console.log("🚀 [최적화 시작] 일정 최적화를 시작합니다.", {
-      tripId,
-      timestamp: new Date().toISOString(),
-    });
     setIsOptimizing(true);
     setOptimizeError(null);
 
@@ -178,7 +174,6 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
       const result = await optimizeRoute({ tripId });
 
       if (!result.success) {
-        console.error("❌ [최적화 실패]", result.error?.message);
         const currentRetryCount = optimizeError?.retryCount || 0;
         setOptimizeError({
           message: result.error?.message || "최적화에 실패했습니다.",
@@ -221,13 +216,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
           setUnassignedPlaceInfos([]);
         }
 
-        console.log("✅ [최적화 완료] 일정 최적화가 완료되었습니다.", {
-          itineraryCount: result.data.itinerary.length,
-          timestamp: new Date().toISOString(),
-        });
-
         // 최적화 직후 자동 저장
-        console.log("💾 [자동 저장 시작] 최적화 결과를 DB에 저장합니다.");
         try {
           const saveResult = await saveItinerary({
             tripId,
@@ -235,11 +224,9 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
           });
 
           if (!saveResult.success) {
-            console.error("❌ [저장 실패]", saveResult.error);
             showErrorToast(saveResult.error || "저장에 실패했습니다.");
             // 저장 실패해도 결과는 표시
           } else {
-            console.log("✅ [저장 완료] 일정이 DB에 저장되었습니다.");
             showSuccessToast("일정이 최적화되고 저장되었습니다!");
 
             // DB에서 최신 데이터 다시 로드
@@ -249,13 +236,11 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
             }
           }
         } catch (saveErr) {
-          console.error("❌ [저장 실패]", saveErr);
           showErrorToast("저장 중 오류가 발생했습니다.");
           // 저장 실패해도 결과는 표시
         }
       }
     } catch (err) {
-      console.error("❌ [최적화 실패]", err);
       const currentRetryCount = optimizeError?.retryCount || 0;
       setOptimizeError({
         message: "최적화 중 오류가 발생했습니다.",
@@ -284,10 +269,6 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
           result.data.status === "draft" || result.data.status === "optimizing";
 
         if (shouldOptimize) {
-          console.log(
-            `[자동 최적화] Trip 상태가 ${result.data.status}이므로 자동 최적화를 실행합니다.`,
-          );
-
           // 장소 데이터 로드 (최적화에 필요)
           const placesResult = await getPlaces(tripId);
           if (placesResult.success && placesResult.data) {
@@ -353,13 +334,6 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
       !!lodgingLocation &&
       typeof lodgingLocation.lat === "number" &&
       typeof lodgingLocation.lng === "number";
-
-    console.log(
-      `[dayEndpoints Day ${selectedDay}] isFirstDay:`,
-      isFirstDay,
-      "trip.origin:",
-      trip.origin,
-    );
 
     // 신규 데이터: dayOrigin/dayDestination 사용
     let dayOrigin = currentItinerary.dayOrigin;
@@ -466,19 +440,6 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
     if (!currentItinerary) return null;
 
     const lodgingLocation = trip?.accommodations?.[0]?.location;
-
-    console.log(
-      `[enrichedItinerary Day ${selectedDay}] currentItinerary.dayOrigin:`,
-      currentItinerary.dayOrigin,
-    );
-    console.log(
-      `[enrichedItinerary Day ${selectedDay}] currentItinerary.dayDestination:`,
-      currentItinerary.dayDestination,
-    );
-    console.log(
-      `[enrichedItinerary Day ${selectedDay}] dayEndpoints:`,
-      dayEndpoints,
-    );
 
     // dayOrigin/dayDestination이 이미 완전히 있으면 그대로 반환
     const hasCompleteOrigin = currentItinerary.dayOrigin;
@@ -1129,25 +1090,14 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
             className="absolute inset-0 w-full h-full"
           >
             {/* 경로 폴리라인 (출발지 → 장소들 → 도착지) - 구간별 색상 적용 */}
-            {(() => {
-              console.log(
-                "🎨 RealRoutePolyline 렌더링:",
-                routeSegments.length,
-                "segments",
-              );
-              if (routeSegments.length === 0) {
-                console.log("⚠️ routeSegments가 비어있음");
-                return null;
-              }
-              return (
-                <RealRoutePolyline
-                  segments={routeSegments}
-                  strokeWeight={3}
-                  strokeOpacity={0.9}
-                  useSegmentColors={true}
-                />
-              );
-            })()}
+            {routeSegments.length > 0 && (
+              <RealRoutePolyline
+                segments={routeSegments}
+                strokeWeight={3}
+                strokeOpacity={0.9}
+                useSegmentColors={true}
+              />
+            )}
 
             {/* 출발지 마커 (dayEndpoints 사용) */}
             {dayEndpoints.origin && (

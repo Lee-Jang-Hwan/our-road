@@ -231,10 +231,7 @@ function invalidateCache(tripId: string, dayNumber?: number) {
   revalidateTag("itinerary");
   revalidatePath("/my");
   revalidatePath(`/plan/${tripId}`);
-  revalidatePath(`/plan/${tripId}/result`);
-  if (dayNumber) {
-    revalidatePath(`/plan/${tripId}/result/${dayNumber}`);
-  }
+  revalidatePath(`/my/trips/${tripId}`);
 }
 
 // ============================================

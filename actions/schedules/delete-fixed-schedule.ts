@@ -97,15 +97,6 @@ export async function deleteFixedSchedule(
       .single();
 
     if (tripBeforeUpdate?.status === "optimized") {
-      console.log("🔄 [Trip Status Change] 고정 일정 삭제로 인한 상태 변경", {
-        tripId,
-        scheduleId,
-        from: "optimized",
-        to: "draft",
-        reason: "fixed_schedule_deleted",
-        timestamp: new Date().toISOString(),
-      });
-
       const { error: statusUpdateError } = await supabase
         .from("trips")
         .update({ status: "draft" })
@@ -116,12 +107,6 @@ export async function deleteFixedSchedule(
         console.error("❌ [Trip Status Change] 상태 변경 실패", {
           tripId,
           error: statusUpdateError,
-        });
-      } else {
-        console.log("✅ [Trip Status Change] 상태 변경 완료", {
-          tripId,
-          from: "optimized",
-          to: "draft",
         });
       }
     }
@@ -238,16 +223,6 @@ export async function deleteFixedSchedules(
       .single();
 
     if (tripBeforeUpdate?.status === "optimized") {
-      console.log("🔄 [Trip Status Change] 고정 일정 일괄 삭제로 인한 상태 변경", {
-        tripId,
-        scheduleIds,
-        deletedCount: scheduleIds.length,
-        from: "optimized",
-        to: "draft",
-        reason: "fixed_schedules_deleted_batch",
-        timestamp: new Date().toISOString(),
-      });
-
       const { error: statusUpdateError } = await supabase
         .from("trips")
         .update({ status: "draft" })
@@ -258,12 +233,6 @@ export async function deleteFixedSchedules(
         console.error("❌ [Trip Status Change] 상태 변경 실패", {
           tripId,
           error: statusUpdateError,
-        });
-      } else {
-        console.log("✅ [Trip Status Change] 상태 변경 완료", {
-          tripId,
-          from: "optimized",
-          to: "draft",
         });
       }
     }
@@ -372,16 +341,6 @@ export async function deleteFixedSchedulesByDate(
       .single();
 
     if (tripBeforeUpdate?.status === "optimized") {
-      console.log("🔄 [Trip Status Change] 날짜별 고정 일정 삭제로 인한 상태 변경", {
-        tripId,
-        date,
-        deletedCount: count ?? 0,
-        from: "optimized",
-        to: "draft",
-        reason: "fixed_schedules_deleted_by_date",
-        timestamp: new Date().toISOString(),
-      });
-
       const { error: statusUpdateError } = await supabase
         .from("trips")
         .update({ status: "draft" })
@@ -392,12 +351,6 @@ export async function deleteFixedSchedulesByDate(
         console.error("❌ [Trip Status Change] 상태 변경 실패", {
           tripId,
           error: statusUpdateError,
-        });
-      } else {
-        console.log("✅ [Trip Status Change] 상태 변경 완료", {
-          tripId,
-          from: "optimized",
-          to: "draft",
         });
       }
     }

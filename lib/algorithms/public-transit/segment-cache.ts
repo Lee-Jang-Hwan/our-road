@@ -125,10 +125,6 @@ class SegmentCache {
     }
 
     keysToDelete.forEach((key) => this.cache.delete(key));
-
-    if (keysToDelete.length > 0) {
-      console.log(`[SegmentCache] Cleaned up ${keysToDelete.length} expired entries`);
-    }
   }
 }
 
