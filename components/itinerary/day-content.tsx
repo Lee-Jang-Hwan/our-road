@@ -23,6 +23,10 @@ interface DayContentProps {
   onEdit?: (item: ScheduleItemType) => void;
   /** 삭제 핸들러 */
   onDelete?: (item: ScheduleItemType) => void;
+  /** 항목 네비게이션 핸들러 (index로 이동) */
+  onNavigateToItem?: (index: number) => void;
+  /** 네비게이션 버튼 표시 여부 */
+  showNavigation?: boolean;
   /** 헤더 표시 여부 */
   showHeader?: boolean;
   /** 추가 클래스 */
@@ -41,6 +45,8 @@ export function DayContent({
   onItemClick,
   onEdit,
   onDelete,
+  onNavigateToItem,
+  showNavigation = true,
   showHeader = true,
   className,
 }: DayContentProps) {
@@ -94,6 +100,9 @@ export function DayContent({
                 onClick={onItemClick ? () => onItemClick(item) : undefined}
                 onEdit={onEdit ? () => onEdit(item) : undefined}
                 onDelete={onDelete ? () => onDelete(item) : undefined}
+                showNavigation={showNavigation}
+                onPrevious={index > 0 ? () => onNavigateToItem?.(index - 1) : undefined}
+                onNext={index < itinerary.schedule.length - 1 ? () => onNavigateToItem?.(index + 1) : undefined}
               />
 
               {/* 이동 구간 (마지막 항목 제외) */}
@@ -309,6 +318,10 @@ interface DayContentPanelProps {
   onEdit?: (item: ScheduleItemType) => void;
   /** 삭제 핸들러 */
   onDelete?: (item: ScheduleItemType) => void;
+  /** 항목 네비게이션 핸들러 (index로 이동) */
+  onNavigateToItem?: (index: number) => void;
+  /** 네비게이션 버튼 표시 여부 */
+  showNavigation?: boolean;
   /** 로딩 상태 */
   isLoading?: boolean;
   /** 추가 클래스 */
@@ -326,6 +339,8 @@ export function DayContentPanel({
   onItemClick,
   onEdit,
   onDelete,
+  onNavigateToItem,
+  showNavigation = true,
   isLoading = false,
   className,
 }: DayContentPanelProps) {
@@ -354,6 +369,8 @@ export function DayContentPanel({
       onItemClick={onItemClick}
       onEdit={onEdit}
       onDelete={onDelete}
+      onNavigateToItem={onNavigateToItem}
+      showNavigation={showNavigation}
       showHeader={true}
       className={className}
     />

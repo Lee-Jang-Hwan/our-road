@@ -266,11 +266,25 @@ function NavigationBottomPanel({
       </button>
 
       <div className="p-4 space-y-4">
-        {/* 현재 목적지 정보 */}
-        <div className="flex items-start gap-3">
+        {/* 현재 목적지 정보 + 네비게이션 버튼 */}
+        <div className="flex items-center gap-3">
+          {/* 이전 버튼 */}
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={onPrevious}
+            disabled={!hasPrevious}
+            className="shrink-0 size-10 touch-target"
+          >
+            <LuChevronLeft className="w-5 h-5" />
+          </Button>
+
+          {/* 순서 번호 */}
           <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-lg shrink-0">
             {currentItem.order}
           </div>
+
+          {/* 장소 정보 */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h3 className="font-semibold text-lg truncate">{currentItem.placeName}</h3>
@@ -291,6 +305,17 @@ function NavigationBottomPanel({
               )}
             </div>
           </div>
+
+          {/* 다음 버튼 */}
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={onNext}
+            disabled={!hasNext}
+            className="shrink-0 size-10 touch-target"
+          >
+            <LuChevronRight className="w-5 h-5" />
+          </Button>
         </div>
 
         {/* 확장된 정보 */}
@@ -385,17 +410,8 @@ function NavigationBottomPanel({
           </>
         )}
 
-        {/* 네비게이션 버튼들 */}
+        {/* 지도 앱 바로가기 버튼들 */}
         <div className="flex gap-4 justify-center">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={onPrevious}
-            disabled={!hasPrevious}
-            className="touch-target"
-          >
-            <LuChevronLeft className="w-5 h-5" />
-          </Button>
           <Button
             variant="outline"
             size="icon"
@@ -419,15 +435,6 @@ function NavigationBottomPanel({
             className="touch-target"
           >
             <GoogleMapIcon className="w-6 h-6" />
-          </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={onNext}
-            disabled={!hasNext}
-            className="touch-target"
-          >
-            <LuChevronRight className="w-5 h-5" />
           </Button>
         </div>
       </div>
