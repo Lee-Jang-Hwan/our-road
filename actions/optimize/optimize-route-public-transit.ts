@@ -103,6 +103,7 @@ function convertTripOutputToOptimizeResult(
   output: TripOutput,
   trip: Trip,
   places: Place[],
+  fixedSchedules: FixedSchedule[],
   errors: OptimizeError[],
   startTime: number
 ): OptimizeResult {
@@ -113,6 +114,9 @@ function convertTripOutputToOptimizeResult(
 
   // Place ID로 매핑
   const placeMap = new Map(places.map((p) => [p.id, p]));
+  
+  // 고정 일정 매핑 (placeId -> FixedSchedule)
+  const fixedScheduleMap = new Map(fixedSchedules.map((fs) => [fs.placeId, fs]));
 
   // 제외된 장소 수집 (excludedWaypointIds)
   const allExcludedIds = output.dayPlans.flatMap(
@@ -307,6 +311,10 @@ function convertTripOutputToOptimizeResult(
         }
       }
 
+      // 고정 일정 확인
+      const fixedSchedule = fixedScheduleMap.get(place.id);
+      const isFixed = !!fixedSchedule;
+
       schedule.push({
         order: i + 1,
         placeId: place.id,
@@ -314,7 +322,7 @@ function convertTripOutputToOptimizeResult(
         arrivalTime,
         departureTime,
         duration: place.estimatedDuration,
-        isFixed: false, // TODO: fixedSchedule 확인
+        isFixed,
         transportToNext,
       });
     }
@@ -433,6 +441,7 @@ export async function optimizePublicTransitRoute(
       start: originCoord,
       end: destinationCoord,
       lodging: lodgingCoord,
+      tripStartDate: trip.startDate,
       waypoints: places.map((place) => placeToWaypoint(place, fixedSchedules)),
       dailyMaxMinutes: userOptions?.maxDailyMinutes,
     };
@@ -456,6 +465,7 @@ export async function optimizePublicTransitRoute(
       publicTransitOutput,
       trip,
       places,
+      fixedSchedules,
       errors,
       startTime
     );
