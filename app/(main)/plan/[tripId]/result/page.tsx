@@ -2,6 +2,7 @@
 
 import { use, useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { LuChevronLeft, LuShare2, LuLoader, LuPencil } from "react-icons/lu";
 import { AlertCircle, MapPin, Clock, ArrowRight } from "lucide-react";
 
@@ -42,25 +43,23 @@ interface ResultPageProps {
 
 export default function ResultPage({ params }: ResultPageProps) {
   const { tripId } = use(params);
+  const router = useRouter();
   const handleBack = useSafeBack(`/plan/${tripId}`);
-  const [selectedDay, setSelectedDay] = useState(1);
-  const [isOptimizing, setIsOptimizing] = useState(false);
-  const [itineraries, setItineraries] = useState<DailyItinerary[]>([]);
-  const [places, setPlaces] = useState<Place[]>([]);
+
   const [trip, setTrip] = useState<Trip | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOptimizing, setIsOptimizing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasPlaces, setHasPlaces] = useState(true);
+  const [hasPlaces, setHasPlaces] = useState(false);
+  const [places, setPlaces] = useState<Place[]>([]);
+  const [itineraries, setItineraries] = useState<DailyItinerary[]>([]);
   const [unassignedPlaceInfos, setUnassignedPlaceInfos] = useState<
     UnassignedPlaceInfo[]
   >([]);
+  const [selectedDay, setSelectedDay] = useState(1);
 
   // 최적화 실행
   const runOptimization = useCallback(async () => {
-    console.log("🚀 [최적화 시작] 일정 최적화를 시작합니다.", {
-      tripId,
-      timestamp: new Date().toISOString(),
-    });
     setIsOptimizing(true);
     setError(null);
 
@@ -68,34 +67,26 @@ export default function ResultPage({ params }: ResultPageProps) {
       const result = await optimizeRoute({ tripId });
 
       if (!result.success) {
-        console.error("❌ [최적화 실패]", result.error?.message);
         setError(result.error?.message || "최적화에 실패했습니다.");
+        setIsOptimizing(false);
         return;
       }
 
       if (result.data?.itinerary) {
-        setItineraries(result.data.itinerary);
-
-        // 누락된 장소 확인 (상세 정보 포함)
+        // 누락된 장소 확인
         const unassignedError = result.data.errors?.find(
           (e) => e.code === "EXCEEDS_DAILY_LIMIT",
         );
 
         if (unassignedError?.details?.unassignedPlaceDetails) {
-          // 상세 정보가 있는 경우
           setUnassignedPlaceInfos(
             unassignedError.details
               .unassignedPlaceDetails as UnassignedPlaceInfo[],
           );
         } else if (unassignedError?.details?.unassignedPlaces) {
-          // 기존 방식: 장소 ID만 있는 경우 (후방 호환)
           const placeIds = unassignedError.details.unassignedPlaces as string[];
-          // places 로드 후 처리될 수 있도록 ID만 저장
-          const placesResult = await getPlaces(tripId);
-          const loadedPlaces = placesResult.data || [];
-
           const infos: UnassignedPlaceInfo[] = placeIds.map((placeId) => {
-            const place = loadedPlaces.find((p) => p.id === placeId);
+            const place = places.find((p) => p.id === placeId);
             return {
               placeId,
               placeName: place?.name || "알 수 없는 장소",
@@ -112,42 +103,27 @@ export default function ResultPage({ params }: ResultPageProps) {
           setUnassignedPlaceInfos([]);
         }
 
-        console.log("✅ [최적화 완료] 일정 최적화가 완료되었습니다.", {
-          itineraryCount: result.data.itinerary.length,
-          timestamp: new Date().toISOString(),
+        // 최적화 결과 저장
+        const saveResult = await saveItinerary({
+          tripId,
+          itinerary: result.data.itinerary,
         });
 
-        // 최적화 직후 자동 저장
-        console.log("💾 [자동 저장 시작] 최적화 결과를 DB에 저장합니다.");
-        try {
-          const saveResult = await saveItinerary({
-            tripId,
-            itinerary: result.data.itinerary,
-          });
-
-          if (!saveResult.success) {
-            console.error("❌ [저장 실패]", saveResult.error);
-            showErrorToast(saveResult.error || "저장에 실패했습니다.");
-            // 저장 실패해도 결과는 표시
-          } else {
-            console.log("✅ [저장 완료] 일정이 DB에 저장되었습니다.");
-            showSuccessToast("일정이 최적화되고 저장되었습니다!");
-          }
-        } catch (saveErr) {
-          console.error("❌ [저장 실패]", saveErr);
-          showErrorToast("저장 중 오류가 발생했습니다.");
-          // 저장 실패해도 결과는 표시
+        if (!saveResult.success) {
+          showErrorToast(saveResult.error || "저장에 실패했습니다.");
+        } else {
+          showSuccessToast("일정이 최적화되고 저장되었습니다!");
+          setItineraries(result.data.itinerary);
         }
       }
     } catch (err) {
-      console.error("❌ [최적화 실패]", err);
+      console.error("최적화 실패:", err);
       setError("최적화 중 오류가 발생했습니다.");
     } finally {
       setIsOptimizing(false);
     }
-  }, [tripId]);
+  }, [tripId, places]);
 
-  // 초기 로드 시 최적화 실행
   useEffect(() => {
     const init = async () => {
       setIsLoading(true);

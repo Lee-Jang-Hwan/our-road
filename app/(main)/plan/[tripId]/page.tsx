@@ -25,8 +25,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useTripDraft } from "@/hooks/use-trip-draft";
 import { useRouter } from "next/navigation";
 import { getTrip } from "@/actions/trips/get-trip";
+import { updateTrip } from "@/actions/trips/update-trip";
 import { getPlaces } from "@/actions/places/get-places";
 import { getFixedSchedules } from "@/actions/schedules/get-fixed-schedules";
+import { showErrorToast } from "@/lib/toast";
 import type { TripStatus } from "@/types/trip";
 import type { FixedSchedule } from "@/types/schedule";
 import type { Place } from "@/types/place";
@@ -55,6 +57,7 @@ export default function TripEditPage({ params }: TripEditPageProps) {
     places: Place[];
   } | null>(null);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isOptimizing, setIsOptimizing] = useState(false);
 
   // 초기 로드: DB에서 데이터 가져오기
   useEffect(() => {
@@ -169,6 +172,31 @@ export default function TripEditPage({ params }: TripEditPageProps) {
   }
 
   const trip = tripData;
+
+  // 최적화 버튼 클릭 핸들러
+  const handleOptimizeClick = async () => {
+    setIsOptimizing(true);
+
+    try {
+      // 1. 현재 Trip 상태 확인
+      const tripResult = await getTrip(tripId);
+      const currentStatus = tripResult.data?.status;
+
+      // 2. draft 또는 optimizing 상태면 optimizing으로 변경
+      if (currentStatus === "draft" || currentStatus === "optimizing") {
+        await updateTrip(tripId, { status: "optimizing" });
+      }
+      // optimized 상태면 상태 변경 없이 그냥 이동
+
+      // 3. /my/trips/[tripId]로 이동
+      router.push(`/my/trips/${tripId}`);
+    } catch (error) {
+      console.error("최적화 버튼 처리 실패:", error);
+      showErrorToast("오류가 발생했습니다.");
+    } finally {
+      setIsOptimizing(false);
+    }
+  };
 
   const steps = [
     {
@@ -341,12 +369,14 @@ export default function TripEditPage({ params }: TripEditPageProps) {
 
       {/* 하단 버튼 */}
       <div className="sticky bottom-0 p-4 backdrop-blur-sm bg-background/80 border-t pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:static md:border-t-0 md:pt-4 md:pb-0">
-        <Link href={`/plan/${tripId}/result`}>
-          <Button className="w-full h-12" disabled={trip.placeCount === 0}>
-            <LuSparkles className="w-4 h-4 mr-2" />
-            일정 최적화하기
-          </Button>
-        </Link>
+        <Button
+          className="w-full h-12"
+          disabled={trip.placeCount === 0 || isOptimizing}
+          onClick={handleOptimizeClick}
+        >
+          <LuSparkles className="w-4 h-4 mr-2" />
+          {isOptimizing ? "처리 중..." : "일정 최적화하기"}
+        </Button>
       </div>
     </main>
   );

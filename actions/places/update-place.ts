@@ -149,7 +149,44 @@ export async function updatePlace(
       };
     }
 
-    // 8. 캐시 무효화
+    // 8. 여행 상태를 draft로 변경 (optimized 상태일 때만)
+    const { data: tripBeforeUpdate } = await supabase
+      .from("trips")
+      .select("status")
+      .eq("id", tripId)
+      .single();
+
+    if (tripBeforeUpdate?.status === "optimized") {
+      console.log("🔄 [Trip Status Change] 장소 수정으로 인한 상태 변경", {
+        tripId,
+        placeId,
+        from: "optimized",
+        to: "draft",
+        reason: "place_updated",
+        timestamp: new Date().toISOString(),
+      });
+
+      const { error: statusUpdateError } = await supabase
+        .from("trips")
+        .update({ status: "draft" })
+        .eq("id", tripId)
+        .eq("status", "optimized");
+
+      if (statusUpdateError) {
+        console.error("❌ [Trip Status Change] 상태 변경 실패", {
+          tripId,
+          error: statusUpdateError,
+        });
+      } else {
+        console.log("✅ [Trip Status Change] 상태 변경 완료", {
+          tripId,
+          from: "optimized",
+          to: "draft",
+        });
+      }
+    }
+
+    // 9. 캐시 무효화
     revalidatePath(`/plan/${tripId}`);
     revalidatePath(`/plan/${tripId}/places`);
 

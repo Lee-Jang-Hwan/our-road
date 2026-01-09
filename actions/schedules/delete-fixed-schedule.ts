@@ -89,7 +89,44 @@ export async function deleteFixedSchedule(
       };
     }
 
-    // 6. 캐시 무효화
+    // 6. 여행 상태를 draft로 변경 (optimized 상태일 때만)
+    const { data: tripBeforeUpdate } = await supabase
+      .from("trips")
+      .select("status")
+      .eq("id", tripId)
+      .single();
+
+    if (tripBeforeUpdate?.status === "optimized") {
+      console.log("🔄 [Trip Status Change] 고정 일정 삭제로 인한 상태 변경", {
+        tripId,
+        scheduleId,
+        from: "optimized",
+        to: "draft",
+        reason: "fixed_schedule_deleted",
+        timestamp: new Date().toISOString(),
+      });
+
+      const { error: statusUpdateError } = await supabase
+        .from("trips")
+        .update({ status: "draft" })
+        .eq("id", tripId)
+        .eq("status", "optimized");
+
+      if (statusUpdateError) {
+        console.error("❌ [Trip Status Change] 상태 변경 실패", {
+          tripId,
+          error: statusUpdateError,
+        });
+      } else {
+        console.log("✅ [Trip Status Change] 상태 변경 완료", {
+          tripId,
+          from: "optimized",
+          to: "draft",
+        });
+      }
+    }
+
+    // 7. 캐시 무효화
     revalidatePath(`/plan/${tripId}`);
     revalidatePath(`/plan/${tripId}/schedule`);
 
@@ -193,7 +230,45 @@ export async function deleteFixedSchedules(
       };
     }
 
-    // 7. 캐시 무효화
+    // 7. 여행 상태를 draft로 변경 (optimized 상태일 때만)
+    const { data: tripBeforeUpdate } = await supabase
+      .from("trips")
+      .select("status")
+      .eq("id", tripId)
+      .single();
+
+    if (tripBeforeUpdate?.status === "optimized") {
+      console.log("🔄 [Trip Status Change] 고정 일정 일괄 삭제로 인한 상태 변경", {
+        tripId,
+        scheduleIds,
+        deletedCount: scheduleIds.length,
+        from: "optimized",
+        to: "draft",
+        reason: "fixed_schedules_deleted_batch",
+        timestamp: new Date().toISOString(),
+      });
+
+      const { error: statusUpdateError } = await supabase
+        .from("trips")
+        .update({ status: "draft" })
+        .eq("id", tripId)
+        .eq("status", "optimized");
+
+      if (statusUpdateError) {
+        console.error("❌ [Trip Status Change] 상태 변경 실패", {
+          tripId,
+          error: statusUpdateError,
+        });
+      } else {
+        console.log("✅ [Trip Status Change] 상태 변경 완료", {
+          tripId,
+          from: "optimized",
+          to: "draft",
+        });
+      }
+    }
+
+    // 8. 캐시 무효화
     revalidatePath(`/plan/${tripId}`);
     revalidatePath(`/plan/${tripId}/schedule`);
 
@@ -289,7 +364,45 @@ export async function deleteFixedSchedulesByDate(
       };
     }
 
-    // 8. 캐시 무효화
+    // 8. 여행 상태를 draft로 변경 (optimized 상태일 때만)
+    const { data: tripBeforeUpdate } = await supabase
+      .from("trips")
+      .select("status")
+      .eq("id", tripId)
+      .single();
+
+    if (tripBeforeUpdate?.status === "optimized") {
+      console.log("🔄 [Trip Status Change] 날짜별 고정 일정 삭제로 인한 상태 변경", {
+        tripId,
+        date,
+        deletedCount: count ?? 0,
+        from: "optimized",
+        to: "draft",
+        reason: "fixed_schedules_deleted_by_date",
+        timestamp: new Date().toISOString(),
+      });
+
+      const { error: statusUpdateError } = await supabase
+        .from("trips")
+        .update({ status: "draft" })
+        .eq("id", tripId)
+        .eq("status", "optimized");
+
+      if (statusUpdateError) {
+        console.error("❌ [Trip Status Change] 상태 변경 실패", {
+          tripId,
+          error: statusUpdateError,
+        });
+      } else {
+        console.log("✅ [Trip Status Change] 상태 변경 완료", {
+          tripId,
+          from: "optimized",
+          to: "draft",
+        });
+      }
+    }
+
+    // 9. 캐시 무효화
     revalidatePath(`/plan/${tripId}`);
     revalidatePath(`/plan/${tripId}/schedule`);
 

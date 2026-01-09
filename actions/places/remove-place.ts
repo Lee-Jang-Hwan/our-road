@@ -89,7 +89,44 @@ export async function removePlace(
       };
     }
 
-    // 6. 캐시 무효화
+    // 6. 여행 상태를 draft로 변경 (optimized 상태일 때만)
+    const { data: tripBeforeUpdate } = await supabase
+      .from("trips")
+      .select("status")
+      .eq("id", tripId)
+      .single();
+
+    if (tripBeforeUpdate?.status === "optimized") {
+      console.log("🔄 [Trip Status Change] 장소 삭제로 인한 상태 변경", {
+        tripId,
+        placeId,
+        from: "optimized",
+        to: "draft",
+        reason: "place_removed",
+        timestamp: new Date().toISOString(),
+      });
+
+      const { error: statusUpdateError } = await supabase
+        .from("trips")
+        .update({ status: "draft" })
+        .eq("id", tripId)
+        .eq("status", "optimized");
+
+      if (statusUpdateError) {
+        console.error("❌ [Trip Status Change] 상태 변경 실패", {
+          tripId,
+          error: statusUpdateError,
+        });
+      } else {
+        console.log("✅ [Trip Status Change] 상태 변경 완료", {
+          tripId,
+          from: "optimized",
+          to: "draft",
+        });
+      }
+    }
+
+    // 7. 캐시 무효화
     revalidatePath(`/plan/${tripId}`);
     revalidatePath(`/plan/${tripId}/places`);
 
@@ -193,7 +230,45 @@ export async function removePlaces(
       };
     }
 
-    // 7. 캐시 무효화
+    // 7. 여행 상태를 draft로 변경 (optimized 상태일 때만)
+    const { data: tripBeforeUpdate } = await supabase
+      .from("trips")
+      .select("status")
+      .eq("id", tripId)
+      .single();
+
+    if (tripBeforeUpdate?.status === "optimized") {
+      console.log("🔄 [Trip Status Change] 장소 일괄 삭제로 인한 상태 변경", {
+        tripId,
+        placeIds,
+        deletedCount: placeIds.length,
+        from: "optimized",
+        to: "draft",
+        reason: "places_removed_batch",
+        timestamp: new Date().toISOString(),
+      });
+
+      const { error: statusUpdateError } = await supabase
+        .from("trips")
+        .update({ status: "draft" })
+        .eq("id", tripId)
+        .eq("status", "optimized");
+
+      if (statusUpdateError) {
+        console.error("❌ [Trip Status Change] 상태 변경 실패", {
+          tripId,
+          error: statusUpdateError,
+        });
+      } else {
+        console.log("✅ [Trip Status Change] 상태 변경 완료", {
+          tripId,
+          from: "optimized",
+          to: "draft",
+        });
+      }
+    }
+
+    // 8. 캐시 무효화
     revalidatePath(`/plan/${tripId}`);
     revalidatePath(`/plan/${tripId}/places`);
 
