@@ -162,6 +162,15 @@ export async function getCarRoute(
     const { origin, destination, waypoints, priority, alternatives } =
       validationResult.data;
 
+    // API 호출 전 로그
+    console.log("📡 [카카오 API 호출] 자동차 경로 조회 시작", {
+      origin: `${origin.lat.toFixed(6)}, ${origin.lng.toFixed(6)}`,
+      destination: `${destination.lat.toFixed(6)}, ${destination.lng.toFixed(6)}`,
+      waypointsCount: waypoints?.length || 0,
+      priority,
+      timestamp: new Date().toISOString(),
+    });
+
     // 4. Kakao Mobility API 요청 URL 구성
     const params = new URLSearchParams({
       origin: `${origin.lng},${origin.lat}`,
@@ -283,6 +292,13 @@ export async function getCarRoute(
             : undefined,
         };
 
+        console.log("✅ [카카오 API 호출 성공] 자동차 경로 조회 완료", {
+          duration: carRoute.totalDuration,
+          distance: carRoute.totalDistance,
+          attempt: attempt + 1,
+          timestamp: new Date().toISOString(),
+        });
+
         return {
           success: true,
           data: carRoute,
@@ -304,9 +320,16 @@ export async function getCarRoute(
       }
     }
 
+    // 최종 실패 로그
+    console.error("❌ [카카오 API 호출 실패] 모든 재시도 실패", {
+      attempts: maxRetries + 1,
+      lastError: lastError?.message,
+      timestamp: new Date().toISOString(),
+    });
+
     throw lastError || new Error("알 수 없는 오류");
   } catch (error) {
-    console.error("자동차 경로 조회 중 예외 발생:", error);
+    console.error("❌ [카카오 API 호출 예외]", error);
     return {
       success: false,
       error: {

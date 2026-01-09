@@ -259,7 +259,7 @@ export function LocationInput({
           {isGettingLocation ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <Crosshair className="size-5" />
+            <Crosshair className="size-4" />
           )}
         </Button>
       </div>
