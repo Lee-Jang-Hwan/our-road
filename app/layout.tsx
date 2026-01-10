@@ -19,8 +19,57 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "OurRoad - 여행 동선 최적화",
-  description: "AI 기반 여행 일정 최적화 서비스",
+  title: {
+    default: "RootUs",
+    template: "%s | RootUs",
+  },
+  description: "우리한테 딱 맞는 여행&데이트 코스",
+  applicationName: "RootUs",
+  keywords: ["여행", "데이트", "코스", "최적화", "일정", "여행지", "데이트코스"],
+  authors: [{ name: "RootUs Team" }],
+  creator: "RootUs",
+  publisher: "RootUs",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+  ),
+  openGraph: {
+    type: "website",
+    locale: "ko_KR",
+    url: "/",
+    title: "RootUs",
+    description: "우리한테 딱 맞는 여행&데이트 코스",
+    siteName: "RootUs",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "RootUs - 우리한테 딱 맞는 여행&데이트 코스",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "RootUs",
+    description: "우리한테 딱 맞는 여행&데이트 코스",
+    images: ["/og-image.png"],
+  },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
+    ],
+  },
+  manifest: "/manifest.json",
 };
 
 export const viewport: Viewport = {
