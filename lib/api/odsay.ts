@@ -7,7 +7,6 @@ import type {
   ODsayResponse,
   ODsaySearchPathResult,
   ODsayPath,
-  ODsayError,
   ODsaySubPath,
 } from "@/types/odsay";
 import type { Coordinate, TransitRoute, TransitDetails, TransitSubPath, TransitLane } from "@/types";

@@ -7,7 +7,6 @@ import type { FixedSchedule } from "@/types/schedule";
 import type {
   OptimizeNode,
   DayAssignment,
-  DailyTimeConfig,
 } from "./types";
 import {
   timeToMinutes,
@@ -129,30 +128,6 @@ function calculateDailyAvailability(
   });
 }
 
-/**
- * 노드가 특정 날짜에 고정되어 있는지 확인
- */
-function isNodeFixedOnDate(node: OptimizeNode, date: string): boolean {
-  return node.isFixed && node.fixedDate === date;
-}
-
-/**
- * 노드가 특정 날짜에 할당 가능한지 확인
- */
-function canAssignToDay(
-  node: OptimizeNode,
-  day: DailyAvailability,
-  travelTime: number
-): boolean {
-  // 고정 일정은 해당 날짜에만 할당 가능
-  if (node.isFixed) {
-    return node.fixedDate === day.date;
-  }
-
-  // 일반 장소: 가용 시간 확인
-  const requiredMinutes = node.duration + travelTime;
-  return day.availableMinutes >= requiredMinutes;
-}
 
 // ============================================
 // Core Algorithm
@@ -332,9 +307,6 @@ export function distributeToDaily(
     } else {
       // 첫 번째 고정 일정 전
       let nonFixedIdx = 0;
-      const dailyStartMinute = timeToMinutes(
-        options.dailyStartTime ?? "10:00"
-      );
 
       for (const fixed of fixedPlaces) {
         // 고정 일정 전에 배치할 수 있는 비고정 장소들

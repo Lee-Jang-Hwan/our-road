@@ -109,7 +109,6 @@ export function RoutePolyline({
   zIndex = 1,
 }: RoutePolylineProps) {
   const { map, isReady } = useKakaoMap();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const polylineRef = React.useRef<any>(null);
 
   // 인코딩된 경로가 있으면 디코딩, 아니면 path 사용
@@ -205,7 +204,6 @@ export function MultiRoutePolyline({
   selectedSegmentId,
 }: MultiRoutePolylineProps) {
   const { map, isReady } = useKakaoMap();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const polylinesRef = React.useRef<Map<string, any>>(new Map());
 
   React.useEffect(() => {

@@ -1,7 +1,6 @@
 "use client";
 
 import { use, useState, useEffect, useCallback } from "react";
-import Link from "next/link";
 import { LuChevronLeft, LuPlus } from "react-icons/lu";
 
 import { Button } from "@/components/ui/button";

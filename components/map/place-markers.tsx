@@ -107,7 +107,6 @@ export function PlaceMarkers({
   size = "md",
 }: PlaceMarkersProps) {
   const { map, isReady } = useKakaoMap();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const kakaoMarkersRef = React.useRef<Map<string, any>>(new Map());
 
   // 마커 생성 및 업데이트
@@ -232,7 +231,6 @@ export function SingleMarker({
   onClick,
 }: SingleMarkerProps) {
   const { map, isReady } = useKakaoMap();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markerRef = React.useRef<any>(null);
 
   React.useEffect(() => {

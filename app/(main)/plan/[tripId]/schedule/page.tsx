@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useEffect, useCallback } from "react";
+import { use, useState, useEffect } from "react";
 import Link from "next/link";
 import { LuChevronLeft, LuPlus, LuCalendarClock } from "react-icons/lu";
 import { AlertCircle } from "lucide-react";
@@ -45,36 +45,6 @@ export default function SchedulePage({ params }: SchedulePageProps) {
     endDate: "",
   });
   const [isInitialized, setIsInitialized] = useState(false);
-
-  // DB에서 데이터 로드
-  const loadDataFromDB = useCallback(async () => {
-    try {
-      // 병렬로 데이터 로드
-      const [tripResult, placesResult, schedulesResult] = await Promise.all([
-        getTrip(tripId),
-        getPlaces(tripId),
-        getFixedSchedules(tripId),
-      ]);
-
-      if (tripResult.success && tripResult.data) {
-        setTripDates({
-          startDate: tripResult.data.startDate,
-          endDate: tripResult.data.endDate,
-        });
-      }
-
-      if (placesResult.success && placesResult.data) {
-        setPlaces(placesResult.data);
-      }
-
-      if (schedulesResult.success && schedulesResult.data) {
-        setSchedules(schedulesResult.data);
-        saveFixedSchedules(schedulesResult.data);
-      }
-    } catch (error) {
-      console.error("데이터 로드 실패:", error);
-    }
-  }, [tripId, saveFixedSchedules]);
 
   // 초기 로드
   useEffect(() => {

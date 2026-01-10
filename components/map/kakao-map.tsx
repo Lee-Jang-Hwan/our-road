@@ -324,6 +324,19 @@ export function KakaoMap({
   const [isReady, setIsReady] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
+  // 콜백을 ref로 저장하여 의존성 경고 해결
+  const onReadyRef = React.useRef(onReady);
+  const onCenterChangedRef = React.useRef(onCenterChanged);
+  const onZoomChangedRef = React.useRef(onZoomChanged);
+  const onClickRef = React.useRef(onClick);
+
+  React.useEffect(() => {
+    onReadyRef.current = onReady;
+    onCenterChangedRef.current = onCenterChanged;
+    onZoomChangedRef.current = onZoomChanged;
+    onClickRef.current = onClick;
+  }, [onReady, onCenterChanged, onZoomChanged, onClick]);
+
   // SDK 로드 및 맵 초기화
   React.useEffect(() => {
     let mounted = true;
@@ -351,26 +364,26 @@ export function KakaoMap({
 
         mapRef.current = map;
         setIsReady(true);
-        onReady?.(map);
+        onReadyRef.current?.(map);
 
         // 이벤트 리스너 등록
-        if (onCenterChanged) {
+        if (onCenterChangedRef.current) {
           kakao.maps.event.addListener(map, "center_changed", () => {
             const latlng = map.getCenter();
-            onCenterChanged({ lat: latlng.getLat(), lng: latlng.getLng() });
+            onCenterChangedRef.current?.({ lat: latlng.getLat(), lng: latlng.getLng() });
           });
         }
 
-        if (onZoomChanged) {
+        if (onZoomChangedRef.current) {
           kakao.maps.event.addListener(map, "zoom_changed", () => {
-            onZoomChanged(map.getLevel());
+            onZoomChangedRef.current?.(map.getLevel());
           });
         }
 
-        if (onClick) {
+        if (onClickRef.current) {
           kakao.maps.event.addListener(map, "click", (mouseEvent: { latLng: kakao.maps.LatLng }) => {
             const latlng = mouseEvent.latLng;
-            onClick({ lat: latlng.getLat(), lng: latlng.getLng() });
+            onClickRef.current?.({ lat: latlng.getLat(), lng: latlng.getLng() });
           });
         }
       } catch (err) {
@@ -385,6 +398,7 @@ export function KakaoMap({
     return () => {
       mounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // 중심 좌표 업데이트

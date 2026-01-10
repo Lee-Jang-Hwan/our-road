@@ -71,7 +71,7 @@ export default function RouteStatistics({
 
   // Calculate distance data
   const distanceData = useMemo(() => {
-    return tripOutput.dayPlans.map((dayPlan, index) => {
+    return tripOutput.dayPlans.map((dayPlan) => {
       const daySegments = tripOutput.segmentCosts.filter((segment) =>
         dayPlan.waypointOrder.includes(segment.key.fromId) ||
         dayPlan.waypointOrder.includes(segment.key.toId)

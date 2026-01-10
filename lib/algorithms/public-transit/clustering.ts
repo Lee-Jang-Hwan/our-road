@@ -99,7 +99,6 @@ export function balanceClusterSizes(
   const maxIterations = 100;
   const flexibilityRange = 0.4; // Allow ±40% from target
 
-  const minSize = Math.max(1, Math.floor(targetPerDay * (1 - flexibilityRange)));
   const maxSize = Math.ceil(targetPerDay * (1 + flexibilityRange));
 
   for (let iteration = 0; iteration < maxIterations; iteration++) {

@@ -63,7 +63,6 @@ import { saveItinerary } from "@/actions/optimize/save-itinerary";
 import { getSegmentColor } from "@/lib/utils";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import type { TripWithDetails, TripStatus, Coordinate } from "@/types";
-import type { ScheduleItem } from "@/types/schedule";
 import type { Place } from "@/types/place";
 import type { UnassignedPlaceInfo } from "@/types/optimize";
 import { calculateTripDuration } from "@/types/trip";
@@ -235,12 +234,12 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
               setTrip(reloadResult.data);
             }
           }
-        } catch (saveErr) {
+        } catch {
           showErrorToast("저장 중 오류가 발생했습니다.");
           // 저장 실패해도 결과는 표시
         }
       }
-    } catch (err) {
+    } catch {
       const currentRetryCount = optimizeError?.retryCount || 0;
       setOptimizeError({
         message: "최적화 중 오류가 발생했습니다.",
@@ -782,7 +781,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
   }, [currentItinerary, currentDayMarkers, trip]);
 
   // 일정 항목 클릭
-  const handleItemClick = (item: ScheduleItem) => {
+  const handleItemClick = () => {
     // TODO: 지도에서 해당 장소 표시
   };
 

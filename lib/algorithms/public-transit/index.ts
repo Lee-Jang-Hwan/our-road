@@ -219,7 +219,7 @@ export async function generatePublicTransitRoute(
   validateFixedWaypointAssignments(clusters, fixedByDay);
 
   // Order clusters with start position consideration
-  const endAnchor = chooseEndAnchor(input.lodging, clusters, input.days);
+  const endAnchor = chooseEndAnchor(input.lodging, clusters);
   const orderedClusters = orderClustersOneDirection(clusters, endAnchor, input.start);
 
   // Build waypoint map
