@@ -198,8 +198,26 @@ export function balancedClustering(params: {
     throw new Error("Number of days must be positive");
   }
 
-  const actualDays = Math.min(N, waypoints.length);
-  const seeds = selectDistributedSeeds(waypoints, actualDays);
+  // fixedDate가 있는 waypoint는 클러스터링에서 제외
+  // (이들은 나중에 올바른 날짜의 클러스터에 강제 배정됨)
+  const waypointsToCluster = waypoints.filter(
+    (wp) => !(wp.isFixed && wp.fixedDate)
+  );
+
+  // 고정 일정이 모두 제외되어 클러스터링할 waypoint가 없는 경우 처리
+  if (waypointsToCluster.length === 0) {
+    // 모든 waypoint가 고정 일정인 경우, 빈 클러스터들을 반환
+    // (고정 일정은 나중에 assignFixedWaypointsToClusters에서 배정됨)
+    return Array.from({ length: N }, (_, index) => ({
+      clusterId: `cluster-${index + 1}`,
+      dayIndex: index + 1,
+      waypointIds: [],
+      centroid: { lat: 0, lng: 0 }, // 임시 값, 나중에 재계산됨
+    }));
+  }
+
+  const actualDays = Math.min(N, waypointsToCluster.length);
+  const seeds = selectDistributedSeeds(waypointsToCluster, actualDays);
 
   if (seeds.length === 0) {
     throw new Error("Failed to select seeds for clustering");
@@ -207,8 +225,8 @@ export function balancedClustering(params: {
 
   const clusters = initializeClusters(seeds);
 
-  // Assign waypoints to clusters
-  for (const waypoint of waypoints) {
+  // Assign waypoints to clusters (fixedDate가 없는 waypoint만)
+  for (const waypoint of waypointsToCluster) {
     if (seeds.find((seed) => seed.id === waypoint.id)) {
       continue;
     }
@@ -217,7 +235,13 @@ export function balancedClustering(params: {
   }
 
   balanceClusterSizes(clusters, targetPerDay);
-  ensureFixedWaypointsIncluded(clusters, fixedIds, waypoints);
+  // fixedDate가 없는 고정 일정만 ensureFixedWaypointsIncluded에서 처리
+  // (fixedDate가 있는 것은 나중에 assignFixedWaypointsToClusters에서 처리)
+  const fixedIdsWithoutDate = fixedIds.filter((id) => {
+    const wp = waypoints.find((w) => w.id === id);
+    return wp && !wp.fixedDate;
+  });
+  ensureFixedWaypointsIncluded(clusters, fixedIdsWithoutDate, waypoints);
 
   // Filter out empty clusters
   const nonEmptyClusters = clusters.filter((c) => c.waypoints.length > 0);
