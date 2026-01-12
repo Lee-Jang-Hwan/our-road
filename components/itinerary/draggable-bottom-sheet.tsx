@@ -109,7 +109,8 @@ export function DraggableBottomSheet({
   // closed → 위 화살표, open → 아래 화살표
   // middle → 이전이 closed면 위 화살표(open으로), 그 외(초기 또는 open)면 아래 화살표(closed로)
   const ArrowIcon =
-    snapPoint === "open" || (snapPoint === "middle" && prevSnapPoint !== "closed")
+    snapPoint === "open" ||
+    (snapPoint === "middle" && prevSnapPoint !== "closed")
       ? ChevronDown
       : ChevronUp;
 
