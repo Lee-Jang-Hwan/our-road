@@ -152,7 +152,8 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
   // 선택된 장소의 좌표 (맵 이동용)
-  const [selectedPlaceCenter, setSelectedPlaceCenter] = useState<Coordinate | null>(null);
+  const [selectedPlaceCenter, setSelectedPlaceCenter] =
+    useState<Coordinate | null>(null);
 
   // 최적화 관련 상태
   const [isOptimizing, setIsOptimizing] = useState(false);

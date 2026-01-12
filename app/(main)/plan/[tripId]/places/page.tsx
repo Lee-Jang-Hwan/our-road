@@ -129,11 +129,12 @@ export default function PlacesPage({ params }: PlacesPageProps) {
       savePlaces([...places, addResult.data]);
       // Sheet를 닫지 않고 계속 열어둠 (연속 추가 가능)
       showSuccessToast(`${result.name}이(가) 추가되었습니다.`);
-      
+
       // 장소 목록 스크롤을 맨 아래로 이동
       setTimeout(() => {
         if (placesListScrollRef.current) {
-          placesListScrollRef.current.scrollTop = placesListScrollRef.current.scrollHeight;
+          placesListScrollRef.current.scrollTop =
+            placesListScrollRef.current.scrollHeight;
         }
       }, 100);
     } catch (error) {
@@ -284,7 +285,10 @@ export default function PlacesPage({ params }: PlacesPageProps) {
 
       {/* 장소 검색 Sheet */}
       <Sheet open={isSearchOpen} onOpenChange={setIsSearchOpen}>
-        <SheetContent side="bottom" className="h-[80vh] flex flex-col max-w-md mx-auto px-8">
+        <SheetContent
+          side="bottom"
+          className="h-[80vh] flex flex-col max-w-md mx-auto px-8"
+        >
           <SheetHeader>
             <SheetTitle>장소 검색</SheetTitle>
             <SheetDescription>

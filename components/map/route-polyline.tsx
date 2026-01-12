@@ -405,9 +405,7 @@ export function RealRoutePolyline({
         // 선택된 경로는 더 두껍고 불투명하게, 비선택 경로는 더 얇고 투명하게
         const isSelected =
           selectedSegmentIndex !== undefined && index === selectedSegmentIndex;
-        const actualStrokeWeight = isSelected
-          ? strokeWeight + 2
-          : strokeWeight;
+        const actualStrokeWeight = isSelected ? strokeWeight + 2 : strokeWeight;
         const actualStrokeOpacity = isSelected
           ? Math.min(strokeOpacity + 0.2, 1)
           : strokeOpacity * 0.9;
