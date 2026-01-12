@@ -151,6 +151,8 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
   const [selectedDay, setSelectedDay] = useState(1);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  // 선택된 장소의 좌표 (맵 이동용)
+  const [selectedPlaceCenter, setSelectedPlaceCenter] = useState<Coordinate | null>(null);
 
   // 최적화 관련 상태
   const [isOptimizing, setIsOptimizing] = useState(false);
@@ -322,6 +324,11 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
   const currentItinerary = useMemo(() => {
     return trip?.itinerary?.find((it) => it.dayNumber === selectedDay);
   }, [trip?.itinerary, selectedDay]);
+
+  // 일자 변경 시 선택된 장소 좌표 초기화
+  useEffect(() => {
+    setSelectedPlaceCenter(null);
+  }, [selectedDay]);
 
   // 현재 일자의 시작점/끝점 좌표 계산 (dayOrigin/dayDestination + 레거시 데이터 fallback)
   const dayEndpoints = useMemo(() => {
@@ -783,7 +790,24 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
 
   // 일정 항목 클릭
   const handleItemClick = (item: ScheduleItem) => {
-    // TODO: 지도에서 해당 장소 표시
+    if (!trip?.places) return;
+
+    // 해당 장소 찾기
+    const place = trip.places.find((p) => p.id === item.placeId);
+    if (place?.coordinate) {
+      // 맵을 해당 장소의 좌표로 이동
+      setSelectedPlaceCenter(place.coordinate);
+    }
+  };
+
+  // 출발지/숙소 클릭
+  const handleOriginClick = (coordinate: { lat: number; lng: number }) => {
+    setSelectedPlaceCenter(coordinate);
+  };
+
+  // 도착지/숙소 클릭
+  const handleDestinationClick = (coordinate: { lat: number; lng: number }) => {
+    setSelectedPlaceCenter(coordinate);
   };
 
   // 삭제 실행
@@ -1085,7 +1109,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
       {hasItinerary && trip && (
         <div className="w-full h-64 border-b relative overflow-hidden">
           <KakaoMap
-            center={mapCenter}
+            center={selectedPlaceCenter || mapCenter}
             level={7}
             className="absolute inset-0 w-full h-full"
           >
@@ -1155,6 +1179,8 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
               itineraries={enrichedItineraries}
               selectedDay={selectedDay}
               onItemClick={handleItemClick}
+              onOriginClick={handleOriginClick}
+              onDestinationClick={handleDestinationClick}
               showNavigation={false}
               isLoading={false}
             />

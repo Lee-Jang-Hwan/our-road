@@ -9,7 +9,10 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScheduleItem } from "./schedule-item";
 import { RouteSegmentConnector } from "./route-segment";
 import { DaySummary } from "./day-summary";
-import type { DailyItinerary, ScheduleItem as ScheduleItemType } from "@/types/schedule";
+import type {
+  DailyItinerary,
+  ScheduleItem as ScheduleItemType,
+} from "@/types/schedule";
 import type { TripLocation } from "@/types/trip";
 
 interface DayContentProps {
@@ -21,6 +24,10 @@ interface DayContentProps {
   destination?: TripLocation | null;
   /** 항목 클릭 핸들러 */
   onItemClick?: (item: ScheduleItemType) => void;
+  /** 출발지/숙소 클릭 핸들러 */
+  onOriginClick?: (coordinate: { lat: number; lng: number }) => void;
+  /** 도착지/숙소 클릭 핸들러 */
+  onDestinationClick?: (coordinate: { lat: number; lng: number }) => void;
   /** 수정 핸들러 */
   onEdit?: (item: ScheduleItemType) => void;
   /** 삭제 핸들러 */
@@ -45,6 +52,8 @@ export function DayContent({
   origin,
   destination,
   onItemClick,
+  onOriginClick,
+  onDestinationClick,
   onEdit,
   onDelete,
   onNavigateToItem,
@@ -56,7 +65,7 @@ export function DayContent({
 
   // Normalize type to prevent "waypoint" type from being passed to OriginDestinationItem
   const normalizeEndpointType = (
-    type: NonNullable<DailyItinerary["dayOrigin"]>["type"]
+    type: NonNullable<DailyItinerary["dayOrigin"]>["type"],
   ): "origin" | "accommodation" | "destination" | "lastPlace" => {
     return type === "waypoint" ? "lastPlace" : type;
   };
@@ -75,7 +84,9 @@ export function DayContent({
     itinerary.dayOrigin ?? (origin ? { ...origin, type: "origin" } : null);
 
   // Resolved destination: prioritize dayDestination, fallback to trip destination
-  const resolvedDestination: NonNullable<DailyItinerary["dayDestination"]> | null =
+  const resolvedDestination: NonNullable<
+    DailyItinerary["dayDestination"]
+  > | null =
     itinerary.dayDestination ??
     (destination ? { ...destination, type: "destination" } : null);
 
@@ -94,9 +105,7 @@ export function DayContent({
             onToggle={() => setIsSummaryExpanded(!isSummaryExpanded)}
           />
           {/* 토글 시에만 표시되는 요약 */}
-          {isSummaryExpanded && (
-            <DaySummary itinerary={itinerary} />
-          )}
+          {isSummaryExpanded && <DaySummary itinerary={itinerary} />}
         </>
       )}
 
@@ -112,10 +121,21 @@ export function DayContent({
                 type={normalizeEndpointType(resolvedOrigin.type)}
                 name={resolvedOrigin.name}
                 time={itinerary.dailyStartTime || itinerary.startTime}
+                onClick={
+                  onOriginClick
+                    ? () =>
+                        onOriginClick({
+                          lat: resolvedOrigin.lat,
+                          lng: resolvedOrigin.lng,
+                        })
+                    : undefined
+                }
               />
               {/* 시작점 → 첫 장소 이동 */}
               {itinerary.transportFromOrigin && (
-                <RouteSegmentConnector segment={itinerary.transportFromOrigin} />
+                <RouteSegmentConnector
+                  segment={itinerary.transportFromOrigin}
+                />
               )}
             </>
           )}
@@ -129,14 +149,21 @@ export function DayContent({
                 onEdit={onEdit ? () => onEdit(item) : undefined}
                 onDelete={onDelete ? () => onDelete(item) : undefined}
                 showNavigation={showNavigation}
-                onPrevious={index > 0 ? () => onNavigateToItem?.(index - 1) : undefined}
-                onNext={index < itinerary.schedule.length - 1 ? () => onNavigateToItem?.(index + 1) : undefined}
+                onPrevious={
+                  index > 0 ? () => onNavigateToItem?.(index - 1) : undefined
+                }
+                onNext={
+                  index < itinerary.schedule.length - 1
+                    ? () => onNavigateToItem?.(index + 1)
+                    : undefined
+                }
               />
 
               {/* 이동 구간 (마지막 항목 제외) */}
-              {index < itinerary.schedule.length - 1 && item.transportToNext && (
-                <RouteSegmentConnector segment={item.transportToNext} />
-              )}
+              {index < itinerary.schedule.length - 1 &&
+                item.transportToNext && (
+                  <RouteSegmentConnector segment={item.transportToNext} />
+                )}
             </React.Fragment>
           ))}
 
@@ -144,12 +171,23 @@ export function DayContent({
           {resolvedDestination && (
             <>
               {itinerary.transportToDestination && (
-                <RouteSegmentConnector segment={itinerary.transportToDestination} />
+                <RouteSegmentConnector
+                  segment={itinerary.transportToDestination}
+                />
               )}
               <OriginDestinationItem
                 type={normalizeEndpointType(resolvedDestination.type)}
                 name={resolvedDestination.name}
                 time={calculateDestinationArrivalTime(itinerary)}
+                onClick={
+                  onDestinationClick
+                    ? () =>
+                        onDestinationClick({
+                          lat: resolvedDestination.lat,
+                          lng: resolvedDestination.lng,
+                        })
+                    : undefined
+                }
               />
             </>
           )}
@@ -181,10 +219,11 @@ function DayContentHeader({
   const Icon = isExpanded ? ChevronUp : ChevronDown;
 
   return (
-    <div 
+    <div
       className={cn(
         "flex items-center justify-between pb-3 border-b",
-        onToggle && "cursor-pointer hover:bg-muted/30 -mx-2 px-2 py-2 rounded-lg transition-colors"
+        onToggle &&
+          "cursor-pointer hover:bg-muted/30 -mx-2 px-2 py-2 rounded-lg transition-colors",
       )}
       onClick={onToggle}
     >
@@ -259,12 +298,18 @@ interface OriginDestinationItemProps {
   type: "origin" | "destination" | "accommodation" | "lastPlace";
   name: string;
   time: string;
+  onClick?: () => void;
 }
 
 /**
  * 출발지/도착지/숙소/전날 마지막 장소 표시 컴포넌트
  */
-function OriginDestinationItem({ type, name, time }: OriginDestinationItemProps) {
+function OriginDestinationItem({
+  type,
+  name,
+  time,
+  onClick,
+}: OriginDestinationItemProps) {
   const isOrigin = type === "origin" || type === "lastPlace";
   const isAccommodation = type === "accommodation";
 
@@ -275,15 +320,28 @@ function OriginDestinationItem({ type, name, time }: OriginDestinationItemProps)
       ? "bg-purple-100 text-purple-600"
       : "bg-red-100 text-red-600";
 
-  const label = type === "origin" ? "출발" : type === "lastPlace" ? "시작" : isAccommodation ? "숙소" : "도착";
+  const label =
+    type === "origin"
+      ? "출발"
+      : type === "lastPlace"
+        ? "시작"
+        : isAccommodation
+          ? "숙소"
+          : "도착";
   const Icon = isAccommodation ? Hotel : MapPin;
 
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg border border-dashed bg-muted/30">
+    <div
+      className={cn(
+        "flex items-center gap-3 p-3 rounded-lg border border-dashed bg-muted/30",
+        onClick && "cursor-pointer hover:bg-muted/50 transition-colors",
+      )}
+      onClick={onClick}
+    >
       <div
         className={cn(
           "w-8 h-8 rounded-full flex items-center justify-center shrink-0",
-          styles
+          styles,
         )}
       >
         <Icon className="h-4 w-4" />
@@ -359,6 +417,10 @@ interface DayContentPanelProps {
   destination?: TripLocation | null;
   /** 항목 클릭 핸들러 */
   onItemClick?: (item: ScheduleItemType) => void;
+  /** 출발지/숙소 클릭 핸들러 */
+  onOriginClick?: (coordinate: { lat: number; lng: number }) => void;
+  /** 도착지/숙소 클릭 핸들러 */
+  onDestinationClick?: (coordinate: { lat: number; lng: number }) => void;
   /** 수정 핸들러 */
   onEdit?: (item: ScheduleItemType) => void;
   /** 삭제 핸들러 */
@@ -382,6 +444,8 @@ export function DayContentPanel({
   origin,
   destination,
   onItemClick,
+  onOriginClick,
+  onDestinationClick,
   onEdit,
   onDelete,
   onNavigateToItem,
@@ -391,7 +455,7 @@ export function DayContentPanel({
 }: DayContentPanelProps) {
   const selectedItinerary = React.useMemo(
     () => itineraries.find((it) => it.dayNumber === selectedDay),
-    [itineraries, selectedDay]
+    [itineraries, selectedDay],
   );
 
   if (isLoading) {
@@ -401,7 +465,9 @@ export function DayContentPanel({
   if (!selectedItinerary) {
     return (
       <div className={cn("py-12 text-center", className)}>
-        <p className="text-muted-foreground">선택된 일자의 일정을 찾을 수 없습니다</p>
+        <p className="text-muted-foreground">
+          선택된 일자의 일정을 찾을 수 없습니다
+        </p>
       </div>
     );
   }
@@ -412,6 +478,8 @@ export function DayContentPanel({
       origin={origin}
       destination={destination}
       onItemClick={onItemClick}
+      onOriginClick={onOriginClick}
+      onDestinationClick={onDestinationClick}
       onEdit={onEdit}
       onDelete={onDelete}
       onNavigateToItem={onNavigateToItem}
