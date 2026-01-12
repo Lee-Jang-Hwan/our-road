@@ -40,6 +40,7 @@ import {
 
 import { DayTabsContainer } from "@/components/itinerary/day-tabs";
 import { DayContentPanel } from "@/components/itinerary/day-content";
+import { DraggableBottomSheet } from "@/components/itinerary/draggable-bottom-sheet";
 import { UnassignedPlaces } from "@/components/itinerary/unassigned-places";
 import { RouteFindingAnimation } from "@/components/optimize/route-finding-animation";
 import { KakaoMap } from "@/components/map/kakao-map";
@@ -860,7 +861,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
   if (!isLoaded || isLoading || isOptimizing) {
     return (
       <main className="flex flex-col min-h-[calc(100dvh-64px)]">
-        <header className="flex items-center gap-3 px-4 py-3 border-b">
+        <header className="flex items-center gap-3 px-4 py-1 border-b">
           <Button
             variant="ghost"
             size="icon"
@@ -894,7 +895,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
   if (error && !trip) {
     return (
       <main className="flex flex-col min-h-[calc(100dvh-64px)]">
-        <header className="flex items-center gap-3 px-4 py-3 border-b">
+        <header className="flex items-center gap-3 px-4 py-1 border-b">
           <Button
             variant="ghost"
             size="icon"
@@ -925,7 +926,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
   return (
     <main className="flex flex-col min-h-[calc(100dvh-64px)]">
       {/* 헤더 */}
-      <header className="flex items-center gap-3 px-4 py-3 border-b">
+      <header className="flex items-center gap-3 px-4 py-1 border-b">
         <Button
           variant="ghost"
           size="icon"
@@ -996,7 +997,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
       )}
 
       {/* 여행 정보 */}
-      <section className="px-4 py-4 border-b space-y-3">
+      <section className="px-4 py-3 border-b space-y-2">
         <div className="flex items-center gap-2 flex-wrap">
           <h2 className="font-semibold text-lg">{trip.title}</h2>
           {getStatusBadge(trip.status)}
@@ -1040,19 +1041,6 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
               </span>
             </div>
           )}
-          {hasItinerary && (
-            <div className="flex items-center gap-1.5">
-              <LuRoute className="w-4 h-4 shrink-0" />
-              <span>
-                {formatDistance(
-                  trip.itinerary!.reduce(
-                    (acc, it) => acc + it.totalDistance,
-                    0,
-                  ),
-                )}
-              </span>
-            </div>
-          )}
         </div>
       </section>
 
@@ -1070,9 +1058,10 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
         className="mx-4 mt-4"
       />
 
-      {/* 카카오 맵 */}
-      {hasItinerary && trip && (
-        <div className="w-full h-64 border-b relative overflow-hidden sticky top-6 z-10">
+      {/* 카카오 맵 및 일정 바텀 시트 */}
+      {hasItinerary && trip ? (
+        <div className="flex-1 relative overflow-hidden">
+          {/* 카카오 맵 */}
           <KakaoMap
             center={selectedPlaceCenter || mapCenter}
             level={7}
@@ -1127,30 +1116,29 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
             <OffScreenMarkers markers={currentDayMarkers} />
             <FitBoundsButton markers={currentDayMarkers} />
           </KakaoMap>
-        </div>
-      )}
 
-      {/* 일정 표시 */}
-      {hasItinerary ? (
-        <DayTabsContainer
-          days={days}
-          selectedDay={selectedDay}
-          onSelectDay={setSelectedDay}
-          className="flex-1"
-        >
-          <div className="px-4 py-4" {...swipeHandlers}>
-            {/* 일정 타임라인 */}
-            <DayContentPanel
-              itineraries={enrichedItineraries}
+          {/* 일정 바텀 시트 */}
+          <DraggableBottomSheet>
+            <DayTabsContainer
+              days={days}
               selectedDay={selectedDay}
-              onItemClick={handleItemClick}
-              onOriginClick={handleOriginClick}
-              onDestinationClick={handleDestinationClick}
-              showNavigation={false}
-              isLoading={false}
-            />
-          </div>
-        </DayTabsContainer>
+              onSelectDay={setSelectedDay}
+            >
+              <div className="px-4 py-4" {...swipeHandlers}>
+                {/* 일정 타임라인 */}
+                <DayContentPanel
+                  itineraries={enrichedItineraries}
+                  selectedDay={selectedDay}
+                  onItemClick={handleItemClick}
+                  onOriginClick={handleOriginClick}
+                  onDestinationClick={handleDestinationClick}
+                  showNavigation={false}
+                  isLoading={false}
+                />
+              </div>
+            </DayTabsContainer>
+          </DraggableBottomSheet>
+        </div>
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center px-4 py-12">
           <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">

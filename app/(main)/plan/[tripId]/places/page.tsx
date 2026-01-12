@@ -1,7 +1,6 @@
 "use client";
 
 import { use, useState, useEffect, useCallback, useRef } from "react";
-import Link from "next/link";
 import { LuChevronLeft, LuPlus } from "react-icons/lu";
 import { X } from "lucide-react";
 
@@ -32,19 +31,6 @@ import type { Place, PlaceSearchResult } from "@/types/place";
 interface PlacesPageProps {
   params: Promise<{ tripId: string }>;
 }
-
-// 체류 시간 옵션 (분 단위)
-const DURATION_OPTIONS = [
-  { value: 30, label: "30분" },
-  { value: 60, label: "1시간" },
-  { value: 90, label: "1시간 30분" },
-  { value: 120, label: "2시간" },
-  { value: 180, label: "3시간" },
-  { value: 240, label: "4시간" },
-  { value: 360, label: "6시간" },
-  { value: 480, label: "8시간" },
-  { value: 720, label: "12시간" },
-];
 
 export default function PlacesPage({ params }: PlacesPageProps) {
   const { tripId } = use(params);
@@ -237,7 +223,7 @@ export default function PlacesPage({ params }: PlacesPageProps) {
   return (
     <main className="flex flex-col pb-10 min-h-[calc(100dvh-64px)]">
       {/* 헤더 */}
-      <header className="flex items-center gap-3 px-4 py-3 border-b">
+      <header className="flex items-center gap-3 px-4 py-1 border-b">
         <Button
           variant="ghost"
           size="icon"

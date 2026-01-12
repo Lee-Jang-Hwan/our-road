@@ -170,13 +170,13 @@ export interface TransportInfoRow {
     walking_time: number;
     walking_distance: number;
     sub_paths: Array<{
-      traffic_type: 1 | 2 | 3 | 10 | 11 | 12 | 14;
+      traffic_type: 1 | 2 | 3 | 4 | 5 | 6 | 10 | 11 | 12 | 14;
       distance: number;
       section_time: number;
       station_count?: number;
       start_name?: string;
       end_name?: string;
-      polyline?: string;  // ← 추가 필요
+      polyline?: string; // ← 추가 필요
       lane?: {
         name: string;
         bus_no?: string;
@@ -187,6 +187,31 @@ export interface TransportInfoRow {
       way?: string;
     }>;
   };
+  taxi_fare?: number;
+  car_segments?: Array<{
+    index: number;
+    distance: number;
+    duration: number;
+    toll_fare?: number;
+    description?: string;
+    polyline?: string;
+    guides?: Array<{
+      name: string;
+      coord?: { lat: number; lng: number };
+      distance?: number;
+      duration?: number;
+      type?: number;
+      guidance?: string;
+    }>;
+  }>;
+  guides?: Array<{
+    name: string;
+    coord?: { lat: number; lng: number };
+    distance?: number;
+    duration?: number;
+    type?: number;
+    guidance?: string;
+  }>;
 }
 
 /**

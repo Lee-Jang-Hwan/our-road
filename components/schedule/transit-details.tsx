@@ -1,7 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { Bus, Train, Footprints, Clock, ArrowRight, ChevronDown, ChevronUp, Ship } from "lucide-react";
+import {
+  Bus,
+  Train,
+  Footprints,
+  Clock,
+  ArrowRight,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { TransitDetails, TransitSubPath } from "@/types/route";
 
@@ -20,16 +28,14 @@ interface TransitDetailsCardProps {
 function getTrafficIcon(trafficType: number) {
   switch (trafficType) {
     case 1: // 지하철
-    case 10: // 열차
+    case 4: // 기차
       return <Train className="w-4 h-4" />;
     case 2: // 버스
-    case 11: // 고속버스
-    case 12: // 시외버스
+    case 5: // 고속버스
+    case 6: // 시외버스
       return <Bus className="w-4 h-4" />;
     case 3: // 도보
       return <Footprints className="w-4 h-4" />;
-    case 14: // 해운
-      return <Ship className="w-4 h-4" />;
     default:
       return <Train className="w-4 h-4" />;
   }
@@ -46,14 +52,12 @@ function getTrafficLabel(trafficType: number) {
       return "버스";
     case 3:
       return "도보";
-    case 10:
-      return "열차";
-    case 11:
+    case 4:
+      return "기차";
+    case 5:
       return "고속버스";
-    case 12:
+    case 6:
       return "시외버스";
-    case 14:
-      return "해운";
     default:
       return "대중교통";
   }
@@ -91,6 +95,17 @@ function SubPathItem({ subPath }: { subPath: TransitSubPath }) {
   const icon = getTrafficIcon(subPath.trafficType);
   const lineColor = subPath.lane?.lineColor;
 
+  // 디버깅: UI에서 표시되는 값 확인
+  console.log("[TransitDetails] SubPathItem:", {
+    trafficType: subPath.trafficType,
+    laneName: subPath.lane?.name,
+    getTrafficLabel: getTrafficLabel(subPath.trafficType),
+    finalDisplayName:
+      subPath.lane?.name || getTrafficLabel(subPath.trafficType),
+    startName: subPath.startName,
+    endName: subPath.endName,
+  });
+
   return (
     <div className="flex items-start gap-2 py-2">
       {/* 아이콘 */}
@@ -121,6 +136,13 @@ function SubPathItem({ subPath }: { subPath: TransitSubPath }) {
                 style={{ backgroundColor: lineColor || "#6b7280" }}
               >
                 {subPath.lane?.name || getTrafficLabel(subPath.trafficType)}
+                {/* 디버깅: trafficType 표시 */}
+                <span
+                  className="ml-1 text-[10px] opacity-70"
+                  title={`trafficType: ${subPath.trafficType}`}
+                >
+                  [{subPath.trafficType}]
+                </span>
               </span>
 
               {/* 버스 유형 */}
@@ -172,7 +194,7 @@ export function TransitDetailsCard({
   // 총 소요시간 계산
   const totalTime = transitDetails.subPaths.reduce(
     (sum, sp) => sum + sp.sectionTime,
-    0
+    0,
   );
 
   return (
@@ -237,7 +259,7 @@ export function TransitSummaryInline({
 }) {
   // 대중교통 구간만 필터링 (도보 제외)
   const transitPaths = transitDetails.subPaths.filter(
-    (sp) => sp.trafficType !== 3
+    (sp) => sp.trafficType !== 3,
   );
 
   return (
@@ -252,7 +274,9 @@ export function TransitSummaryInline({
             style={{ backgroundColor: subPath.lane?.lineColor || "#6b7280" }}
           >
             {getTrafficIcon(subPath.trafficType)}
-            <span>{subPath.lane?.name || getTrafficLabel(subPath.trafficType)}</span>
+            <span>
+              {subPath.lane?.name || getTrafficLabel(subPath.trafficType)}
+            </span>
           </span>
         </React.Fragment>
       ))}
@@ -288,7 +312,7 @@ export function TransitRouteGuide({
   // 총 소요시간 계산
   const totalTime = transitDetails.subPaths.reduce(
     (sum, sp) => sum + sp.sectionTime,
-    0
+    0,
   );
 
   return (
