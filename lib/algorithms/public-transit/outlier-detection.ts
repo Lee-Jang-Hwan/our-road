@@ -130,11 +130,6 @@ export function detectOutliers(
     const clusterCentroid = calculateCentroid(
       waypointsForCentroid.map((wp) => wp.coord)
     );
-    const centroidDistances = waypointsForCentroid.map((wp) =>
-      calculateDistance(wp.coord, clusterCentroid)
-    );
-    const avgCentroidDistance =
-      centroidDistances.reduce((sum, d) => sum + d, 0) / centroidDistances.length;
 
     // Validate and create warnings
     for (const wp of clusterWaypoints) {

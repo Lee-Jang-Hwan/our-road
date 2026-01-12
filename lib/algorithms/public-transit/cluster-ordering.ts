@@ -7,8 +7,7 @@ import { calculateCentroid, calculateDistance, calculateDirectionVector, dotProd
 
 export function chooseEndAnchor(
   lodging: LatLng | undefined,
-  clusters: Cluster[],
-  _days: number
+  clusters: Cluster[]
 ): LatLng {
   if (lodging) {
     return lodging;
@@ -97,7 +96,7 @@ export function orderClustersOneDirection(
     );
   }
 
-  const smoothed = smoothClusterOrder(sorted, endAnchor, startAnchor);
+  const smoothed = smoothClusterOrder(sorted, endAnchor);
 
   // Validate monotonic progression
   const isValid = validateMonotonicProgression(smoothed, endAnchor, startAnchor);
@@ -110,8 +109,7 @@ export function orderClustersOneDirection(
 
 export function smoothClusterOrder(
   sorted: Cluster[],
-  endAnchor: LatLng,
-  startAnchor?: LatLng
+  endAnchor: LatLng
 ): Cluster[] {
   if (sorted.length < 3) {
     return sorted;

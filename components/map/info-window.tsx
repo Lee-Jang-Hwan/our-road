@@ -39,7 +39,6 @@ export function InfoWindow({
   zIndex = 10,
 }: InfoWindowProps) {
   const { map, isReady } = useKakaoMap();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const overlayRef = React.useRef<any>(null);
   const containerRef = React.useRef<HTMLDivElement | null>(null);
 

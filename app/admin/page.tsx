@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getErrorStatistics, getErrorLogs } from "@/actions/admin";
 import type { ErrorStatistics, ErrorLog, ErrorSeverity } from "@/types/admin";
-import { SeverityBadge, StatusBadge } from "@/components/admin";
+import { SeverityBadge } from "@/components/admin";
 
 /**
  * 관리자 대시보드 페이지

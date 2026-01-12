@@ -178,7 +178,6 @@ const circuitBreaker: CircuitBreakerState = {
 
 const CIRCUIT_BREAKER_THRESHOLD = 5; // Open after 5 consecutive failures
 const CIRCUIT_BREAKER_TIMEOUT = 30000; // 30 seconds
-const CIRCUIT_BREAKER_HALF_OPEN_RETRIES = 3;
 
 function checkCircuitBreaker(): boolean {
   const now = Date.now();
@@ -281,7 +280,7 @@ async function fetchSingleSegment(
         segmentCache.set(segment.fromCoord, segment.toCoord, result);
         return result;
       }
-    } catch (error) {
+    } catch {
       // TMAP API failed, will use fallback
     }
 

@@ -4,11 +4,11 @@
 // Route Map Component (Kakao Maps)
 // ============================================
 
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useAtom } from 'jotai';
-import type { TripOutput, Waypoint, LatLng as AppLatLng } from '@/types';
-import { mapViewAtom, selectedDayAtom, selectedWaypointAtom } from '@/lib/states/route-view-atoms';
-import { getDayColor, MARKER_COLORS } from '@/lib/utils/route-colors';
+import type { TripOutput, Waypoint } from '@/types';
+import { mapViewAtom, selectedDayAtom } from '@/lib/states/route-view-atoms';
+import { getDayColor } from '@/lib/utils/route-colors';
 import { KakaoMap } from '@/components/map/kakao-map';
 import { PlaceMarkers } from '@/components/map/place-markers';
 import { RealRoutePolyline } from '@/components/map/route-polyline';
@@ -23,12 +23,12 @@ interface RouteMapProps {
 export default function RouteMap({ tripOutput, waypoints }: RouteMapProps) {
   const [mapView, setMapView] = useAtom(mapViewAtom);
   const [selectedDay] = useAtom(selectedDayAtom);
-  const [selectedWaypoint] = useAtom(selectedWaypointAtom);
 
   // Get waypoint by ID
-  const getWaypointById = (id: string) => {
-    return waypoints.find((wp) => wp.id === id);
-  };
+  const getWaypointById = useMemo(
+    () => (id: string) => waypoints.find((wp) => wp.id === id),
+    [waypoints]
+  );
 
   // Get selected day plan
   const selectedDayPlan = useMemo(() => {
@@ -65,7 +65,7 @@ export default function RouteMap({ tripOutput, waypoints }: RouteMapProps) {
       lat: sumLat / allCoords.length,
       lng: sumLng / allCoords.length,
     };
-  }, [waypoints, selectedDayPlan]);
+  }, [waypoints, selectedDayPlan, getWaypointById]);
 
   // Get current day markers
   const currentDayMarkers = useMemo(() => {
@@ -117,7 +117,7 @@ export default function RouteMap({ tripOutput, waypoints }: RouteMapProps) {
     }
 
     return markers;
-  }, [tripOutput, waypoints, selectedDayPlan]);
+  }, [tripOutput, selectedDayPlan, getWaypointById]);
 
   // Get route segments for polylines with actual path coordinates
   const routeSegments = useMemo(() => {
@@ -193,7 +193,7 @@ export default function RouteMap({ tripOutput, waypoints }: RouteMapProps) {
     });
 
     return segments;
-  }, [tripOutput, waypoints, selectedDayPlan]);
+  }, [tripOutput, selectedDayPlan, getWaypointById]);
 
   return (
     <div className="relative w-full h-full">

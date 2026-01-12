@@ -6,9 +6,7 @@ import {
   Coffee,
   Camera,
   ShoppingBag,
-  Loader2,
   MapPin,
-  X,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -27,7 +25,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from "@/components/ui/sheet";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -69,8 +67,6 @@ const categories: CategoryOption[] = [
   },
 ];
 
-// 반경 옵션 (미터)
-const radiusOptions = [500, 750, 1000];
 
 interface NearbyRecommendationsProps {
   /** 모달 열림 상태 */

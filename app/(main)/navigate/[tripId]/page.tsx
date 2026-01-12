@@ -18,7 +18,6 @@ import {
 import { Train, Bus, Footprints, ArrowRight, Ship } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Sheet,
@@ -259,7 +258,6 @@ function NavigationBottomPanel({
   onToggleExpand,
   isOriginSegment,
   isDestinationSegment,
-  originName,
 }: {
   currentItem: ScheduleItem & { coordinate: Coordinate };
   nextItem?: ScheduleItem & { coordinate: Coordinate };
@@ -275,7 +273,6 @@ function NavigationBottomPanel({
   onToggleExpand: () => void;
   isOriginSegment?: boolean;
   isDestinationSegment?: boolean;
-  originName?: string;
 }) {
   const distanceToNext = useMemo(() => {
     if (!currentLocation || !currentItem) return null;
@@ -549,15 +546,15 @@ function NavigationMapContent({
 
   // 현재 및 다음 목적지
   const currentScheduleItem = currentDayItinerary.schedule[currentIndex];
-  const nextScheduleItem = currentDayItinerary.schedule[currentIndex + 1];
 
   const currentDestination = currentScheduleItem
     ? placeCoordinates.get(currentScheduleItem.placeId)
     : null;
 
-  const nextDestination = nextScheduleItem
-    ? placeCoordinates.get(nextScheduleItem.placeId)
-    : null;
+  // nextDestination은 현재 사용되지 않지만 향후 사용 예정
+  // const nextDestination = nextScheduleItem
+  //   ? placeCoordinates.get(nextScheduleItem.placeId)
+  //   : null;
 
   // 경로 구간 배열 (실제 대중교통 경로 표시)
   const routeSegments = useMemo(() => {
@@ -1303,7 +1300,6 @@ export default function NavigatePage({ params }: NavigatePageProps) {
               currentIndex === currentDayItinerary.schedule.length &&
               !!currentDayItinerary.dayDestination
             }
-            originName={currentDayItinerary.dayOrigin?.name}
           />
         )}
       </div>

@@ -33,13 +33,6 @@ export interface DistanceMatrixOptions {
   onProgress?: (completed: number, total: number) => void;
 }
 
-/**
- * 거리 행렬 캐시 키 생성
- */
-function createCacheKey(fromId: string, toId: string): string {
-  return `${fromId}:${toId}`;
-}
-
 // ============================================
 // Haversine 기반 거리 행렬 (빠른 버전)
 // ============================================

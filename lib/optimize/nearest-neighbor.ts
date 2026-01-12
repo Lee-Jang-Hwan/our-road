@@ -82,7 +82,6 @@ export function nearestNeighbor(
   }
 
   const getDistance = createDistanceMatrixGetter(distanceMatrix);
-  const nodeMap = new Map(nodes.map((n) => [n.id, n]));
 
   // 시작 노드 결정
   const startNode = startId

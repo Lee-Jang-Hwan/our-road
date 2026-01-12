@@ -209,7 +209,7 @@ export async function incrementApiCallCount(apiName: string): Promise<number> {
     logRateLimit(apiName, newCount, limit, remaining);
 
     return newCount;
-  } catch (error) {
+  } catch {
     // DB 오류 시 캐시만 증가
     const cached = callCache.get(cacheKey);
     if (cached && cached.date === today) {

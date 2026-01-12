@@ -10,7 +10,6 @@ import {
   Clock,
   Code2,
   Copy,
-  ExternalLink,
   Info,
   MapPin,
   MessageSquare,
@@ -23,7 +22,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -31,7 +29,6 @@ import {
   Sheet,
   SheetContent,
   SheetDescription,
-  SheetFooter,
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";

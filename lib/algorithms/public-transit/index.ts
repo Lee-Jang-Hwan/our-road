@@ -20,6 +20,17 @@ import { extractSegments, callRoutingAPIForSegments } from "./api-caller";
 import { buildOutput } from "./output-builder";
 
 /**
+ * 날짜 문자열을 로컬 날짜로 파싱 (타임존 문제 방지)
+ * @param dateStr "YYYY-MM-DD" 형식의 날짜 문자열
+ * @returns 로컬 타임존 기준 Date 객체
+ */
+function parseLocalDate(dateStr: string): Date {
+  const [year, month, day] = dateStr.split("-").map(Number);
+  // 월은 0부터 시작하므로 -1
+  return new Date(year, month - 1, day);
+}
+
+/**
  * 고정 일정이 있는 장소를 날짜별로 그룹화
  * @param waypoints 모든 경유지
  * @param tripStartDate 여행 시작 날짜 (YYYY-MM-DD)
@@ -35,11 +46,11 @@ function groupFixedWaypointsByDay(
     return grouped;
   }
 
-  const startDate = new Date(tripStartDate);
+  const startDate = parseLocalDate(tripStartDate);
   
   for (const wp of waypoints) {
     if (wp.isFixed && wp.fixedDate) {
-      const fixedDate = new Date(wp.fixedDate);
+      const fixedDate = parseLocalDate(wp.fixedDate);
       // 날짜 차이 계산 (일 단위)
       const dayIndex = Math.floor(
         (fixedDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
@@ -58,6 +69,44 @@ function groupFixedWaypointsByDay(
 }
 
 /**
+ * 고정 일정이 올바른 날짜에 배정되었는지 검증
+ * @param clusters 클러스터 목록
+ * @param fixedByDay 날짜별 고정 장소
+ */
+function validateFixedWaypointAssignments(
+  clusters: Cluster[],
+  fixedByDay: Map<number, Waypoint[]>
+): void {
+  for (const [dayIndex, fixedWaypoints] of fixedByDay.entries()) {
+    if (dayIndex >= clusters.length) {
+      continue; // 이미 경고가 출력됨
+    }
+
+    const cluster = clusters[dayIndex];
+    const clusterWaypointIds = new Set(cluster.waypointIds);
+
+    for (const fixedWp of fixedWaypoints) {
+      // 올바른 날짜의 클러스터에 있는지 확인
+      if (!clusterWaypointIds.has(fixedWp.id)) {
+        console.warn(
+          `[validateFixedWaypoints] Fixed waypoint ${fixedWp.id} is missing from day ${dayIndex + 1} cluster`
+        );
+      }
+
+      // 다른 클러스터에 중복되어 있는지 확인
+      for (let i = 0; i < clusters.length; i++) {
+        if (i === dayIndex) continue;
+        if (clusters[i].waypointIds.includes(fixedWp.id)) {
+          console.warn(
+            `[validateFixedWaypoints] Fixed waypoint ${fixedWp.id} is incorrectly assigned to both day ${dayIndex + 1} and day ${i + 1}`
+          );
+        }
+      }
+    }
+  }
+}
+
+/**
  * 클러스터에 고정 일정 장소를 강제 배정
  * @param clusters 클러스터 목록
  * @param fixedByDay 날짜별 고정 장소
@@ -68,14 +117,29 @@ function assignFixedWaypointsToClusters(
   fixedByDay: Map<number, Waypoint[]>,
   waypoints: Waypoint[]
 ): void {
+  // 먼저 모든 고정 일정 waypoint ID를 수집
+  const fixedWaypointIds = new Set<string>();
+  for (const fixedWaypoints of fixedByDay.values()) {
+    for (const fixedWp of fixedWaypoints) {
+      fixedWaypointIds.add(fixedWp.id);
+    }
+  }
+
+  // 모든 클러스터에서 고정 일정 waypoint 제거 (잘못된 클러스터에 배정된 것 제거)
+  for (const cluster of clusters) {
+    cluster.waypointIds = cluster.waypointIds.filter(
+      (id) => !fixedWaypointIds.has(id)
+    );
+  }
+
+  // 올바른 날짜의 클러스터에 고정 일정 추가
   for (const [dayIndex, fixedWaypoints] of fixedByDay.entries()) {
     if (dayIndex < clusters.length) {
       const cluster = clusters[dayIndex];
       
-      // 고정 장소를 클러스터에 추가 (중복 제거)
+      // 고정 장소를 클러스터에 추가
       for (const fixedWp of fixedWaypoints) {
-        const exists = cluster.waypointIds.includes(fixedWp.id);
-        if (!exists) {
+        if (!cluster.waypointIds.includes(fixedWp.id)) {
           cluster.waypointIds.push(fixedWp.id);
         }
       }
@@ -151,8 +215,11 @@ export async function generatePublicTransitRoute(
   // 클러스터에 고정 일정 강제 배정
   assignFixedWaypointsToClusters(clusters, fixedByDay, waypoints);
 
+  // 검증: 고정 일정이 올바른 날짜에 배정되었는지 확인
+  validateFixedWaypointAssignments(clusters, fixedByDay);
+
   // Order clusters with start position consideration
-  const endAnchor = chooseEndAnchor(input.lodging, clusters, input.days);
+  const endAnchor = chooseEndAnchor(input.lodging, clusters);
   const orderedClusters = orderClustersOneDirection(clusters, endAnchor, input.start);
 
   // Build waypoint map
