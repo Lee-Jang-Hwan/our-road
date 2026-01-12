@@ -428,7 +428,7 @@ export default function MyTripsPage() {
 
             {/* 컨텐츠 */}
             <span className="relative flex items-center gap-1.5">
-              <span className="animate-[pulse_2s_ease-in-out_infinite]">새 일정</span>
+              <span className="animate-[pulse_2s_ease-in-out_infinite]">새 여행</span>
               <Plane className="w-4 h-4 animate-[float_3s_ease-in-out_infinite] group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-300" />
             </span>
           </Button>

@@ -3,11 +3,11 @@
 import { use, useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LuChevronLeft, LuShare2, LuLoader, LuPencil } from "react-icons/lu";
+import { LuChevronLeft, LuShare2, LuPencil } from "react-icons/lu";
 import { AlertCircle, MapPin, Clock, ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { RouteFindingAnimation } from "@/components/optimize/route-finding-animation";
 import { DayTabs, DayTabsContainer } from "@/components/itinerary/day-tabs";
 import { DayContentPanel } from "@/components/itinerary/day-content";
 import { UnassignedPlaces } from "@/components/itinerary/unassigned-places";
@@ -25,6 +25,7 @@ import {
 } from "@/components/map/off-screen-markers";
 import { useSwipe } from "@/hooks/use-swipe";
 import { useSafeBack } from "@/hooks/use-safe-back";
+import { useOptimizationNotification } from "@/hooks/use-optimization-notification";
 import { optimizeRoute } from "@/actions/optimize/optimize-route";
 import { saveItinerary } from "@/actions/optimize/save-itinerary";
 import { getPlaces } from "@/actions/places";
@@ -45,6 +46,8 @@ export default function ResultPage({ params }: ResultPageProps) {
   const { tripId } = use(params);
   const router = useRouter();
   const handleBack = useSafeBack(`/plan/${tripId}`);
+  const { requestPermission, notifyOptimizationComplete } =
+    useOptimizationNotification();
 
   const [trip, setTrip] = useState<Trip | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -62,6 +65,9 @@ export default function ResultPage({ params }: ResultPageProps) {
   const runOptimization = useCallback(async () => {
     setIsOptimizing(true);
     setError(null);
+
+    // 최적화 시작 시 알림 권한 요청 (백그라운드에서 진행)
+    requestPermission();
 
     try {
       const result = await optimizeRoute({ tripId });
@@ -114,6 +120,10 @@ export default function ResultPage({ params }: ResultPageProps) {
         } else {
           showSuccessToast("일정이 최적화되고 저장되었습니다!");
           setItineraries(result.data.itinerary);
+
+          // 최적화 완료 알림 발송 (소리 + 푸시 알림)
+          console.log("[Result Page] 최적화 완료 - 알림 발송 시도");
+          notifyOptimizationComplete();
         }
       }
     } catch (err) {
@@ -122,7 +132,7 @@ export default function ResultPage({ params }: ResultPageProps) {
     } finally {
       setIsOptimizing(false);
     }
-  }, [tripId, places]);
+  }, [tripId, places, requestPermission, notifyOptimizationComplete]);
 
   useEffect(() => {
     const init = async () => {
@@ -431,18 +441,8 @@ export default function ResultPage({ params }: ResultPageProps) {
   // 로딩 상태
   if (isLoading) {
     return (
-      <main className="flex flex-col min-h-[calc(100dvh-64px)]">
-        <header className="flex items-center gap-3 px-4 py-3 border-b">
-          <Skeleton className="w-10 h-10 rounded-lg" />
-          <Skeleton className="h-6 w-32" />
-        </header>
-        <div className="flex flex-col items-center justify-center flex-1 py-12">
-          <LuLoader className="w-8 h-8 animate-spin text-primary mb-4" />
-          <p className="text-muted-foreground">일정 최적화 중...</p>
-          <p className="text-sm text-muted-foreground/70 mt-2">
-            장소 간 최적 경로를 계산하고 있습니다
-          </p>
-        </div>
+      <main className="flex flex-col min-h-[calc(100dvh-64px)] items-center justify-center">
+        <RouteFindingAnimation />
       </main>
     );
   }
@@ -610,9 +610,8 @@ export default function ResultPage({ params }: ResultPageProps) {
           {/* 일정 내용 */}
           <div className="px-4 py-4" {...swipeHandlers}>
             {isOptimizing ? (
-              <div className="flex flex-col items-center justify-center py-12">
-                <LuLoader className="w-8 h-8 animate-spin text-primary mb-4" />
-                <p className="text-muted-foreground">일정 최적화 중...</p>
+              <div className="flex flex-col items-center justify-center py-4">
+                <RouteFindingAnimation />
               </div>
             ) : (
               <>
