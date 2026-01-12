@@ -63,12 +63,127 @@ interface RouteSegmentProps {
  * - 이동수단 아이콘
  * - 소요시간, 거리
  */
+/**
+ * 대중교통 구간의 주요 교통수단 라벨 반환
+ */
+function getPublicTransportLabel(segment: RouteSegmentType): string {
+  if (segment.mode !== "public" || !segment.transitDetails) {
+    return transportLabels[segment.mode];
+  }
+
+  // 대중교통 구간만 필터링 (도보 제외)
+  const transitPaths = segment.transitDetails.subPaths.filter(
+    (sp) => sp.trafficType !== 3
+  );
+
+  if (transitPaths.length === 0) {
+    return transportLabels[segment.mode];
+  }
+
+  // 디버깅: 열차 구간 확인
+  if (process.env.NODE_ENV === "development") {
+    const trainPaths = transitPaths.filter((sp) => sp.trafficType === 10);
+    if (trainPaths.length > 0) {
+      console.log("[getPublicTransportLabel] 열차 구간 발견:", {
+        trainPathsCount: trainPaths.length,
+        trainPaths: trainPaths.map((sp) => ({
+          trafficType: sp.trafficType,
+          lane: sp.lane,
+          laneName: sp.lane?.name,
+          startName: sp.startName,
+          endName: sp.endName,
+        })),
+      });
+    }
+  }
+
+  // 주요 교통수단 우선순위: 열차 > 고속버스 > 시외버스 > 지하철 > 버스
+  const priorityOrder = [10, 11, 12, 1, 2];
+  for (const priority of priorityOrder) {
+    const found = transitPaths.find((sp) => sp.trafficType === priority);
+    if (found) {
+      // 열차의 경우 노선명 우선 표시 (KTX, 새마을 등)
+      if (found.trafficType === 10) {
+        // lane.name이 있으면 노선명 사용, 없으면 "열차" 표시
+        const result = found.lane?.name && found.lane.name.trim()
+          ? found.lane.name
+          : "열차";
+        if (process.env.NODE_ENV === "development") {
+          console.log("[getPublicTransportLabel] 열차 구간 라벨 결정:", {
+            laneName: found.lane?.name,
+            result,
+          });
+        }
+        return result;
+      }
+      // 다른 교통수단은 lane.name이 있으면 사용, 없으면 기본 라벨
+      const label = getTrafficLabel(found.trafficType);
+      if (found.lane?.name && found.lane.name.trim()) {
+        return found.lane.name;
+      }
+      return label;
+    }
+  }
+
+  // 우선순위에 없으면 첫 번째 구간의 라벨 사용
+  const firstPath = transitPaths[0];
+  if (firstPath.trafficType === 10) {
+    // 열차인 경우
+    const result = firstPath.lane?.name && firstPath.lane.name.trim()
+      ? firstPath.lane.name
+      : "열차";
+    if (process.env.NODE_ENV === "development") {
+      console.log("[getPublicTransportLabel] 첫 번째 구간이 열차, 라벨 결정:", {
+        laneName: firstPath.lane?.name,
+        result,
+      });
+    }
+    return result;
+  }
+  return getTrafficLabel(firstPath.trafficType);
+}
+
+/**
+ * 대중교통 구간의 주요 교통수단 아이콘 반환
+ */
+function getPublicTransportIcon(segment: RouteSegmentType): React.ReactNode {
+  if (segment.mode !== "public" || !segment.transitDetails) {
+    return transportIcons[segment.mode];
+  }
+
+  // 대중교통 구간만 필터링 (도보 제외)
+  const transitPaths = segment.transitDetails.subPaths.filter(
+    (sp) => sp.trafficType !== 3
+  );
+
+  if (transitPaths.length === 0) {
+    return transportIcons[segment.mode];
+  }
+
+  // 주요 교통수단 우선순위: 열차 > 고속버스 > 시외버스 > 지하철 > 버스
+  const priorityOrder = [10, 11, 12, 1, 2];
+  for (const priority of priorityOrder) {
+    const found = transitPaths.find((sp) => sp.trafficType === priority);
+    if (found) {
+      return getTrafficIcon(found.trafficType, "h-3.5 w-3.5");
+    }
+  }
+
+  // 우선순위에 없으면 첫 번째 구간의 아이콘 사용
+  return getTrafficIcon(transitPaths[0].trafficType, "h-3.5 w-3.5");
+}
+
 export function RouteSegment({
   segment,
   compact = false,
   className,
 }: RouteSegmentProps) {
-  const icon = transportIcons[segment.mode] || <ArrowDown className="h-3.5 w-3.5" />;
+  const icon = segment.mode === "public" 
+    ? getPublicTransportIcon(segment)
+    : transportIcons[segment.mode] || <ArrowDown className="h-3.5 w-3.5" />;
+  const label = segment.mode === "public"
+    ? getPublicTransportLabel(segment)
+    : transportLabels[segment.mode];
 
   if (compact) {
     return (
@@ -91,7 +206,7 @@ export function RouteSegment({
       <div className="flex items-center gap-1.5 bg-muted/50 px-2.5 py-1.5 rounded-md">
         <span className="text-muted-foreground">{icon}</span>
         <span className="font-medium text-foreground">
-          {transportLabels[segment.mode]}
+          {label}
         </span>
       </div>
 
@@ -207,7 +322,16 @@ export function RouteSegmentConnector({
                     style={{ backgroundColor: subPath.lane?.lineColor || "#6b7280" }}
                   >
                     {getTrafficIcon(subPath.trafficType, "w-2.5 h-2.5")}
-                    <span>{subPath.lane?.name || getTrafficLabel(subPath.trafficType)}</span>
+                    <span>
+                      {/* 열차의 경우 노선명 우선 표시 (KTX, 새마을호 등) */}
+                      {subPath.trafficType === 10
+                        ? (subPath.lane?.name && subPath.lane.name.trim()
+                            ? subPath.lane.name
+                            : "열차")
+                        : (subPath.lane?.name && subPath.lane.name.trim()
+                            ? subPath.lane.name
+                            : getTrafficLabel(subPath.trafficType))}
+                    </span>
                   </span>
                 ))}
                 {transitPaths.length > 3 && (
@@ -263,7 +387,14 @@ export function RouteSegmentConnector({
                               className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium text-white"
                               style={{ backgroundColor: subPath.lane?.lineColor || "#6b7280" }}
                             >
-                              {subPath.lane?.name || getTrafficLabel(subPath.trafficType)}
+                              {/* 열차의 경우 노선명 우선 표시 (KTX, 새마을호 등) */}
+                              {subPath.trafficType === 10
+                                ? (subPath.lane?.name && subPath.lane.name.trim()
+                                    ? subPath.lane.name
+                                    : "열차")
+                                : (subPath.lane?.name && subPath.lane.name.trim()
+                                    ? subPath.lane.name
+                                    : getTrafficLabel(subPath.trafficType))}
                             </span>
                             {subPath.way && (
                               <span className="text-muted-foreground">{subPath.way} 방면</span>
@@ -325,7 +456,12 @@ export function RouteSegmentCard({
   toName,
   className,
 }: RouteSegmentCardProps) {
-  const icon = transportIcons[segment.mode] || <ArrowDown className="h-4 w-4" />;
+  const icon = segment.mode === "public"
+    ? getPublicTransportIcon(segment)
+    : transportIcons[segment.mode] || <ArrowDown className="h-4 w-4" />;
+  const label = segment.mode === "public"
+    ? getPublicTransportLabel(segment)
+    : transportLabels[segment.mode];
 
   return (
     <div
@@ -339,7 +475,7 @@ export function RouteSegmentCard({
         <div className="flex items-center gap-1.5 text-muted-foreground">
           {icon}
           <span className="text-sm font-medium text-foreground">
-            {transportLabels[segment.mode]}
+            {label}
           </span>
         </div>
       </div>

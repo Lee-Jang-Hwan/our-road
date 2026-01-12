@@ -147,6 +147,37 @@ function convertItemToRow(item: ScheduleItem): ScheduleItemRow {
           duration: item.transportToNext.duration,
           description: item.transportToNext.description,
           fare: item.transportToNext.fare,
+          polyline: item.transportToNext.polyline,
+          transit_details: item.transportToNext.transitDetails
+            ? {
+                total_fare: item.transportToNext.transitDetails.totalFare,
+                transfer_count: item.transportToNext.transitDetails.transferCount,
+                walking_time: item.transportToNext.transitDetails.walkingTime,
+                walking_distance: item.transportToNext.transitDetails.walkingDistance,
+                sub_paths: item.transportToNext.transitDetails.subPaths.map((sp) => ({
+                  traffic_type: sp.trafficType,
+                  distance: sp.distance,
+                  section_time: sp.sectionTime,
+                  station_count: sp.stationCount,
+                  start_name: sp.startName,
+                  start_coord: sp.startCoord,
+                  end_name: sp.endName,
+                  end_coord: sp.endCoord,
+                  polyline: sp.polyline,
+                  pass_stop_coords: sp.passStopCoords,
+                  lane: sp.lane
+                    ? {
+                        name: sp.lane.name,
+                        bus_no: sp.lane.busNo,
+                        bus_type: sp.lane.busType,
+                        subway_code: sp.lane.subwayCode,
+                        line_color: sp.lane.lineColor,
+                      }
+                    : undefined,
+                  way: sp.way,
+                })),
+              }
+            : undefined,
         }
       : undefined,
   };
@@ -171,6 +202,37 @@ function convertRowToItem(row: ScheduleItemRow): ScheduleItem {
           duration: row.transport_to_next.duration,
           description: row.transport_to_next.description,
           fare: row.transport_to_next.fare,
+          polyline: row.transport_to_next.polyline,
+          transitDetails: row.transport_to_next.transit_details
+            ? {
+                totalFare: row.transport_to_next.transit_details.total_fare,
+                transferCount: row.transport_to_next.transit_details.transfer_count,
+                walkingTime: row.transport_to_next.transit_details.walking_time,
+                walkingDistance: row.transport_to_next.transit_details.walking_distance,
+                subPaths: row.transport_to_next.transit_details.sub_paths.map((sp) => ({
+                  trafficType: sp.traffic_type,
+                  distance: sp.distance,
+                  sectionTime: sp.section_time,
+                  stationCount: sp.station_count,
+                  startName: sp.start_name,
+                  startCoord: sp.start_coord,
+                  endName: sp.end_name,
+                  endCoord: sp.end_coord,
+                  polyline: sp.polyline,
+                  passStopCoords: sp.pass_stop_coords,
+                  lane: sp.lane
+                    ? {
+                        name: sp.lane.name,
+                        busNo: sp.lane.bus_no,
+                        busType: sp.lane.bus_type,
+                        subwayCode: sp.lane.subway_code,
+                        lineColor: sp.lane.line_color,
+                      }
+                    : undefined,
+                  way: sp.way,
+                })),
+              }
+            : undefined,
         }
       : undefined,
   };
@@ -192,6 +254,8 @@ function convertRowToItinerary(row: TripItineraryRow): DailyItinerary {
     placeCount: row.place_count ?? 0,
     startTime: schedule[0]?.arrivalTime ?? "10:00",
     endTime: schedule[schedule.length - 1]?.departureTime ?? "22:00",
+    dailyStartTime: row.daily_start_time,
+    dailyEndTime: row.daily_end_time,
   };
 }
 

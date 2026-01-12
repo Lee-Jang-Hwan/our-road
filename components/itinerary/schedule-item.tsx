@@ -66,11 +66,8 @@ export function ScheduleItem({
   return (
     <div
       className={cn(
-        "relative flex items-center gap-2 p-3 rounded-lg transition-colors",
-        item.isFixed
-          ? "bg-primary/10 border-2 border-primary/40 shadow-sm"
-          : "bg-card border border-border",
-        onClick && "cursor-pointer hover:bg-accent/50",
+        "relative flex items-center gap-3 transition-all duration-200",
+        !className?.includes("bg-transparent") && "p-0",
         className
       )}
       onClick={onClick}
@@ -101,10 +98,10 @@ export function ScheduleItem({
       {/* 순서 번호 */}
       <div
         className={cn(
-          "flex items-center justify-center w-10 h-10 rounded-full text-lg font-bold shrink-0",
+          "flex items-center justify-center w-9 h-9 rounded-lg text-sm font-semibold shrink-0 transition-all duration-200",
           item.isFixed
-            ? "bg-primary text-primary-foreground"
-            : "bg-primary text-primary-foreground"
+            ? "bg-primary text-primary-foreground shadow-sm"
+            : "bg-muted text-muted-foreground"
         )}
       >
         {item.order}
@@ -129,14 +126,14 @@ export function ScheduleItem({
             </div>
 
             {/* 시간 정보 */}
-            <div className="flex items-center gap-2 mt-1.5 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
+            <div className="flex items-center gap-2.5 mt-1.5 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1.5">
                 <Clock className="h-3.5 w-3.5" />
-                <span>
+                <span className="font-medium">
                   {normalizeTime(item.arrivalTime)} - {normalizeTime(item.departureTime)}
                 </span>
               </div>
-              <span className="text-xs text-muted-foreground/50">
+              <span className="text-xs text-muted-foreground/60">
                 ({formatDuration(item.duration)})
               </span>
             </div>

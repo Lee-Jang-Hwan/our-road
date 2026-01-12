@@ -120,7 +120,14 @@ function SubPathItem({ subPath }: { subPath: TransitSubPath }) {
                 className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium text-white"
                 style={{ backgroundColor: lineColor || "#6b7280" }}
               >
-                {subPath.lane?.name || getTrafficLabel(subPath.trafficType)}
+                {/* 열차의 경우 노선명 우선 표시 (KTX, 새마을호 등) */}
+                {subPath.trafficType === 10
+                  ? (subPath.lane?.name && subPath.lane.name.trim()
+                      ? subPath.lane.name
+                      : "열차")
+                  : (subPath.lane?.name && subPath.lane.name.trim()
+                      ? subPath.lane.name
+                      : getTrafficLabel(subPath.trafficType))}
               </span>
 
               {/* 버스 유형 */}
@@ -252,7 +259,16 @@ export function TransitSummaryInline({
             style={{ backgroundColor: subPath.lane?.lineColor || "#6b7280" }}
           >
             {getTrafficIcon(subPath.trafficType)}
-            <span>{subPath.lane?.name || getTrafficLabel(subPath.trafficType)}</span>
+            <span>
+              {/* 열차의 경우 노선명 우선 표시 (KTX, 새마을호 등) */}
+              {subPath.trafficType === 10
+                ? (subPath.lane?.name && subPath.lane.name.trim()
+                    ? subPath.lane.name
+                    : "열차")
+                : (subPath.lane?.name && subPath.lane.name.trim()
+                    ? subPath.lane.name
+                    : getTrafficLabel(subPath.trafficType))}
+            </span>
           </span>
         </React.Fragment>
       ))}

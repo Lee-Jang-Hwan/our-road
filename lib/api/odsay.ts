@@ -415,7 +415,11 @@ const BUS_TYPE_COLORS: Record<number, string> = {
 /**
  * ODsaySubPath를 TransitSubPath로 변환
  */
-function convertSubPathToTransitSubPath(subPath: ODsaySubPath): TransitSubPath {
+function convertSubPathToTransitSubPath(
+  subPath: ODsaySubPath,
+  index: number = 0,
+  allSubPaths: ODsaySubPath[] = []
+): TransitSubPath {
   const lane = subPath.lane?.[0];
   let transitLane: TransitLane | undefined;
 
@@ -439,10 +443,29 @@ function convertSubPathToTransitSubPath(subPath: ODsaySubPath): TransitSubPath {
       };
     } else if (subPath.trafficType === 10) {
       // 열차
-      transitLane = {
-        name: lane.name, // KTX, 새마을 등
-        lineColor: "#0052A4", // 코레일 블루
-      };
+      // ODsay API에서 열차 노선명 제공 (KTX, 새마을호, 무궁화호, 장한선 등)
+      const trainName = lane.name?.trim();
+      if (trainName) {
+        transitLane = {
+          name: trainName, // KTX, 새마을호, 무궁화호, 장한선 등
+          lineColor: "#0052A4", // 코레일 블루
+        };
+      } else {
+        // lane.name이 없거나 빈 문자열인 경우 경고
+        if (process.env.NODE_ENV === "development") {
+          console.warn(`[ODsay] convertSubPathToTransitSubPath [${index}]: 열차 구간인데 lane.name 없음`, {
+            startName: subPath.startName,
+            endName: subPath.endName,
+            lane: lane,
+            영향: "열차 노선명 표시 불가 → '열차'로 표시됨",
+          });
+        }
+        // fallback: 최소한 "열차"로라도 표시
+        transitLane = {
+          name: "열차",
+          lineColor: "#0052A4",
+        };
+      }
     } else if (subPath.trafficType === 11 || subPath.trafficType === 12) {
       // 고속/시외버스
       transitLane = {
@@ -454,6 +477,38 @@ function convertSubPathToTransitSubPath(subPath: ODsaySubPath): TransitSubPath {
       transitLane = {
         name: lane.name || "해운",
         lineColor: "#00A0E9", // 바다색
+      };
+    }
+  } else {
+    // lane이 없는 경우에도 trafficType에 따라 기본값 설정
+    if (subPath.trafficType === 10) {
+      // 열차인데 lane이 없음
+      if (process.env.NODE_ENV === "development") {
+        console.warn(`[ODsay] convertSubPathToTransitSubPath [${index}]: 열차 구간인데 lane 자체가 없음`, {
+          startName: subPath.startName,
+          endName: subPath.endName,
+          trafficType: subPath.trafficType,
+          영향: "열차 노선명 표시 불가 → '열차'로 표시됨",
+        });
+      }
+      transitLane = {
+        name: "열차",
+        lineColor: "#0052A4",
+      };
+    } else if (subPath.trafficType === 11) {
+      transitLane = {
+        name: "고속버스",
+        lineColor: "#52B043",
+      };
+    } else if (subPath.trafficType === 12) {
+      transitLane = {
+        name: "시외버스",
+        lineColor: "#52B043",
+      };
+    } else if (subPath.trafficType === 14) {
+      transitLane = {
+        name: "해운",
+        lineColor: "#00A0E9",
       };
     }
   }
@@ -469,6 +524,14 @@ function convertSubPathToTransitSubPath(subPath: ODsaySubPath): TransitSubPath {
         });
       }
     }
+  } else if (subPath.trafficType !== 3) {
+    // 도보가 아닌데 passStopList가 없으면 경고
+    console.warn(`[ODsay] convertSubPathToTransitSubPath [${index}]: ⚠️ passStopList 없음`, {
+      trafficType: subPath.trafficType,
+      startName: subPath.startName,
+      endName: subPath.endName,
+      영향: "경유 정류장 좌표 없음 → 전체 경로 polyline이 부정확할 수 있음",
+    });
   }
 
   return {
@@ -495,7 +558,7 @@ function convertSubPathToTransitSubPath(subPath: ODsaySubPath): TransitSubPath {
  * 도보 구간에 좌표가 없는 경우 인접 구간의 좌표를 사용하여 보완
  */
 function extractTransitDetails(path: ODsayPath): TransitDetails {
-  const subPaths = path.subPath.map(convertSubPathToTransitSubPath);
+  const subPaths = path.subPath.map((sp, idx, arr) => convertSubPathToTransitSubPath(sp, idx, arr));
 
   // 도보 구간에 좌표가 없는 경우 인접 구간의 좌표로 보완
   for (let i = 0; i < subPaths.length; i++) {
@@ -597,10 +660,14 @@ function encodeNumber(num: number): string {
  */
 function extractRoutePolyline(path: ODsayPath): string | undefined {
   const allCoords: Coordinate[] = [];
+  let totalPassStops = 0;
+  let subPathsWithoutPassStops = 0;
 
   console.log("[ODsay] extractRoutePolyline: subPath 개수:", path.subPath?.length);
 
-  for (const subPath of path.subPath) {
+  for (let i = 0; i < path.subPath.length; i++) {
+    const subPath = path.subPath[i];
+    
     // 출발 좌표
     if (subPath.startX && subPath.startY) {
       allCoords.push({ lat: subPath.startY, lng: subPath.startX });
@@ -608,7 +675,9 @@ function extractRoutePolyline(path: ODsayPath): string | undefined {
 
     // 경유 정류장 좌표 (대중교통 구간)
     if (subPath.passStopList?.stations && subPath.passStopList.stations.length > 0) {
-      console.log("[ODsay] extractRoutePolyline: 정류장 수:", subPath.passStopList.stations.length);
+      const stationCount = subPath.passStopList.stations.length;
+      totalPassStops += stationCount;
+      console.log(`[ODsay] extractRoutePolyline [${i}]: 정류장 ${stationCount}개 (${subPath.startName} → ${subPath.endName})`);
       for (const station of subPath.passStopList.stations) {
         if (station.y && station.x) {
           allCoords.push({
@@ -618,7 +687,29 @@ function extractRoutePolyline(path: ODsayPath): string | undefined {
         }
       }
     } else {
-      console.log("[ODsay] extractRoutePolyline: passStopList 없음 (trafficType:", subPath.trafficType, ")");
+      if (subPath.trafficType !== 3) {
+        subPathsWithoutPassStops++;
+      }
+      const trafficTypeName = 
+        subPath.trafficType === 1 ? "지하철" :
+        subPath.trafficType === 2 ? "버스" :
+        subPath.trafficType === 10 ? "열차" :
+        subPath.trafficType === 11 ? "고속버스" :
+        subPath.trafficType === 12 ? "시외버스" :
+        subPath.trafficType === 14 ? "해운" :
+        subPath.trafficType === 3 ? "도보" : "기타";
+
+      console.warn(`[ODsay] extractRoutePolyline [${i}]: ⚠️ passStopList 없음`, {
+        trafficType: subPath.trafficType,
+        trafficTypeName,
+        startName: subPath.startName,
+        endName: subPath.endName,
+        영향: subPath.trafficType === 3 
+          ? "도보 구간 (정상)" 
+          : subPath.trafficType === 10
+          ? "⚠️ 열차 경로: ODsay API에서 passStopList 제공 안 함 → 출발/도착 좌표만 사용 → 직선 polyline"
+          : "출발/도착 좌표만 사용 → 직선 polyline",
+      });
     }
 
     // 도착 좌표
@@ -627,13 +718,42 @@ function extractRoutePolyline(path: ODsayPath): string | undefined {
     }
   }
 
-  console.log("[ODsay] extractRoutePolyline: 총 좌표 수:", allCoords.length);
+
+  console.log("[ODsay] extractRoutePolyline: 총 좌표 수:", allCoords.length, {
+    총정류장수: totalPassStops,
+    passStopList없는구간: subPathsWithoutPassStops,
+  });
 
   if (allCoords.length < 2) {
+    console.error("[ODsay] extractRoutePolyline: 좌표가 2개 미만이어서 polyline 생성 불가");
     return undefined;
   }
 
-  return encodePolyline(allCoords);
+  // 좌표가 2개뿐이면 (출발/도착만) 경고
+  if (allCoords.length === 2) {
+    console.error("[ODsay] extractRoutePolyline: ⚠️ 좌표가 2개뿐 (출발/도착만)", {
+      from: allCoords[0],
+      to: allCoords[1],
+      영향: "직선 polyline 생성됨 - 지도에 직선으로 표시됨",
+      원인: "passStopList가 없거나 loadLane API 실패",
+      subPath개수: path.subPath?.length || 0,
+      passStopList없는구간: subPathsWithoutPassStops,
+    });
+  } else if (allCoords.length < 10) {
+    console.warn("[ODsay] extractRoutePolyline: ⚠️ 좌표가 적음", {
+      좌표수: allCoords.length,
+      영향: "부정확한 경로 표시 가능성",
+    });
+  }
+
+  const encoded = encodePolyline(allCoords);
+  console.log("[ODsay] extractRoutePolyline: 인코딩된 polyline", {
+    길이: encoded.length,
+    좌표수: allCoords.length,
+    상태: encoded.length < 50 ? "⚠️ 너무 짧음 (직선)" : encoded.length < 200 ? "⚠️ 짧음" : "정상",
+  });
+  
+  return encoded;
 }
 
 /**
@@ -865,22 +985,136 @@ export async function getBestTransitRouteWithDetails(
     );
   }
 
+  // 경로에 기차가 포함되어 있는지 확인
+  const hasTrain = bestPath.subPath?.some(sp => sp.trafficType === 10) || false;
+  const trainSubPaths = bestPath.subPath?.filter(sp => sp.trafficType === 10) || [];
+  
+  if (hasTrain) {
+    console.log("[ODsay] ⚠️ 경로에 열차 포함됨:", {
+      trainSubPathsCount: trainSubPaths.length,
+      trainSubPaths: trainSubPaths.map(sp => ({
+        startName: sp.startName,
+        endName: sp.endName,
+        lane: sp.lane?.[0],
+        laneName: sp.lane?.[0]?.name,
+        passStopList: !!sp.passStopList?.stations,
+        passStopCount: sp.passStopList?.stations?.length || 0,
+      })),
+      주의: "ODsay API는 열차 경로의 passStopList를 제공하지 않을 수 있음",
+      열차노선정보: trainSubPaths.map(sp => ({
+        startName: sp.startName,
+        endName: sp.endName,
+        노선명: sp.lane?.[0]?.name || "없음",
+        lane전체: sp.lane,
+      })),
+    });
+  }
+
   // 1차: loadLane API로 상세 경로 좌표 조회 시도
   let polyline: string | undefined;
   const mapObj = bestPath.info?.mapObj;
 
-  console.log("[ODsay] mapObj:", mapObj);
+  console.log("[ODsay] getBestTransitRouteWithDetails: mapObj:", mapObj, {
+    hasTrain,
+    주의: hasTrain ? "열차 경로 포함: loadLane API가 작동하지 않을 수 있음" : undefined,
+  });
 
   if (mapObj) {
+    const loadLaneStartTime = Date.now();
     polyline = await getDetailedRoutePolyline(mapObj);
-    console.log("[ODsay] loadLane polyline 결과:", polyline ? `${polyline.length}자` : "없음");
+    const loadLaneDuration = Date.now() - loadLaneStartTime;
+    console.log(`[ODsay] loadLane polyline 결과 (${loadLaneDuration}ms):`, {
+      성공: !!polyline,
+      길이: polyline?.length || 0,
+      상태: polyline 
+        ? (polyline.length < 50 
+          ? "⚠️ 너무 짧음 (직선일 가능성)" 
+          : polyline.length < 200
+          ? "⚠️ 짧음 (경유지 부족 가능성)"
+          : "정상") 
+        : "없음",
+      hasTrain,
+      주의: hasTrain && !polyline ? "열차 경로: loadLane API가 작동하지 않을 수 있음" : undefined,
+    });
   }
 
   // 2차: loadLane 실패 시 subPath 좌표로 폴백
   if (!polyline) {
     console.log("[ODsay] loadLane 실패, subPath 좌표로 폴백");
+    const fallbackStartTime = Date.now();
     polyline = extractRoutePolyline(bestPath);
-    console.log("[ODsay] 폴백 polyline 결과:", polyline ? `${polyline.length}자` : "없음");
+    const fallbackDuration = Date.now() - fallbackStartTime;
+    console.log(`[ODsay] 폴백 polyline 결과 (${fallbackDuration}ms):`, {
+      성공: !!polyline,
+      길이: polyline?.length || 0,
+      상태: polyline 
+        ? (polyline.length < 50 
+          ? "⚠️ 너무 짧음 (출발/도착만, 실제 경로 아님)" 
+          : polyline.length < 200
+          ? "⚠️ 짧음 (경유지 부족 가능성)"
+          : "정상")
+        : "없음",
+    });
+  }
+
+  // 최종 polyline 검증 및 개선 시도
+  if (polyline && polyline.length < 50) {
+    const trainSubPathsInDetails = details.subPaths?.filter(sp => sp.trafficType === 10) || [];
+    
+    console.error(`[ODsay] ⚠️ 경고: polyline이 너무 짧음 (${polyline.length}자)`, {
+      원인: hasTrain 
+        ? "열차 경로: ODsay API에서 passStopList 제공 안 함 → 출발/도착 좌표만 사용"
+        : "출발/도착 좌표만 있거나 경유지 정보 부족",
+      영향: "지도에 직선으로 표시됨",
+      해결방법: hasTrain
+        ? "열차 경로는 출발/도착 좌표만 사용하는 것이 정상 (ODsay API 제한)"
+        : "subPaths의 좌표를 사용하여 더 정확한 polyline 생성 시도",
+      subPathsCount: details.subPaths?.length || 0,
+      trainSubPathsCount: trainSubPathsInDetails.length,
+      subPathsWithCoords: details.subPaths?.filter(sp => sp.startCoord && sp.endCoord).length || 0,
+    });
+
+    // subPaths의 좌표를 사용하여 더 정확한 polyline 생성 시도
+    if (details.subPaths && details.subPaths.length > 0) {
+      const improvedCoords: Coordinate[] = [];
+      for (const subPath of details.subPaths) {
+        if (subPath.startCoord) {
+          improvedCoords.push(subPath.startCoord);
+        }
+        if (subPath.passStopCoords && subPath.passStopCoords.length > 0) {
+          improvedCoords.push(...subPath.passStopCoords);
+        }
+        if (subPath.endCoord) {
+          improvedCoords.push(subPath.endCoord);
+        }
+      }
+
+      // 중복 제거 (인접 좌표가 같으면)
+      const uniqueCoords: Coordinate[] = [];
+      for (let i = 0; i < improvedCoords.length; i++) {
+        const coord = improvedCoords[i];
+        const prevCoord = uniqueCoords[uniqueCoords.length - 1];
+        if (!prevCoord || 
+            Math.abs(coord.lat - prevCoord.lat) > 0.0001 || 
+            Math.abs(coord.lng - prevCoord.lng) > 0.0001) {
+          uniqueCoords.push(coord);
+        }
+      }
+
+      if (uniqueCoords.length >= 2) {
+        const improvedPolyline = encodePolyline(uniqueCoords);
+        console.log(`[ODsay] 개선된 polyline 생성:`, {
+          기존길이: polyline.length,
+          개선길이: improvedPolyline.length,
+          좌표수: uniqueCoords.length,
+          상태: improvedPolyline.length > polyline.length ? "✅ 개선됨" : "변화없음",
+        });
+        
+        if (improvedPolyline.length > polyline.length) {
+          polyline = improvedPolyline;
+        }
+      }
+    }
   }
 
   return {
