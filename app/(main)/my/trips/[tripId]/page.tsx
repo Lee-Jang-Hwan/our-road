@@ -28,7 +28,6 @@ import { useSafeBack } from "@/hooks/use-safe-back";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import { AlertCircle } from "lucide-react";
 import {
   Dialog,
@@ -42,6 +41,7 @@ import {
 import { DayTabsContainer } from "@/components/itinerary/day-tabs";
 import { DayContentPanel } from "@/components/itinerary/day-content";
 import { UnassignedPlaces } from "@/components/itinerary/unassigned-places";
+import { RouteFindingAnimation } from "@/components/optimize/route-finding-animation";
 import { KakaoMap } from "@/components/map/kakao-map";
 import {
   PlaceMarkers,
@@ -830,40 +830,8 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
     runOptimization();
   };
 
-  // 로딩 중
-  if (!isLoaded || isLoading) {
-    return (
-      <main className="flex flex-col min-h-[calc(100dvh-64px)]">
-        {/* 헤더 스켈레톤 */}
-        <header className="flex items-center gap-3 px-4 py-3 border-b">
-          <Skeleton className="w-10 h-10 rounded-lg" />
-          <Skeleton className="h-5 w-32" />
-          <div className="flex-1" />
-          <Skeleton className="w-10 h-10 rounded-lg" />
-        </header>
-
-        {/* 여행 정보 스켈레톤 */}
-        <div className="px-4 py-4 border-b space-y-3">
-          <Skeleton className="h-6 w-40" />
-          <Skeleton className="h-4 w-56" />
-          <div className="flex gap-4">
-            <Skeleton className="h-4 w-24" />
-            <Skeleton className="h-4 w-24" />
-          </div>
-        </div>
-
-        {/* 컨텐츠 스켈레톤 */}
-        <div className="flex-1 px-4 py-4 space-y-4">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-24 w-full" />
-          <Skeleton className="h-24 w-full" />
-        </div>
-      </main>
-    );
-  }
-
-  // 최적화 중 로딩 화면
-  if (isOptimizing) {
+  // 로딩 중 또는 최적화 중 화면 (스켈레톤 대신 애니메이션 표시)
+  if (!isLoaded || isLoading || isOptimizing) {
     return (
       <main className="flex flex-col min-h-[calc(100dvh-64px)]">
         <header className="flex items-center gap-3 px-4 py-3 border-b">
@@ -877,12 +845,8 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
           </Button>
           <h1 className="font-semibold text-lg flex-1">여행 상세</h1>
         </header>
-        <div className="flex flex-col items-center justify-center flex-1 py-12">
-          <LuLoader className="w-8 h-8 animate-spin text-primary mb-4" />
-          <p className="text-muted-foreground">일정 최적화 중...</p>
-          <p className="text-sm text-muted-foreground/70 mt-2">
-            장소 간 최적 경로를 계산하고 있습니다
-          </p>
+        <div className="flex-1 flex items-center justify-center py-8">
+          <RouteFindingAnimation />
         </div>
       </main>
     );
