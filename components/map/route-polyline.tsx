@@ -5,6 +5,11 @@ import { useKakaoMap } from "./kakao-map";
 import type { Coordinate } from "@/types/place";
 import type { TransportMode } from "@/types/route";
 import { getSegmentColor } from "@/lib/utils";
+import {
+  offsetPolyline,
+  calculateRouteOffsets,
+  decodePolyline as decodePolylineUtil,
+} from "@/lib/utils/polyline-offset";
 
 // ============================================
 // Polyline Decoding (Google Polyline Algorithm)
@@ -85,7 +90,7 @@ interface RoutePolylineProps {
 // 이동 수단별 색상
 const TRANSPORT_COLORS: Record<TransportMode, string> = {
   walking: "#f97316", // orange-500
-  public: "#3b82f6", // blue-500
+  public: "#1d4ed8", // blue-700 (더 진하게)
   car: "#22c55e", // green-500
 };
 
@@ -93,7 +98,7 @@ const TRANSPORT_COLORS: Record<TransportMode, string> = {
 const ACCOMMODATION_COLOR = "#a855f7"; // purple-500
 
 // 도착지 경로 색상 (하늘색)
-const DESTINATION_COLOR = "#06b6d4"; // cyan-500
+const DESTINATION_COLOR = "#06b6d4"; // cyan-500 (더 연하게)
 
 /**
  * 경로 폴리라인 컴포넌트
@@ -347,6 +352,10 @@ interface RealRoutePolylineProps {
   strokeOpacity?: number;
   /** 구간별 색상 사용 여부 (true면 각 구간마다 다른 색상) */
   useSegmentColors?: boolean;
+  /** 선택된 구간 인덱스 (더 두껍고 불투명하게 표시) */
+  selectedSegmentIndex?: number;
+  /** 오프셋 적용 여부 (기본값: true) */
+  enableOffset?: boolean;
 }
 
 /**
@@ -357,24 +366,33 @@ interface RealRoutePolylineProps {
  * - useSegmentColors가 true면 각 구간마다 다른 색상 사용
  * - 도보 구간(walking)은 항상 주황색으로 표시 (useSegmentColors와 관계없이)
  * - 숙소로 가는 경로는 숙소 마커와 동일한 색상(#a855f7)으로 표시
+ * - 숙소에서 출발하는 경로는 목적지 구간별 색상 사용
  * - 도착지로 가는 경로는 하늘색(#06b6d4)으로 표시
+ * - 여러 경로가 겹칠 때 오프셋을 적용하여 나란히 표시
+ * - 선택된 경로는 더 두껍고 불투명하게, 비선택 경로는 더 얇고 투명하게 표시
  */
 export function RealRoutePolyline({
   segments,
   strokeWeight = 4,
   strokeOpacity = 0.8,
   useSegmentColors = false,
+  selectedSegmentIndex,
+  enableOffset = true,
 }: RealRoutePolylineProps) {
+  // 오프셋 계산 (여러 경로가 겹칠 때 나란히 표시)
+  const offsets = React.useMemo(() => {
+    if (!enableOffset || segments.length <= 1) {
+      return segments.map(() => 0);
+    }
+    return calculateRouteOffsets(segments.length, 0); // 12미터 간격
+  }, [segments.length, enableOffset]);
+
   return (
     <>
       {segments.map((segment, index) => {
-        // 숙소로 가는 경로 또는 숙소에서 출발하는 경로는 숙소 색상 사용
-        const isAccommodationRoute =
-          segment.isToAccommodation || segment.isFromAccommodation;
-
         // 구간별 색상 또는 이동 수단별 색상
-        // 우선순위: 숙소 경로 > 도착지 경로 > 구간별 색상 > 이동 수단별 색상
-        const strokeColor = isAccommodationRoute
+        // 우선순위: 숙소로 가는 경로 > 도착지 경로 > 구간별 색상 > 이동 수단별 색상
+        const strokeColor = segment.isToAccommodation
           ? ACCOMMODATION_COLOR
           : segment.isToDestination
             ? DESTINATION_COLOR
@@ -382,46 +400,77 @@ export function RealRoutePolyline({
               ? getSegmentColor(segment.segmentIndex ?? index)
               : TRANSPORT_COLORS[segment.transportMode];
 
+        // 선택된 경로는 더 두껍고 불투명하게, 비선택 경로는 더 얇고 투명하게
+        const isSelected =
+          selectedSegmentIndex !== undefined && index === selectedSegmentIndex;
+        const actualStrokeWeight = isSelected ? strokeWeight + 2 : strokeWeight;
+        const actualStrokeOpacity = isSelected
+          ? Math.min(strokeOpacity + 0.2, 1)
+          : strokeOpacity * 0.9;
+        const actualZIndex = isSelected ? 100 + index : index + 1;
+
         if (segment.encodedPath) {
           // 실제 경로 (인코딩된 폴리라인)
+          let path = decodePolylineUtil(segment.encodedPath);
+
+          // 오프셋 적용
+          if (enableOffset && offsets[index] !== 0 && path.length >= 2) {
+            path = offsetPolyline(path, offsets[index]);
+          }
+
           return (
             <RoutePolyline
               key={`route-${index}`}
-              encodedPath={segment.encodedPath}
+              path={path}
               strokeColor={strokeColor}
-              strokeWeight={strokeWeight}
-              strokeOpacity={strokeOpacity}
+              strokeWeight={actualStrokeWeight}
+              strokeOpacity={actualStrokeOpacity}
               strokeStyle="solid"
-              zIndex={index + 1}
+              zIndex={actualZIndex}
             />
           );
         } else if (segment.path && segment.path.length > 1) {
           // 좌표 배열로 경로 표시
+          let path = segment.path;
+
+          // 오프셋 적용
+          if (enableOffset && offsets[index] !== 0) {
+            path = offsetPolyline(path, offsets[index]);
+          }
+
           return (
             <RoutePolyline
               key={`route-${index}`}
-              path={segment.path}
+              path={path}
               strokeColor={strokeColor}
-              strokeWeight={strokeWeight}
-              strokeOpacity={strokeOpacity}
+              strokeWeight={actualStrokeWeight}
+              strokeOpacity={actualStrokeOpacity}
               strokeStyle="solid"
-              zIndex={index + 1}
+              zIndex={actualZIndex}
             />
           );
         } else {
           // 직선 연결 (폴백)
-
           // 도보 구간은 실선, 그 외는 점선으로 표시
           const isWalkingFallback = segment.transportMode === "walking";
+          let path = [segment.from, segment.to];
+
+          // 오프셋 적용 (직선 경로에도 적용)
+          if (enableOffset && offsets[index] !== 0) {
+            path = offsetPolyline(path, offsets[index]);
+          }
+
           return (
             <RoutePolyline
               key={`route-${index}`}
-              path={[segment.from, segment.to]}
+              path={path}
               strokeColor={strokeColor}
-              strokeWeight={isWalkingFallback ? strokeWeight : strokeWeight - 1}
-              strokeOpacity={strokeOpacity}
+              strokeWeight={
+                isWalkingFallback ? actualStrokeWeight : actualStrokeWeight - 1
+              }
+              strokeOpacity={actualStrokeOpacity}
               strokeStyle={isWalkingFallback ? "solid" : "shortdash"}
-              zIndex={index + 1}
+              zIndex={actualZIndex}
             />
           );
         }
