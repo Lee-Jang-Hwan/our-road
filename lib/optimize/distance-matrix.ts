@@ -123,13 +123,51 @@ async function getRouteInfo(
         getCarRoute({ origin, destination })
       );
       
+      // 개발 환경: getCarRoute 결과 확인
+      if (process.env.NODE_ENV === "development") {
+        console.group("📊 [DistanceEntry 변환] getCarRoute 결과");
+        console.log("원본 CarRoute:", route ? {
+          totalDuration: route.totalDuration,
+          totalDistance: route.totalDistance,
+          tollFare: route.tollFare,
+          taxiFare: route.taxiFare,
+          segments: route.segments?.length ?? 0,
+          guides: route.guides?.length ?? 0,
+        } : null);
+        console.log("route.tollFare:", route?.tollFare);
+        console.log("route.taxiFare:", route?.taxiFare);
+        console.log("route.guides:", JSON.stringify(route?.guides, null, 2));
+        console.groupEnd();
+      }
+      
       if (route) {
-        return {
+        const entry = {
           distance: route.totalDistance,
           duration: route.totalDuration,
-          mode: "car",
+          mode: "car" as const,
           polyline: route.polyline, // 실제 경로 폴리라인
+          fare: route.tollFare, // 통행료
+          taxiFare: route.taxiFare, // 택시 요금
+          carSegments: route.segments, // 구간별 정보
+          guides: route.guides, // IC/톨게이트 안내 정보
         };
+        
+        // 개발 환경: 변환된 DistanceEntry 확인
+        if (process.env.NODE_ENV === "development") {
+          console.group("📊 [DistanceEntry 변환] 최종 결과");
+          console.log("변환된 DistanceEntry:", {
+            distance: entry.distance,
+            duration: entry.duration,
+            fare: entry.fare,
+            taxiFare: entry.taxiFare,
+            carSegments: entry.carSegments?.length ?? 0,
+            guides: entry.guides?.length ?? 0,
+            guides_상세: JSON.stringify(entry.guides, null, 2),
+          });
+          console.groupEnd();
+        }
+        
+        return entry;
       } else {
         console.warn("⚠️ [거리 행렬 API 호출 실패] 경로를 찾을 수 없음", {
           timestamp: new Date().toISOString(),
@@ -195,6 +233,18 @@ export async function createApiDistanceMatrix(
   const transitDetailsMatrix: (TransitDetails | null)[][] = Array.from({ length: n }, () =>
     Array(n).fill(null)
   );
+  const fares: (number | null)[][] = Array.from({ length: n }, () =>
+    Array(n).fill(null)
+  );
+  const taxiFares: (number | null)[][] = Array.from({ length: n }, () =>
+    Array(n).fill(null)
+  );
+  const guidesMatrix: (import("@/types/route").RouteGuide[] | null)[][] = Array.from({ length: n }, () =>
+    Array(n).fill(null)
+  );
+  const carSegmentsMatrix: (import("@/types/route").CarRouteSegment[] | null)[][] = Array.from({ length: n }, () =>
+    Array(n).fill(null)
+  );
 
   // 출발지/도착지 ID 확인 (관례: __origin__, __destination__, __accommodation_N__)
   const originIdx = places.findIndex((id) => id === "__origin__");
@@ -236,6 +286,10 @@ export async function createApiDistanceMatrix(
         modes[i][j] = result.mode;
         polylines[i][j] = result.polyline || null;
         transitDetailsMatrix[i][j] = result.transitDetails || null;
+        fares[i][j] = result.fare ?? null;
+        taxiFares[i][j] = result.taxiFare ?? null;
+        guidesMatrix[i][j] = result.guides ?? null;
+        carSegmentsMatrix[i][j] = result.carSegments ?? null;
       } else {
         // 폴백: Haversine 거리
         const dist = Math.round(
@@ -255,7 +309,18 @@ export async function createApiDistanceMatrix(
     500 // 배치 간 500ms 대기
   );
 
-  return { places, distances, durations, modes, polylines, transitDetails: transitDetailsMatrix };
+  return { 
+    places, 
+    distances, 
+    durations, 
+    modes, 
+    polylines, 
+    transitDetails: transitDetailsMatrix,
+    fares,
+    taxiFares,
+    guidesMatrix,
+    carSegmentsMatrix,
+  };
 }
 
 // ============================================
@@ -325,6 +390,10 @@ export function getDistanceEntry(
     mode: matrix.modes[fromIdx][toIdx],
     polyline: matrix.polylines?.[fromIdx]?.[toIdx] ?? undefined,
     transitDetails: matrix.transitDetails?.[fromIdx]?.[toIdx] ?? undefined,
+    fare: matrix.fares?.[fromIdx]?.[toIdx] ?? undefined,
+    taxiFare: matrix.taxiFares?.[fromIdx]?.[toIdx] ?? undefined,
+    guides: matrix.guidesMatrix?.[fromIdx]?.[toIdx] ?? undefined,
+    carSegments: matrix.carSegmentsMatrix?.[fromIdx]?.[toIdx] ?? undefined,
   };
 }
 
@@ -355,6 +424,10 @@ export function createDistanceMatrixGetter(
       mode: matrix.modes[fromIdx][toIdx],
       polyline: matrix.polylines?.[fromIdx]?.[toIdx] ?? undefined,
       transitDetails: matrix.transitDetails?.[fromIdx]?.[toIdx] ?? undefined,
+      fare: matrix.fares?.[fromIdx]?.[toIdx] ?? undefined,
+      taxiFare: matrix.taxiFares?.[fromIdx]?.[toIdx] ?? undefined,
+      guides: matrix.guidesMatrix?.[fromIdx]?.[toIdx] ?? undefined,
+      carSegments: matrix.carSegmentsMatrix?.[fromIdx]?.[toIdx] ?? undefined,
     };
   };
 }

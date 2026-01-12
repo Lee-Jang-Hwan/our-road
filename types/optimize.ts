@@ -161,6 +161,14 @@ export interface DistanceMatrix {
   polylines?: (string | null)[][];
   /** 대중교통 상세 정보 (public 모드일 때) */
   transitDetails?: (TransitDetails | null)[][];
+  /** 통행료 (원) - car 모드일 때 */
+  fares?: (number | null)[][];
+  /** 택시 요금 (원) - car 모드일 때 */
+  taxiFares?: (number | null)[][];
+  /** 주요 IC/톨게이트 안내 정보 - car 모드일 때 */
+  guidesMatrix?: (import("@/types/route").RouteGuide[] | null)[][];
+  /** 자동차 경로 구간별 정보 - car 모드일 때 */
+  carSegmentsMatrix?: (import("@/types/route").CarRouteSegment[] | null)[][];
 }
 
 /**

@@ -27,6 +27,7 @@ export type {
   RouteSegment,
   TransitSegment,
   TransitRoute,
+  CarRouteSegment,
   CarRoute,
   WalkingRoute,
   RouteResult,

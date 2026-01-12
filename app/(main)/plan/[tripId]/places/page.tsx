@@ -1,7 +1,8 @@
 "use client";
 
-import { use, useState, useEffect, useCallback } from "react";
+import { use, useState, useEffect, useCallback, useRef } from "react";
 import { LuChevronLeft, LuPlus } from "react-icons/lu";
+import { X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -31,19 +32,6 @@ interface PlacesPageProps {
   params: Promise<{ tripId: string }>;
 }
 
-// 체류 시간 옵션 (분 단위)
-const DURATION_OPTIONS = [
-  { value: 30, label: "30분" },
-  { value: 60, label: "1시간" },
-  { value: 90, label: "1시간 30분" },
-  { value: 120, label: "2시간" },
-  { value: 180, label: "3시간" },
-  { value: 240, label: "4시간" },
-  { value: 360, label: "6시간" },
-  { value: 480, label: "8시간" },
-  { value: 720, label: "12시간" },
-];
-
 export default function PlacesPage({ params }: PlacesPageProps) {
   const { tripId } = use(params);
   const { getDraftByTripId, savePlaces, isLoaded } = useTripDraft();
@@ -52,6 +40,7 @@ export default function PlacesPage({ params }: PlacesPageProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isInitialized, setIsInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const placesListScrollRef = useRef<HTMLDivElement>(null);
 
   // DB에서 장소 로드
   const loadPlacesFromDB = useCallback(async () => {
@@ -124,8 +113,16 @@ export default function PlacesPage({ params }: PlacesPageProps) {
       // 성공 시 로컬 상태 업데이트
       setPlaces((prev) => [...prev, addResult.data!]);
       savePlaces([...places, addResult.data]);
-      setIsSearchOpen(false);
+      // Sheet를 닫지 않고 계속 열어둠 (연속 추가 가능)
       showSuccessToast(`${result.name}이(가) 추가되었습니다.`);
+
+      // 장소 목록 스크롤을 맨 아래로 이동
+      setTimeout(() => {
+        if (placesListScrollRef.current) {
+          placesListScrollRef.current.scrollTop =
+            placesListScrollRef.current.scrollHeight;
+        }
+      }, 100);
     } catch (error) {
       console.error("장소 추가 실패:", error);
       showErrorToast("장소 추가에 실패했습니다.");
@@ -226,7 +223,7 @@ export default function PlacesPage({ params }: PlacesPageProps) {
   return (
     <main className="flex flex-col pb-10 min-h-[calc(100dvh-64px)]">
       {/* 헤더 */}
-      <header className="flex items-center gap-3 px-4 py-3 border-b">
+      <header className="flex items-center gap-3 px-4 py-1 border-b">
         <Button
           variant="ghost"
           size="icon"
@@ -274,7 +271,10 @@ export default function PlacesPage({ params }: PlacesPageProps) {
 
       {/* 장소 검색 Sheet */}
       <Sheet open={isSearchOpen} onOpenChange={setIsSearchOpen}>
-        <SheetContent side="bottom" className="h-[80vh]">
+        <SheetContent
+          side="bottom"
+          className="h-[80vh] flex flex-col max-w-md mx-auto px-8"
+        >
           <SheetHeader>
             <SheetTitle>장소 검색</SheetTitle>
             <SheetDescription>
@@ -282,7 +282,7 @@ export default function PlacesPage({ params }: PlacesPageProps) {
             </SheetDescription>
           </SheetHeader>
 
-          <div className="mt-4">
+          <div className="mt-4 shrink-0">
             <PlaceSearch
               onSelect={handlePlaceSelect}
               placeholder="장소명 또는 주소로 검색"
@@ -290,28 +290,65 @@ export default function PlacesPage({ params }: PlacesPageProps) {
             />
           </div>
 
-          {/* 체류 시간 안내 */}
-          <div className="mt-6 p-4 bg-muted/50 rounded-lg">
-            <h4 className="font-medium text-sm mb-2">체류 시간 설정</h4>
-            <p className="text-xs text-muted-foreground">
-              추가된 장소의 체류 시간은 목록에서 변경할 수 있습니다.
-              <br />
-              30분부터 12시간까지 설정 가능합니다.
-            </p>
-            <div className="flex flex-wrap gap-2 mt-3">
-              {DURATION_OPTIONS.slice(0, 5).map((option) => (
-                <span
-                  key={option.value}
-                  className="px-2 py-1 text-xs bg-background rounded border"
-                >
-                  {option.label}
-                </span>
-              ))}
-              <span className="px-2 py-1 text-xs text-muted-foreground">
-                ...
-              </span>
+          {/* 추가된 장소 목록 */}
+          {places.length > 0 && (
+            <div className="mt-6 flex-1 overflow-hidden flex flex-col min-h-0">
+              <div className="flex items-center justify-between mb-3 shrink-0">
+                <h4 className="font-medium text-sm">
+                  추가된 장소 ({places.length}개)
+                </h4>
+              </div>
+              <div
+                ref={placesListScrollRef}
+                className="flex-1 overflow-y-auto space-y-2 pr-2"
+              >
+                {places.map((place, index) => (
+                  <div
+                    key={place.id}
+                    className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium text-muted-foreground shrink-0 w-6">
+                          {index + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">
+                            {place.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {place.address}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                      onClick={() => handleDelete(place.id)}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* 하단 저장 버튼 */}
+          {places.length > 0 && (
+            <div className="sticky bottom-0 mt-4 p-4 backdrop-blur-sm bg-background/80 border-t shrink-0">
+              <Button
+                className="w-full h-12"
+                onClick={() => {
+                  setIsSearchOpen(false);
+                }}
+              >
+                장소 저장
+              </Button>
+            </div>
+          )}
         </SheetContent>
       </Sheet>
     </main>

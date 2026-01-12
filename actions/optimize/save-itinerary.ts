@@ -55,13 +55,14 @@ function convertTransportToRow(transport: {
   description?: string;
   fare?: number;
   polyline?: string;
+  taxiFare?: number;
   transitDetails?: {
     totalFare: number;
     transferCount: number;
     walkingTime: number;
     walkingDistance: number;
     subPaths: Array<{
-      trafficType: 1 | 2 | 3 | 10 | 11 | 12 | 14;
+      trafficType: 1 | 2 | 3 | 4 | 5 | 6 | 10 | 11 | 12 | 14;
       distance: number;
       sectionTime: number;
       stationCount?: number;
@@ -78,6 +79,30 @@ function convertTransportToRow(transport: {
       way?: string;
     }>;
   };
+  carSegments?: Array<{
+    index: number;
+    distance: number;
+    duration: number;
+    tollFare?: number;
+    description?: string;
+    polyline?: string;
+    guides?: Array<{
+      name: string;
+      coord?: { lat: number; lng: number };
+      distance?: number;
+      duration?: number;
+      type?: number;
+      guidance?: string;
+    }>;
+  }>;
+  guides?: Array<{
+    name: string;
+    coord?: { lat: number; lng: number };
+    distance?: number;
+    duration?: number;
+    type?: number;
+    guidance?: string;
+  }>;
 }) {
   return {
     mode: transport.mode,
@@ -113,6 +138,33 @@ function convertTransportToRow(transport: {
           })),
         }
       : undefined,
+    taxi_fare: transport.taxiFare,
+    car_segments: transport.carSegments
+      ? transport.carSegments.map((seg) => ({
+          index: seg.index,
+          distance: seg.distance,
+          duration: seg.duration,
+          toll_fare: seg.tollFare,
+          description: seg.description,
+          polyline: seg.polyline,
+          guides: seg.guides?.map((g) => ({
+            name: g.name,
+            coord: g.coord,
+            distance: g.distance,
+            duration: g.duration,
+            type: g.type,
+            guidance: g.guidance,
+          })),
+        }))
+      : undefined,
+    guides: transport.guides?.map((g) => ({
+      name: g.name,
+      coord: g.coord,
+      distance: g.distance,
+      duration: g.duration,
+      type: g.type,
+      guidance: g.guidance,
+    })),
   };
 }
 

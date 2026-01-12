@@ -22,7 +22,15 @@ interface OffScreenMarker {
   id: string;
   order: number;
   name?: string;
-  direction: "top" | "bottom" | "left" | "right" | "top-left" | "top-right" | "bottom-left" | "bottom-right";
+  direction:
+    | "top"
+    | "bottom"
+    | "left"
+    | "right"
+    | "top-left"
+    | "top-right"
+    | "bottom-left"
+    | "bottom-right";
   coordinate: Coordinate;
   angle: number;
 }
@@ -30,9 +38,14 @@ interface OffScreenMarker {
 /**
  * 지도 영역 밖의 마커 위치를 화살표로 표시하는 컴포넌트
  */
-export function OffScreenMarkers({ markers, panOnClick = true }: OffScreenMarkersProps) {
+export function OffScreenMarkers({
+  markers,
+  panOnClick = true,
+}: OffScreenMarkersProps) {
   const { map, isReady } = useKakaoMap();
-  const [offScreenMarkers, setOffScreenMarkers] = React.useState<OffScreenMarker[]>([]);
+  const [offScreenMarkers, setOffScreenMarkers] = React.useState<
+    OffScreenMarker[]
+  >([]);
   const containerRef = React.useRef<HTMLDivElement>(null);
 
   // 맵 경계 변경 시 영역 밖 마커 계산
@@ -78,7 +91,8 @@ export function OffScreenMarkers({ markers, panOnClick = true }: OffScreenMarker
           else direction = "right";
 
           // 중심점으로부터의 각도 계산
-          const angle = Math.atan2(lat - centerLat, lng - centerLng) * (180 / Math.PI);
+          const angle =
+            Math.atan2(lat - centerLat, lng - centerLng) * (180 / Math.PI);
 
           offScreen.push({
             id: marker.id,
@@ -98,27 +112,59 @@ export function OffScreenMarkers({ markers, panOnClick = true }: OffScreenMarker
     updateOffScreenMarkers();
 
     // 이벤트 리스너 등록
-    window.kakao.maps.event.addListener(map, "bounds_changed", updateOffScreenMarkers);
-    window.kakao.maps.event.addListener(map, "zoom_changed", updateOffScreenMarkers);
-    window.kakao.maps.event.addListener(map, "center_changed", updateOffScreenMarkers);
+    window.kakao.maps.event.addListener(
+      map,
+      "bounds_changed",
+      updateOffScreenMarkers,
+    );
+    window.kakao.maps.event.addListener(
+      map,
+      "zoom_changed",
+      updateOffScreenMarkers,
+    );
+    window.kakao.maps.event.addListener(
+      map,
+      "center_changed",
+      updateOffScreenMarkers,
+    );
 
     return () => {
-      window.kakao.maps.event.removeListener(map, "bounds_changed", updateOffScreenMarkers);
-      window.kakao.maps.event.removeListener(map, "zoom_changed", updateOffScreenMarkers);
-      window.kakao.maps.event.removeListener(map, "center_changed", updateOffScreenMarkers);
+      window.kakao.maps.event.removeListener(
+        map,
+        "bounds_changed",
+        updateOffScreenMarkers,
+      );
+      window.kakao.maps.event.removeListener(
+        map,
+        "zoom_changed",
+        updateOffScreenMarkers,
+      );
+      window.kakao.maps.event.removeListener(
+        map,
+        "center_changed",
+        updateOffScreenMarkers,
+      );
     };
   }, [map, isReady, markers]);
 
   // 마커 클릭 핸들러
   const handleMarkerClick = (marker: OffScreenMarker) => {
     if (!map || !panOnClick) return;
-    map.panTo(new window.kakao.maps.LatLng(marker.coordinate.lat, marker.coordinate.lng));
+    map.panTo(
+      new window.kakao.maps.LatLng(
+        marker.coordinate.lat,
+        marker.coordinate.lng,
+      ),
+    );
   };
 
   if (offScreenMarkers.length === 0) return null;
 
   return (
-    <div ref={containerRef} className="absolute inset-0 pointer-events-none overflow-hidden z-10">
+    <div
+      ref={containerRef}
+      className="absolute inset-0 pointer-events-none overflow-hidden z-10"
+    >
       {offScreenMarkers.map((marker) => (
         <OffScreenIndicator
           key={marker.id}
@@ -170,7 +216,9 @@ function OffScreenIndicator({ marker, onClick }: OffScreenIndicatorProps) {
       title={marker.name || `${order}번 장소로 이동`}
     >
       {/* 순서 번호 */}
-      <span className="text-xs font-bold min-w-[16px] text-center">{order}</span>
+      <span className="text-xs font-bold min-w-[16px] text-center">
+        {order}
+      </span>
 
       {/* 방향 화살표 */}
       <svg
@@ -206,7 +254,12 @@ export function FitBoundsButton({ markers, className }: FitBoundsButtonProps) {
 
     const bounds = new window.kakao.maps.LatLngBounds();
     markers.forEach((marker) => {
-      bounds.extend(new window.kakao.maps.LatLng(marker.coordinate.lat, marker.coordinate.lng));
+      bounds.extend(
+        new window.kakao.maps.LatLng(
+          marker.coordinate.lat,
+          marker.coordinate.lng,
+        ),
+      );
     });
 
     map.setBounds(bounds, 50, 50, 50, 50);
@@ -217,7 +270,7 @@ export function FitBoundsButton({ markers, className }: FitBoundsButtonProps) {
   return (
     <button
       onClick={handleFitBounds}
-      className={`absolute bottom-3 right-3 z-10 bg-white text-gray-700 p-2 rounded-lg shadow-md hover:bg-gray-50 transition-colors ${className || ""}`}
+      className={`absolute top-3 right-3 z-10 bg-white text-gray-700 p-2 rounded-lg shadow-md hover:bg-gray-50 transition-colors ${className || ""}`}
       title="모든 장소 보기"
     >
       <svg

@@ -15,7 +15,7 @@ import {
   LuChevronDown,
   LuLocate,
 } from "react-icons/lu";
-import { Train, Bus, Footprints, ArrowRight, Ship } from "lucide-react";
+import { Train, Bus, Footprints, ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -201,16 +201,14 @@ function openGoogleMapNavigation(
 function getTrafficIcon(trafficType: number) {
   switch (trafficType) {
     case 1: // 지하철
-    case 10: // 열차
+    case 4: // 기차
       return <Train className="w-3 h-3" />;
     case 2: // 버스
-    case 11: // 고속버스
-    case 12: // 시외버스
+    case 5: // 고속버스
+    case 6: // 시외버스
       return <Bus className="w-3 h-3" />;
     case 3: // 도보
       return <Footprints className="w-3 h-3" />;
-    case 14: // 해운
-      return <Ship className="w-3 h-3" />;
     default:
       return <Train className="w-3 h-3" />;
   }
@@ -227,14 +225,12 @@ function getTrafficLabel(trafficType: number) {
       return "버스";
     case 3:
       return "도보";
-    case 10:
-      return "열차";
-    case 11:
+    case 4:
+      return "기차";
+    case 5:
       return "고속버스";
-    case 12:
+    case 6:
       return "시외버스";
-    case 14:
-      return "해운";
     default:
       return "대중교통";
   }
@@ -1120,7 +1116,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
   if (!isLoaded || isLoading) {
     return (
       <main className="flex flex-col h-[calc(100dvh-64px)]">
-        <header className="flex items-center gap-3 px-4 py-3 border-b">
+        <header className="flex items-center gap-3 px-4 py-1 border-b">
           <Skeleton className="w-10 h-10 rounded-lg" />
           <Skeleton className="h-5 w-32" />
           <Skeleton className="h-8 w-16 ml-auto rounded-md" />
@@ -1148,7 +1144,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
   if (error || !trip) {
     return (
       <main className="flex flex-col h-[calc(100dvh-64px)]">
-        <header className="flex items-center gap-3 px-4 py-3 border-b">
+        <header className="flex items-center gap-3 px-4 py-1 border-b">
           <Button
             variant="ghost"
             size="icon"
@@ -1172,7 +1168,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
   if (!trip.itinerary || trip.itinerary.length === 0 || !currentDayItinerary) {
     return (
       <main className="flex flex-col h-[calc(100dvh-64px)]">
-        <header className="flex items-center gap-3 px-4 py-3 border-b">
+        <header className="flex items-center gap-3 px-4 py-1 border-b">
           <Button
             variant="ghost"
             size="icon"
@@ -1197,7 +1193,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
   if (currentDayItinerary.schedule.length === 0) {
     return (
       <main className="flex flex-col h-[calc(100dvh-64px)]">
-        <header className="flex items-center gap-3 px-4 py-3 border-b">
+        <header className="flex items-center gap-3 px-4 py-1 border-b">
           <Button
             variant="ghost"
             size="icon"
@@ -1226,7 +1222,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
   return (
     <main className="flex flex-col h-[calc(100dvh-64px)]">
       {/* 헤더 */}
-      <header className="flex items-center gap-3 px-4 py-3 border-b bg-background z-10">
+      <header className="flex items-center gap-3 px-4 py-1 border-b bg-background z-10">
         <Button
           variant="ghost"
           size="icon"

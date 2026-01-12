@@ -70,12 +70,13 @@ function convertTransportFromRow(transport: {
     walking_time: number;
     walking_distance: number;
     sub_paths: Array<{
-      traffic_type: 1 | 2 | 3 | 10 | 11 | 12 | 14;
+      traffic_type: 1 | 2 | 3 | 4 | 5 | 6 | 10 | 11 | 12 | 14;
       distance: number;
       section_time: number;
       station_count?: number;
       start_name?: string;
       end_name?: string;
+      polyline?: string;
       lane?: {
         name: string;
         bus_no?: string;
@@ -86,6 +87,14 @@ function convertTransportFromRow(transport: {
       way?: string;
     }>;
   };
+  car_segments?: Array<{
+    index: number;
+    distance: number;
+    duration: number;
+    toll_fare?: number;
+    description?: string;
+    polyline?: string;
+  }>;
 }) {
   return {
     mode: transport.mode as "walking" | "public" | "car",
@@ -107,6 +116,7 @@ function convertTransportFromRow(transport: {
             stationCount: sp.station_count,
             startName: sp.start_name,
             endName: sp.end_name,
+            polyline: sp.polyline,
             lane: sp.lane
               ? {
                   name: sp.lane.name,
@@ -119,6 +129,16 @@ function convertTransportFromRow(transport: {
             way: sp.way,
           })),
         }
+      : undefined,
+    carSegments: transport.car_segments
+      ? transport.car_segments.map((seg) => ({
+          index: seg.index,
+          distance: seg.distance,
+          duration: seg.duration,
+          tollFare: seg.toll_fare,
+          description: seg.description,
+          polyline: seg.polyline,
+        }))
       : undefined,
   };
 }

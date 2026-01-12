@@ -63,15 +63,15 @@ function createNumberedMarkerSvg(
   } else if (isFixed) {
     bgColor = "#7c3aed"; // violet-600
   } else if (isSelected) {
-    bgColor = "#2563eb"; // blue-600
+    bgColor = "#1d4ed8"; // blue-700 (더 진하게)
   } else {
     bgColor = "#ef4444"; // red-500
   }
 
-  const strokeColor = isSelected ? "#1d4ed8" : "white";
+  const strokeColor = isSelected ? "#1e3a8a" : "white"; // blue-800 (더 진하게)
   const strokeWidth = isSelected ? 3 : 2;
   // 선택된 마커는 더 선명하게, 그 외는 반투명
-  const opacity = isSelected ? 4 : 0.8;
+  const opacity = isSelected ? 1 : 0.9;
 
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" opacity="${opacity}">
@@ -299,9 +299,9 @@ function createSpecialMarkerSvg(
 ): string {
   const colors = {
     default: { bg: "#6b7280", stroke: "white" },
-    origin: { bg: "#06b6d4", stroke: "white" },
-    destination: { bg: "#06b6d4", stroke: "white" },
-    current: { bg: "#3b82f6", stroke: "white" },
+    origin: { bg: "#06b6d4", stroke: "white" }, // cyan-500 (더 연하게)
+    destination: { bg: "#06b6d4", stroke: "white" }, // cyan-500 (더 연하게)
+    current: { bg: "#1d4ed8", stroke: "white" }, // blue-700 (더 진하게)
     accommodation: { bg: "#a855f7", stroke: "white" }, // 보라색
     waypoint: { bg: "#10b981", stroke: "white" }, // 초록색 (전날 경유지)
     lastPlace: { bg: "#64748b", stroke: "white" }, // 슬레이트 (전날 마지막 장소)
@@ -320,7 +320,7 @@ function createSpecialMarkerSvg(
 
   const { bg, stroke } = colors[type];
   // 현재 위치 마커는 더 선명하게, 그 외는 반투명
-  const opacity = type === "current" ? 0.8 : 0.5;
+  const opacity = type === "current" ? 1 : 0.9;
 
   const svg = `
     <svg xmlns="http://www.w3.org/2000/svg" width="32" height="38" viewBox="0 0 32 38" opacity="${opacity}">

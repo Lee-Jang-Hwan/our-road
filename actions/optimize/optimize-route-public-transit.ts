@@ -210,14 +210,23 @@ function convertTripOutputToOptimizeResult(
     }
     // 숙소가 없으면 dayOrigin을 설정하지 않음 (2일차부터는 출발지 표시 없이 경유지부터 시작)
 
-    // 도착지 정보 (숙소가 있으면 모든 날 숙소, 없으면 마지막 날만 도착지)
+    // 도착지 정보 (숙소가 있으면 중간 날은 숙소, 마지막 날은 도착지)
     let dayDestination: DailyItinerary["dayDestination"];
     const hasAccommodation =
       trip.accommodations && trip.accommodations.length > 0;
     const isLastDay = dayIndex === output.dayPlans.length - 1;
 
-    if (hasAccommodation) {
-      // 숙소가 있으면 모든 날의 종점은 숙소
+    if (isLastDay && trip.destination && destinationCoord) {
+      // 마지막 날: 무조건 최종 도착지 (숙소가 있어도)
+      dayDestination = {
+        name: trip.destination.name,
+        address: trip.destination.address,
+        lat: destinationCoord.lat,
+        lng: destinationCoord.lng,
+        type: "destination",
+      };
+    } else if (hasAccommodation) {
+      // 중간 날: 숙소가 있으면 숙소
       const accom = trip.accommodations[0];
       dayDestination = {
         name: accom.location.name,
@@ -225,16 +234,6 @@ function convertTripOutputToOptimizeResult(
         lat: accom.location.lat,
         lng: accom.location.lng,
         type: "accommodation",
-      };
-    } else if (isLastDay && trip.destination && destinationCoord) {
-      // 숙소가 없고 마지막 날이면 최종 도착지 표시
-      // (출발지와의 거리 체크는 하지 않음 - 사용자가 설정한 도착지 존중)
-      dayDestination = {
-        name: trip.destination.name,
-        address: trip.destination.address,
-        lat: destinationCoord.lat,
-        lng: destinationCoord.lng,
-        type: "destination",
       };
     }
     // 숙소가 없고 마지막 날이 아니면 dayDestination은 undefined (다음 날 이어짐)
@@ -487,6 +486,11 @@ export async function optimizePublicTransitRoute(
       ? resolveLatLng(trip.accommodations[0].location)
       : undefined;
 
+    // 일일 최대 시간 계산 (자동차 모드와 동일하게 처리)
+    const dailyMaxMinutes =
+      userOptions?.maxDailyMinutes ??
+      timeToMinutes(trip.dailyEndTime) - timeToMinutes(trip.dailyStartTime);
+
     // TripInput 변환 (신규 알고리즘 호환)
     const tripInput: TripInput = {
       tripId,
@@ -496,7 +500,7 @@ export async function optimizePublicTransitRoute(
       lodging: lodgingCoord,
       tripStartDate: trip.startDate,
       waypoints: places.map((place) => placeToWaypoint(place, fixedSchedules)),
-      dailyMaxMinutes: userOptions?.maxDailyMinutes,
+      dailyMaxMinutes,
     };
 
     console.log(
@@ -505,6 +509,7 @@ export async function optimizePublicTransitRoute(
         tripId,
         days: tripInput.days,
         waypointsCount: tripInput.waypoints.length,
+        dailyMaxMinutes,
       },
     );
 

@@ -215,12 +215,26 @@ async function createDailyItinerary(
     const firstPlaceId = dayPlaceIds[0];
     const entry = getDistance(originId, firstPlaceId);
     if (entry) {
+      // 개발 환경: transportFromOrigin 생성 확인
+      if (process.env.NODE_ENV === "development") {
+        console.group("🛣️ [RouteSegment 생성] transportFromOrigin");
+        console.log("entry.fare:", entry.fare);
+        console.log("entry.taxiFare:", entry.taxiFare);
+        console.log("entry.guides:", JSON.stringify(entry.guides, null, 2));
+        console.log("entry.guides 개수:", entry.guides?.length ?? 0);
+        console.groupEnd();
+      }
+      
       transportFromOrigin = {
         mode: entry.mode,
         distance: entry.distance,
         duration: entry.duration,
         polyline: entry.polyline,
+        fare: entry.fare,
+        taxiFare: entry.taxiFare,
         transitDetails: entry.transitDetails,
+        carSegments: entry.carSegments,
+        guides: entry.guides,
       };
       // 첫 장소 도착 시간 = 출발 시간 + 이동 시간
       currentTime = timeToMinutes(dailyStartTime) + entry.duration;
@@ -251,12 +265,26 @@ async function createDailyItinerary(
       const entry = getDistance(placeId, nextPlaceId);
 
       if (entry) {
+        // 개발 환경: transportToNext 생성 확인
+        if (process.env.NODE_ENV === "development") {
+          console.group(`🛣️ [RouteSegment 생성] transportToNext - ${placeId} → ${nextPlaceId}`);
+          console.log("entry.fare:", entry.fare);
+          console.log("entry.taxiFare:", entry.taxiFare);
+          console.log("entry.guides:", JSON.stringify(entry.guides, null, 2));
+          console.log("entry.guides 개수:", entry.guides?.length ?? 0);
+          console.groupEnd();
+        }
+        
         transportToNext = {
           mode: entry.mode,
           distance: entry.distance,
           duration: entry.duration,
           polyline: entry.polyline,
+          fare: entry.fare,
+          taxiFare: entry.taxiFare,
           transitDetails: entry.transitDetails,
+          carSegments: entry.carSegments,
+          guides: entry.guides,
         };
 
         totalDistance += entry.distance;
@@ -285,12 +313,26 @@ async function createDailyItinerary(
     const lastPlaceId = dayPlaceIds[dayPlaceIds.length - 1];
     const entry = getDistance(lastPlaceId, destinationId);
     if (entry) {
+      // 개발 환경: transportToDestination 생성 확인
+      if (process.env.NODE_ENV === "development") {
+        console.group(`🛣️ [RouteSegment 생성] transportToDestination - ${lastPlaceId} → ${destinationId}`);
+        console.log("entry.fare:", entry.fare);
+        console.log("entry.taxiFare:", entry.taxiFare);
+        console.log("entry.guides:", JSON.stringify(entry.guides, null, 2));
+        console.log("entry.guides 개수:", entry.guides?.length ?? 0);
+        console.groupEnd();
+      }
+      
       transportToDestination = {
         mode: entry.mode,
         distance: entry.distance,
         duration: entry.duration,
         polyline: entry.polyline,
+        fare: entry.fare,
+        taxiFare: entry.taxiFare,
         transitDetails: entry.transitDetails,
+        carSegments: entry.carSegments,
+        guides: entry.guides,
       };
       totalDistance += entry.distance;
       totalDuration += entry.duration;

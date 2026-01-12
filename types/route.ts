@@ -38,8 +38,8 @@ export interface TransitLane {
  * 대중교통 하위 구간 정보
  */
 export interface TransitSubPath {
-  /** 구간 타입 (1: 지하철, 2: 버스, 3: 도보, 10: 열차, 11: 고속버스, 12: 시외버스, 14: 해운) */
-  trafficType: 1 | 2 | 3 | 10 | 11 | 12 | 14;
+  /** 구간 타입 (1: 지하철, 2: 버스, 3: 도보, 4: 기차, 5: 고속버스, 6: 시외버스, 10/11/12/14: 추가 버스 유형) */
+  trafficType: 1 | 2 | 3 | 4 | 5 | 6 | 10 | 11 | 12 | 14;
   /** 거리 (미터) */
   distance: number;
   /** 소요 시간 (분) */
@@ -94,10 +94,16 @@ export interface RouteSegment {
   description?: string;
   /** 경로 폴리라인 (지도 표시용) */
   polyline?: string;
-  /** 요금 (원) */
+  /** 요금 (원) - 통행료 또는 대중교통 요금 */
   fare?: number;
+  /** 택시 요금 (원) - 자동차 모드일 때 */
+  taxiFare?: number;
   /** 대중교통 상세 정보 (public 모드일 때) */
   transitDetails?: TransitDetails;
+  /** 자동차 경로 구간별 정보 (car 모드일 때) */
+  carSegments?: CarRouteSegment[];
+  /** 주요 IC/톨게이트 안내 정보 (전체 경로) - 자동차 모드일 때 */
+  guides?: RouteGuide[];
 }
 
 /**
@@ -141,6 +147,46 @@ export interface TransitRoute {
 }
 
 /**
+ * IC/톨게이트 안내 정보
+ */
+export interface RouteGuide {
+  /** 안내 이름 (예: "서울IC", "판교톨게이트") */
+  name: string;
+  /** 좌표 */
+  coord?: { lat: number; lng: number };
+  /** 출발지로부터의 거리 (미터) */
+  distance?: number;
+  /** 출발지로부터의 소요 시간 (분) */
+  duration?: number;
+  /** 안내 타입 */
+  type?: number;
+  /** 안내 코드 */
+  guidance?: string;
+}
+
+/**
+ * 자동차 경로 구간 정보
+ */
+export interface CarRouteSegment {
+  /** 구간 순서 (0부터 시작) */
+  index: number;
+  /** 거리 (미터) */
+  distance: number;
+  /** 소요 시간 (분) */
+  duration: number;
+  /** 예상 통행료 (원) - 거리 비율로 추정 */
+  tollFare?: number;
+  /** 구간 설명 (주요 도로명 등) */
+  description?: string;
+  /** 전체 도로명 배열 (API에서 받은 모든 도로명) */
+  roadNames?: string[];
+  /** 구간 폴리라인 */
+  polyline?: string;
+  /** IC/톨게이트 안내 정보 */
+  guides?: RouteGuide[];
+}
+
+/**
  * 자동차 경로 정보
  */
 export interface CarRoute {
@@ -150,12 +196,18 @@ export interface CarRoute {
   totalDistance: number;
   /** 예상 톨비 (원) */
   tollFare?: number;
+  /** 예상 택시 요금 (원) */
+  taxiFare?: number;
   /** 예상 유류비 (원) */
   fuelCost?: number;
   /** 경로 폴리라인 */
   polyline?: string;
   /** 경로 요약 */
   summary?: string;
+  /** 구간별 상세 정보 */
+  segments?: CarRouteSegment[];
+  /** 주요 IC/톨게이트 안내 정보 (전체 경로) */
+  guides?: RouteGuide[];
 }
 
 /**
