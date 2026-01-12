@@ -487,6 +487,11 @@ export async function optimizePublicTransitRoute(
       ? resolveLatLng(trip.accommodations[0].location)
       : undefined;
 
+    // 일일 최대 시간 계산 (자동차 모드와 동일하게 처리)
+    const dailyMaxMinutes =
+      userOptions?.maxDailyMinutes ??
+      timeToMinutes(trip.dailyEndTime) - timeToMinutes(trip.dailyStartTime);
+
     // TripInput 변환 (신규 알고리즘 호환)
     const tripInput: TripInput = {
       tripId,
@@ -496,7 +501,7 @@ export async function optimizePublicTransitRoute(
       lodging: lodgingCoord,
       tripStartDate: trip.startDate,
       waypoints: places.map((place) => placeToWaypoint(place, fixedSchedules)),
-      dailyMaxMinutes: userOptions?.maxDailyMinutes,
+      dailyMaxMinutes,
     };
 
     console.log(
@@ -505,6 +510,7 @@ export async function optimizePublicTransitRoute(
         tripId,
         days: tripInput.days,
         waypointsCount: tripInput.waypoints.length,
+        dailyMaxMinutes,
       },
     );
 
