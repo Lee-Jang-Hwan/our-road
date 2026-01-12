@@ -22,11 +22,20 @@ declare namespace kakao {
       getCenter(): LatLng;
       setLevel(level: number, options?: { animate?: boolean }): void;
       getLevel(): number;
-      setBounds(bounds: LatLngBounds, paddingTop?: number, paddingRight?: number, paddingBottom?: number, paddingLeft?: number): void;
+      setBounds(
+        bounds: LatLngBounds,
+        paddingTop?: number,
+        paddingRight?: number,
+        paddingBottom?: number,
+        paddingLeft?: number,
+      ): void;
       getBounds(): LatLngBounds;
       panTo(latlng: LatLng): void;
       relayout(): void;
-      addControl(control: MapTypeControl | ZoomControl, position: ControlPosition): void;
+      addControl(
+        control: MapTypeControl | ZoomControl,
+        position: ControlPosition,
+      ): void;
       removeControl(control: MapTypeControl | ZoomControl): void;
       setMapTypeId(mapTypeId: MapTypeId): void;
     }
@@ -185,8 +194,16 @@ declare namespace kakao {
     }
 
     namespace event {
-      function addListener(target: object, type: string, handler: (...args: unknown[]) => void): void;
-      function removeListener(target: object, type: string, handler: (...args: unknown[]) => void): void;
+      function addListener(
+        target: object,
+        type: string,
+        handler: (...args: unknown[]) => void,
+      ): void;
+      function removeListener(
+        target: object,
+        type: string,
+        handler: (...args: unknown[]) => void,
+      ): void;
       function trigger(target: object, type: string, data?: unknown): void;
     }
 
@@ -370,7 +387,10 @@ export function KakaoMap({
         if (onCenterChangedRef.current) {
           kakao.maps.event.addListener(map, "center_changed", () => {
             const latlng = map.getCenter();
-            onCenterChangedRef.current?.({ lat: latlng.getLat(), lng: latlng.getLng() });
+            onCenterChangedRef.current?.({
+              lat: latlng.getLat(),
+              lng: latlng.getLng(),
+            });
           });
         }
 
@@ -381,10 +401,17 @@ export function KakaoMap({
         }
 
         if (onClickRef.current) {
-          kakao.maps.event.addListener(map, "click", (mouseEvent: { latLng: kakao.maps.LatLng }) => {
-            const latlng = mouseEvent.latLng;
-            onClickRef.current?.({ lat: latlng.getLat(), lng: latlng.getLng() });
-          });
+          kakao.maps.event.addListener(
+            map,
+            "click",
+            (mouseEvent: { latLng: kakao.maps.LatLng }) => {
+              const latlng = mouseEvent.latLng;
+              onClickRef.current?.({
+                lat: latlng.getLat(),
+                lng: latlng.getLng(),
+              });
+            },
+          );
         }
       } catch (err) {
         if (mounted) {
@@ -401,10 +428,22 @@ export function KakaoMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 중심 좌표 업데이트
+  // 중심 좌표 업데이트 (마커가 맵 상단에 오도록 조정)
   React.useEffect(() => {
     if (mapRef.current && isReady) {
-      mapRef.current.panTo(new kakao.maps.LatLng(center.lat, center.lng));
+      // 맵의 bounds를 가져와서 높이 계산
+      const bounds = mapRef.current.getBounds();
+      const sw = bounds.getSouthWest(); // 남서쪽 모서리
+      const ne = bounds.getNorthEast(); // 북동쪽 모서리
+      const mapHeight = ne.getLat() - sw.getLat(); // 맵의 위도 범위 (높이)
+
+      // 마커가 맵의 상단에 오도록 중심을 조정
+      // 맵의 상단은 중심보다 mapHeight/2만큼 위에 있음
+      // 마커가 상단에 오려면 중심을 마커보다 mapHeight/2 * 0.8 정도 아래로 설정
+      // (0.8은 여유 공간을 위한 계수)
+      const adjustedLat = center.lat - mapHeight * 0.2;
+
+      mapRef.current.panTo(new kakao.maps.LatLng(adjustedLat, center.lng));
     }
   }, [center.lat, center.lng, isReady]);
 
@@ -433,7 +472,7 @@ export function KakaoMap({
       <div
         className={cn(
           "flex items-center justify-center bg-muted text-muted-foreground",
-          className
+          className,
         )}
       >
         <p className="text-sm">{error}</p>
@@ -504,7 +543,7 @@ export function useMapBounds() {
 
       map.setBounds(bounds, padding, padding, padding, padding);
     },
-    [map, isReady]
+    [map, isReady],
   );
 
   return setBounds;

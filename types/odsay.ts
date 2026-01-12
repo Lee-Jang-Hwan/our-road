@@ -101,8 +101,8 @@ export interface ODsayPathInfo {
  * ODsay 구간 정보
  */
 export interface ODsaySubPath {
-  /** 이동 수단 유형 (1: 지하철, 2: 버스, 3: 도보, 10: 열차, 11: 고속, 12: 시외, 14: 해운) */
-  trafficType: 1 | 2 | 3 | 10 | 11 | 12 | 14;
+  /** 이동 수단 유형 (1: 지하철, 2: 버스, 3: 도보, 4: 기차, 5: 고속버스, 6: 시외버스, 10/11/12/14: 추가 버스 유형) */
+  trafficType: 1 | 2 | 3 | 4 | 5 | 6 | 10 | 11 | 12 | 14;
   /** 거리 (미터) */
   distance: number;
   /** 소요 시간 (분) */
@@ -364,12 +364,11 @@ export function convertODsaySubPathToSegment(
     };
   }
 
-  // 도시간 교통수단 (열차, 고속버스, 시외버스, 해운)
+  // 도시간 교통수단 (기차, 고속버스, 시외버스)
   let mode: import("./route").PublicTransportMode = "bus"; // fallback
-  if (subPath.trafficType === 10) mode = "train";
-  else if (subPath.trafficType === 11) mode = "express_bus";
-  else if (subPath.trafficType === 12) mode = "intercity_bus";
-  else if (subPath.trafficType === 14) mode = "ferry";
+  if (subPath.trafficType === 4) mode = "train";
+  else if (subPath.trafficType === 5) mode = "express_bus";
+  else if (subPath.trafficType === 6) mode = "intercity_bus";
 
   return {
     mode,

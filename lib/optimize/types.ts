@@ -42,8 +42,16 @@ export interface DistanceEntry {
   mode: TransportMode;
   /** 경로 폴리라인 (인코딩된 문자열) */
   polyline?: string;
+  /** 요금 (원) - 통행료 또는 대중교통 요금 */
+  fare?: number;
+  /** 택시 요금 (원) - 자동차 모드일 때 */
+  taxiFare?: number;
   /** 대중교통 상세 정보 (public 모드일 때) */
   transitDetails?: TransitDetails;
+  /** 자동차 경로 구간별 정보 (car 모드일 때) */
+  carSegments?: import("@/types/route").CarRouteSegment[];
+  /** 주요 IC/톨게이트 안내 정보 (전체 경로) - 자동차 모드일 때 */
+  guides?: import("@/types/route").RouteGuide[];
 }
 
 /**

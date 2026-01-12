@@ -102,6 +102,7 @@ function convertTransportInfo(
     duration: info.duration,
     description: info.description,
     fare: info.fare,
+    taxiFare: info.taxi_fare,
     polyline: info.polyline,
     transitDetails: info.transit_details
       ? {
@@ -130,6 +131,32 @@ function convertTransportInfo(
           })),
         }
       : undefined,
+    carSegments: info.car_segments
+      ? info.car_segments.map((seg) => ({
+          index: seg.index,
+          distance: seg.distance,
+          duration: seg.duration,
+          tollFare: seg.toll_fare,
+          description: seg.description,
+          polyline: seg.polyline,
+          guides: seg.guides?.map((g) => ({
+            name: g.name,
+            coord: g.coord,
+            distance: g.distance,
+            duration: g.duration,
+            type: g.type,
+            guidance: g.guidance,
+          })),
+        }))
+      : undefined,
+    guides: info.guides?.map((g) => ({
+      name: g.name,
+      coord: g.coord,
+      distance: g.distance,
+      duration: g.duration,
+      type: g.type,
+      guidance: g.guidance,
+    })),
   };
 }
 

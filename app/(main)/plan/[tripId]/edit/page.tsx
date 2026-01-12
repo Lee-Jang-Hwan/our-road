@@ -23,7 +23,7 @@ function PageSkeleton() {
   return (
     <main className="flex flex-col min-h-[calc(100dvh-64px)]">
       {/* 헤더 스켈레톤 */}
-      <header className="flex items-center gap-3 px-4 py-3 border-b">
+      <header className="flex items-center gap-3 px-4 py-1 border-b">
         <Skeleton className="w-10 h-10 rounded-lg" />
         <Skeleton className="h-6 w-32" />
       </header>
@@ -209,7 +209,7 @@ export default function EditTripPage({ params }: EditTripPageProps) {
   return (
     <main className="flex flex-col min-h-[calc(100dvh-64px)]">
       {/* 헤더 */}
-      <header className="flex items-center gap-3 px-4 border-b">
+      <header className="flex items-center gap-3 px-4 py-1 border-b">
         <Button
           variant="ghost"
           size="icon"

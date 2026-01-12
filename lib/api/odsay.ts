@@ -419,7 +419,17 @@ function convertSubPathToTransitSubPath(subPath: ODsaySubPath): TransitSubPath {
   const lane = subPath.lane?.[0];
   let transitLane: TransitLane | undefined;
 
-  if (lane) {
+  // 디버깅: trafficType과 lane 정보 로그
+  console.log("[ODsay] convertSubPathToTransitSubPath:", {
+    trafficType: subPath.trafficType,
+    laneName: lane?.name,
+    laneExists: !!lane,
+    startName: subPath.startName,
+    endName: subPath.endName,
+  });
+
+  // 도보 구간(trafficType === 3)은 lane이 없으므로 처리하지 않음
+  if (subPath.trafficType !== 3 && lane) {
     if (subPath.trafficType === 1) {
       // 지하철
       const subwayCode = lane.subwayCode as ODsaySubwayCode | undefined;
@@ -437,26 +447,83 @@ function convertSubPathToTransitSubPath(subPath: ODsaySubPath): TransitSubPath {
         busType: busType ? ODSAY_BUS_TYPE_MAP[busType] : undefined,
         lineColor: busType ? BUS_TYPE_COLORS[busType] : "#52B043",
       };
-    } else if (subPath.trafficType === 10) {
-      // 열차
+    } else if (subPath.trafficType === 4) {
+      // 기차
+      // lane.name이 없거나 빈 문자열이거나 "대중교통"이면 "기차"로 fallback
+      const trainName = lane.name?.trim();
+      const finalName = (trainName && trainName !== "대중교통") ? trainName : "기차";
+      console.log("[ODsay] trafficType 4 (기차):", {
+        originalLaneName: lane.name,
+        trimmedName: trainName,
+        finalName,
+        isFallback: !trainName || trainName === "대중교통",
+      });
       transitLane = {
-        name: lane.name, // KTX, 새마을 등
-        lineColor: "#0052A4", // 코레일 블루
+        name: finalName,
+        lineColor: "#0052A4", // 기차 (코레일 블루)
       };
-    } else if (subPath.trafficType === 11 || subPath.trafficType === 12) {
-      // 고속/시외버스
+    } else if (subPath.trafficType === 5) {
+      // 고속버스
+      // lane.name이 없거나 빈 문자열이거나 "대중교통"이면 "고속버스"로 fallback
+      const busName = lane.name?.trim();
+      const finalName = (busName && busName !== "대중교통") ? busName : "고속버스";
+      console.log("[ODsay] trafficType 5 (고속버스):", {
+        originalLaneName: lane.name,
+        trimmedName: busName,
+        finalName,
+        isFallback: !busName || busName === "대중교통",
+      });
       transitLane = {
-        name: lane.name || (subPath.trafficType === 11 ? "고속버스" : "시외버스"),
-        lineColor: "#52B043", // 버스 색상
+        name: finalName,
+        lineColor: "#E60012", // 고속버스 (빨간색)
       };
-    } else if (subPath.trafficType === 14) {
-      // 해운
+    } else if (subPath.trafficType === 6) {
+      // 시외버스
+      // lane.name이 없거나 빈 문자열이거나 "대중교통"이면 "시외버스"로 fallback
+      const busName = lane.name?.trim();
+      const finalName = (busName && busName !== "대중교통") ? busName : "시외버스";
+      console.log("[ODsay] trafficType 6 (시외버스):", {
+        originalLaneName: lane.name,
+        trimmedName: busName,
+        finalName,
+        isFallback: !busName || busName === "대중교통",
+      });
       transitLane = {
-        name: lane.name || "해운",
-        lineColor: "#00A0E9", // 바다색
+        name: finalName,
+        lineColor: "#52B043", // 시외버스 (초록색)
+      };
+    }
+  } else if (subPath.trafficType !== 3 && !lane) {
+    // lane이 없지만 trafficType이 4, 5, 6인 경우 fallback 제공
+    console.log("[ODsay] lane 없음, fallback 사용:", {
+      trafficType: subPath.trafficType,
+      startName: subPath.startName,
+      endName: subPath.endName,
+    });
+    if (subPath.trafficType === 4) {
+      transitLane = {
+        name: "기차",
+        lineColor: "#0052A4", // 기차 (코레일 블루)
+      };
+    } else if (subPath.trafficType === 5) {
+      transitLane = {
+        name: "고속버스",
+        lineColor: "#E60012", // 고속버스 (빨간색)
+      };
+    } else if (subPath.trafficType === 6) {
+      transitLane = {
+        name: "시외버스",
+        lineColor: "#52B043", // 시외버스 (초록색)
       };
     }
   }
+
+  // 최종 결과 로그
+  console.log("[ODsay] 최종 TransitSubPath:", {
+    trafficType: subPath.trafficType,
+    laneName: transitLane?.name,
+    laneExists: !!transitLane,
+  });
 
   // 경유 정류장 좌표 추출
   const passStopCoords: Array<{ lat: number; lng: number }> = [];

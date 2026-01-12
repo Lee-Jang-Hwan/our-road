@@ -288,7 +288,7 @@ function LoadingSkeleton() {
   return (
     <main className="flex flex-col min-h-[calc(100dvh-64px)]">
       {/* 헤더 */}
-      <header className="flex items-center justify-between px-4 py-3 border-b">
+      <header className="flex items-center justify-between px-4 py-1 border-b">
         <h1 className="font-semibold text-lg">내 여행</h1>
         <Skeleton className="w-10 h-10 rounded-lg" />
       </header>
@@ -389,7 +389,7 @@ export default function MyTripsPage() {
   if (error && trips.length === 0) {
     return (
       <main className="flex flex-col min-h-[calc(100dvh-64px)]">
-        <header className="flex items-center justify-between px-4 py-3 border-b">
+        <header className="flex items-center justify-between px-4 py-1 border-b">
           <h1 className="font-semibold text-lg">내 여행</h1>
         </header>
         <ErrorState type="generic" description={error} onRetry={loadTrips} />
@@ -400,7 +400,7 @@ export default function MyTripsPage() {
   return (
     <main className="flex flex-col min-h-[calc(100dvh-64px)]">
       {/* 헤더 */}
-      <header className="flex items-center justify-between px-4 py-3 border-b">
+      <header className="flex items-center justify-between px-4 py-1 border-b">
         <h1 className="font-semibold text-lg flex items-center gap-2">
           내 여행
           <Map className="w-5 h-5 text-black" />
@@ -428,7 +428,9 @@ export default function MyTripsPage() {
 
             {/* 컨텐츠 */}
             <span className="relative flex items-center gap-1.5">
-              <span className="animate-[pulse_2s_ease-in-out_infinite]">새 여행</span>
+              <span className="animate-[pulse_2s_ease-in-out_infinite]">
+                새 여행
+              </span>
               <Plane className="w-4 h-4 animate-[float_3s_ease-in-out_infinite] group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-300" />
             </span>
           </Button>

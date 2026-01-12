@@ -103,7 +103,7 @@ export function DayTabs({
     if (!container) return;
 
     const selectedTab = container.querySelector(
-      `[data-day="${selectedDay}"]`
+      `[data-day="${selectedDay}"]`,
     ) as HTMLElement;
     if (selectedTab) {
       const containerRect = container.getBoundingClientRect();
@@ -126,13 +126,7 @@ export function DayTabs({
   if (days.length === 0) return null;
 
   return (
-    <div
-      className={cn(
-        "bg-background border-b",
-        className
-      )}
-      {...swipeHandlers}
-    >
+    <div className={cn("bg-background border-b", className)} {...swipeHandlers}>
       <div className="relative flex items-center">
         {/* 왼쪽 화살표 */}
         {showLeftArrow && (
@@ -195,7 +189,7 @@ function DayTabItem({ dayNumber, date, isSelected, onClick }: DayTabItemProps) {
         "flex flex-col items-center justify-center min-w-[64px] px-3 py-2 rounded-lg transition-all shrink-0",
         isSelected
           ? "bg-primary text-primary-foreground shadow-sm"
-          : "bg-muted/50 text-muted-foreground hover:bg-muted"
+          : "bg-muted/50 text-muted-foreground hover:bg-muted",
       )}
     >
       <span className="text-sm font-semibold">{dayNumber}일차</span>
@@ -289,10 +283,7 @@ export function DayTabsSimple({
 
   return (
     <div
-      className={cn(
-        "flex gap-1 p-1 bg-muted rounded-lg w-fit",
-        className
-      )}
+      className={cn("flex gap-1 p-1 bg-muted rounded-lg w-fit", className)}
       role="tablist"
     >
       {days.map((day) => (
@@ -307,7 +298,7 @@ export function DayTabsSimple({
             "px-3 py-1.5 text-sm font-medium rounded-md transition-all",
             selectedDay === day.dayNumber
               ? "bg-background text-foreground shadow-sm"
-              : "text-muted-foreground hover:text-foreground"
+              : "text-muted-foreground hover:text-foreground",
           )}
         >
           {day.dayNumber}일차
