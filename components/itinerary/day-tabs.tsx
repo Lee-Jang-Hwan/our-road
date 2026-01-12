@@ -38,7 +38,6 @@ const formatTabDate = (dateString: string): string => {
  * - "1일차\n12/24" 형식으로 표시
  * - 활성 탭 인디케이터
  * - 좌우 스와이프로 일자 전환
- * - 상단 고정 (sticky)
  */
 export function DayTabs({
   days,
@@ -129,7 +128,7 @@ export function DayTabs({
   return (
     <div
       className={cn(
-        "sticky top-0 z-10 bg-background border-b",
+        "bg-background border-b",
         className
       )}
       {...swipeHandlers}

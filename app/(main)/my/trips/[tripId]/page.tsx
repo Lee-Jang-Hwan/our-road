@@ -63,6 +63,7 @@ import { saveItinerary } from "@/actions/optimize/save-itinerary";
 import { getSegmentColor } from "@/lib/utils";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import type { TripWithDetails, TripStatus, Coordinate } from "@/types";
+import type { ScheduleItem } from "@/types/schedule";
 import type { Place } from "@/types/place";
 import type { UnassignedPlaceInfo } from "@/types/optimize";
 import { calculateTripDuration } from "@/types/trip";
@@ -1071,7 +1072,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
 
       {/* 카카오 맵 */}
       {hasItinerary && trip && (
-        <div className="w-full h-64 border-b relative overflow-hidden">
+        <div className="w-full h-64 border-b relative overflow-hidden sticky top-6 z-10">
           <KakaoMap
             center={selectedPlaceCenter || mapCenter}
             level={7}
