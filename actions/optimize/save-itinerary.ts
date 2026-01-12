@@ -67,6 +67,7 @@ function convertTransportToRow(transport: {
       stationCount?: number;
       startName?: string;
       endName?: string;
+      polyline?: string;
       lane?: {
         name: string;
         busNo?: string;
@@ -98,6 +99,7 @@ function convertTransportToRow(transport: {
             station_count: sp.stationCount,
             start_name: sp.startName,
             end_name: sp.endName,
+            polyline: sp.polyline,
             lane: sp.lane
               ? {
                   name: sp.lane.name,
@@ -123,7 +125,7 @@ function toInt(value: number): number {
 
 function convertItineraryToRow(
   itinerary: DailyItinerary,
-  tripId: string
+  tripId: string,
 ): Omit<TripItineraryRow, "id" | "created_at"> {
   const scheduleRows: ScheduleItemRow[] = itinerary.schedule.map((item) => ({
     order: item.order,
@@ -182,7 +184,7 @@ function convertItineraryToRow(
  * ```
  */
 export async function saveItinerary(
-  input: SaveItineraryInput
+  input: SaveItineraryInput,
 ): Promise<SaveItineraryResult> {
   try {
     // 1. 인증 확인
@@ -269,7 +271,7 @@ export async function saveItinerary(
     // 9. 캐시 무효화
     revalidatePath("/my");
     revalidatePath(`/plan/${tripId}`);
-    revalidatePath(`/plan/${tripId}/result`);
+    revalidatePath(`/my/trips/${tripId}`);
 
     return {
       success: true,
@@ -295,7 +297,7 @@ export async function saveItinerary(
  * @returns 삭제 결과
  */
 export async function deleteItinerary(
-  tripId: string
+  tripId: string,
 ): Promise<DeleteItineraryResult> {
   try {
     // 1. 인증 확인
@@ -360,7 +362,7 @@ export async function deleteItinerary(
     // 8. 캐시 무효화
     revalidatePath("/my");
     revalidatePath(`/plan/${tripId}`);
-    revalidatePath(`/plan/${tripId}/result`);
+    revalidatePath(`/my/trips/${tripId}`);
 
     return {
       success: true,
@@ -382,7 +384,7 @@ export async function deleteItinerary(
  * @returns 일정 존재 여부
  */
 export async function hasItinerary(
-  tripId: string
+  tripId: string,
 ): Promise<{ success: boolean; hasItinerary?: boolean; error?: string }> {
   try {
     // 1. 인증 확인

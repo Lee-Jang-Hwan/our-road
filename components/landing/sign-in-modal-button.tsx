@@ -1,6 +1,6 @@
 "use client";
 
-import { SignInButton, SignIn } from "@clerk/nextjs";
+import { SignInButton } from "@clerk/nextjs";
 
 export function SignInModalButton() {
   return (

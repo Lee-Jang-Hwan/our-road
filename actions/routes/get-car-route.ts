@@ -162,15 +162,6 @@ export async function getCarRoute(
     const { origin, destination, waypoints, priority, alternatives } =
       validationResult.data;
 
-    // API 호출 전 로그
-    console.log("📡 [카카오 API 호출] 자동차 경로 조회 시작", {
-      origin: `${origin.lat.toFixed(6)}, ${origin.lng.toFixed(6)}`,
-      destination: `${destination.lat.toFixed(6)}, ${destination.lng.toFixed(6)}`,
-      waypointsCount: waypoints?.length || 0,
-      priority,
-      timestamp: new Date().toISOString(),
-    });
-
     // 4. Kakao Mobility API 요청 URL 구성
     const params = new URLSearchParams({
       origin: `${origin.lng},${origin.lat}`,

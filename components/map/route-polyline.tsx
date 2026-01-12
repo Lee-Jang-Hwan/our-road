@@ -89,6 +89,12 @@ const TRANSPORT_COLORS: Record<TransportMode, string> = {
   car: "#22c55e", // green-500
 };
 
+// 숙소 마커 색상 (place-markers.tsx와 동일)
+const ACCOMMODATION_COLOR = "#a855f7"; // purple-500
+
+// 도착지 경로 색상 (하늘색)
+const DESTINATION_COLOR = "#06b6d4"; // cyan-500
+
 /**
  * 경로 폴리라인 컴포넌트
  */
@@ -103,31 +109,19 @@ export function RoutePolyline({
   zIndex = 1,
 }: RoutePolylineProps) {
   const { map, isReady } = useKakaoMap();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const polylineRef = React.useRef<any>(null);
 
   // 인코딩된 경로가 있으면 디코딩, 아니면 path 사용
   const actualPath = React.useMemo(() => {
     if (encodedPath) {
       const decoded = decodePolyline(encodedPath);
-      console.log("    📍 Polyline 디코딩:", decoded.length, "개 좌표");
       return decoded;
     }
-    console.log("    📍 Path 사용:", path?.length || 0, "개 좌표");
     return path || [];
   }, [encodedPath, path]);
 
   React.useEffect(() => {
-    console.log("    🗺️ RoutePolyline useEffect:", {
-      hasMap: !!map,
-      isReady,
-      actualPathLength: actualPath.length,
-      transportMode,
-      strokeColor,
-    });
-
     if (!map || !isReady || actualPath.length < 2) {
-      console.log("    ⚠️ 조건 미충족, polyline 그리지 않음");
       return;
     }
 
@@ -139,7 +133,6 @@ export function RoutePolyline({
 
     if (polylineRef.current) {
       // 기존 폴리라인 업데이트
-      console.log("    ✏️ 기존 polyline 업데이트", { color, strokeWeight });
       polylineRef.current.setPath(linePath);
       polylineRef.current.setOptions({
         strokeWeight,
@@ -150,11 +143,6 @@ export function RoutePolyline({
       });
     } else {
       // 새 폴리라인 생성
-      console.log("    ✨ 새 polyline 생성", {
-        color,
-        strokeWeight,
-        pathLength: linePath.length,
-      });
       polylineRef.current = new window.kakao.maps.Polyline({
         map,
         path: linePath,
@@ -216,7 +204,6 @@ export function MultiRoutePolyline({
   selectedSegmentId,
 }: MultiRoutePolylineProps) {
   const { map, isReady } = useKakaoMap();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const polylinesRef = React.useRef<Map<string, any>>(new Map());
 
   React.useEffect(() => {
@@ -347,6 +334,12 @@ interface RealRoutePolylineProps {
     encodedPath?: string;
     transportMode: TransportMode;
     segmentIndex?: number;
+    /** 숙소로 가는 경로 여부 */
+    isToAccommodation?: boolean;
+    /** 숙소에서 출발하는 경로 여부 */
+    isFromAccommodation?: boolean;
+    /** 도착지로 가는 경로 여부 */
+    isToDestination?: boolean;
   }>;
   /** 선 두께 */
   strokeWeight?: number;
@@ -363,6 +356,8 @@ interface RealRoutePolylineProps {
  * - 둘 다 없으면 직선으로 연결
  * - useSegmentColors가 true면 각 구간마다 다른 색상 사용
  * - 도보 구간(walking)은 항상 주황색으로 표시 (useSegmentColors와 관계없이)
+ * - 숙소로 가는 경로는 숙소 마커와 동일한 색상(#a855f7)으로 표시
+ * - 도착지로 가는 경로는 하늘색(#06b6d4)으로 표시
  */
 export function RealRoutePolyline({
   segments,
@@ -370,32 +365,25 @@ export function RealRoutePolyline({
   strokeOpacity = 0.8,
   useSegmentColors = false,
 }: RealRoutePolylineProps) {
-  console.group("🖼️ [RealRoutePolyline 렌더링]");
-  console.log("받은 segments:", segments.length);
-  console.log("useSegmentColors:", useSegmentColors);
-
   return (
     <>
       {segments.map((segment, index) => {
-        // 도보 구간은 항상 주황색 (이동 수단별 색상)
-        // 그 외 구간은 useSegmentColors에 따라 결정
-        const strokeColor = segment.transportMode === "walking"
-          ? TRANSPORT_COLORS.walking
-          : useSegmentColors
-            ? getSegmentColor(segment.segmentIndex ?? index)
-            : TRANSPORT_COLORS[segment.transportMode];
+        // 숙소로 가는 경로 또는 숙소에서 출발하는 경로는 숙소 색상 사용
+        const isAccommodationRoute =
+          segment.isToAccommodation || segment.isFromAccommodation;
 
-        console.log(`  Segment ${index}:`, {
-          transportMode: segment.transportMode,
-          hasEncodedPath: !!segment.encodedPath,
-          hasPath: !!segment.path,
-          pathLength: segment.path?.length,
-          strokeColor,
-        });
+        // 구간별 색상 또는 이동 수단별 색상
+        // 우선순위: 숙소 경로 > 도착지 경로 > 구간별 색상 > 이동 수단별 색상
+        const strokeColor = isAccommodationRoute
+          ? ACCOMMODATION_COLOR
+          : segment.isToDestination
+            ? DESTINATION_COLOR
+            : useSegmentColors
+              ? getSegmentColor(segment.segmentIndex ?? index)
+              : TRANSPORT_COLORS[segment.transportMode];
 
         if (segment.encodedPath) {
           // 실제 경로 (인코딩된 폴리라인)
-          console.log(`    → encodedPath 사용`);
           return (
             <RoutePolyline
               key={`route-${index}`}
@@ -409,7 +397,6 @@ export function RealRoutePolyline({
           );
         } else if (segment.path && segment.path.length > 1) {
           // 좌표 배열로 경로 표시
-          console.log(`    → path 사용 (${segment.path.length}개 좌표)`);
           return (
             <RoutePolyline
               key={`route-${index}`}
@@ -423,9 +410,9 @@ export function RealRoutePolyline({
           );
         } else {
           // 직선 연결 (폴백)
+
           // 도보 구간은 실선, 그 외는 점선으로 표시
           const isWalkingFallback = segment.transportMode === "walking";
-          console.log(`    → 직선 연결 (폴백) - ${isWalkingFallback ? "도보" : "대중교통/자동차"}`);
           return (
             <RoutePolyline
               key={`route-${index}`}
@@ -439,7 +426,6 @@ export function RealRoutePolyline({
           );
         }
       })}
-      {console.groupEnd()}
     </>
   );
 }

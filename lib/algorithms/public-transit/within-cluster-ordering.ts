@@ -114,10 +114,6 @@ export function orderWithinClusterOneDirection(params: {
     flexIndex++;
   }
 
-  console.log(
-    `[orderWithinCluster] Fixed time waypoints: ${fixedTimeWaypoints.length}, Flexible: ${flexibleWaypoints.length}`
-  );
-
   return minimize2OptCrossing(result, waypoints);
 }
 

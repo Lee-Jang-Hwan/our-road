@@ -157,15 +157,6 @@ export async function updatePlace(
       .single();
 
     if (tripBeforeUpdate?.status === "optimized") {
-      console.log("🔄 [Trip Status Change] 장소 수정으로 인한 상태 변경", {
-        tripId,
-        placeId,
-        from: "optimized",
-        to: "draft",
-        reason: "place_updated",
-        timestamp: new Date().toISOString(),
-      });
-
       const { error: statusUpdateError } = await supabase
         .from("trips")
         .update({ status: "draft" })
@@ -176,12 +167,6 @@ export async function updatePlace(
         console.error("❌ [Trip Status Change] 상태 변경 실패", {
           tripId,
           error: statusUpdateError,
-        });
-      } else {
-        console.log("✅ [Trip Status Change] 상태 변경 완료", {
-          tripId,
-          from: "optimized",
-          to: "draft",
         });
       }
     }

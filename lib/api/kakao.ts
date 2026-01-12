@@ -9,7 +9,6 @@ import type {
   KakaoSearchAddressResponse,
   KakaoDirectionsResponse,
   KakaoCategoryCode,
-  KakaoPlaceDocument,
 } from "@/types/kakao";
 import type { PlaceSearchResult, Coordinate, CarRoute } from "@/types";
 import { convertKakaoPlaceToSearchResult } from "@/types/kakao";

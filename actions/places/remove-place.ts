@@ -97,15 +97,6 @@ export async function removePlace(
       .single();
 
     if (tripBeforeUpdate?.status === "optimized") {
-      console.log("🔄 [Trip Status Change] 장소 삭제로 인한 상태 변경", {
-        tripId,
-        placeId,
-        from: "optimized",
-        to: "draft",
-        reason: "place_removed",
-        timestamp: new Date().toISOString(),
-      });
-
       const { error: statusUpdateError } = await supabase
         .from("trips")
         .update({ status: "draft" })
@@ -116,12 +107,6 @@ export async function removePlace(
         console.error("❌ [Trip Status Change] 상태 변경 실패", {
           tripId,
           error: statusUpdateError,
-        });
-      } else {
-        console.log("✅ [Trip Status Change] 상태 변경 완료", {
-          tripId,
-          from: "optimized",
-          to: "draft",
         });
       }
     }
@@ -238,16 +223,6 @@ export async function removePlaces(
       .single();
 
     if (tripBeforeUpdate?.status === "optimized") {
-      console.log("🔄 [Trip Status Change] 장소 일괄 삭제로 인한 상태 변경", {
-        tripId,
-        placeIds,
-        deletedCount: placeIds.length,
-        from: "optimized",
-        to: "draft",
-        reason: "places_removed_batch",
-        timestamp: new Date().toISOString(),
-      });
-
       const { error: statusUpdateError } = await supabase
         .from("trips")
         .update({ status: "draft" })
@@ -258,12 +233,6 @@ export async function removePlaces(
         console.error("❌ [Trip Status Change] 상태 변경 실패", {
           tripId,
           error: statusUpdateError,
-        });
-      } else {
-        console.log("✅ [Trip Status Change] 상태 변경 완료", {
-          tripId,
-          from: "optimized",
-          to: "draft",
         });
       }
     }

@@ -231,10 +231,7 @@ function invalidateCache(tripId: string, dayNumber?: number) {
   revalidateTag("itinerary");
   revalidatePath("/my");
   revalidatePath(`/plan/${tripId}`);
-  revalidatePath(`/plan/${tripId}/result`);
-  if (dayNumber) {
-    revalidatePath(`/plan/${tripId}/result/${dayNumber}`);
-  }
+  revalidatePath(`/my/trips/${tripId}`);
 }
 
 // ============================================
@@ -260,7 +257,7 @@ function invalidateCache(tripId: string, dayNumber?: number) {
  * ```
  */
 export async function updateDayItinerary(
-  input: UpdateDayItineraryInput
+  input: UpdateDayItineraryInput,
 ): Promise<UpdateItineraryResult> {
   try {
     // 1. 인증 확인
@@ -409,7 +406,7 @@ export async function updateDayItinerary(
  * ```
  */
 export async function reorderScheduleItems(
-  input: ReorderScheduleInput
+  input: ReorderScheduleInput,
 ): Promise<ReorderScheduleResult> {
   try {
     // 1. 인증 확인
@@ -496,7 +493,7 @@ export async function reorderScheduleItems(
           ...item,
           order: index + 1,
         };
-      }
+      },
     );
 
     // 6. 일정 업데이트
@@ -552,7 +549,7 @@ export async function reorderScheduleItems(
  * ```
  */
 export async function moveScheduleItem(
-  input: MoveScheduleItemInput
+  input: MoveScheduleItemInput,
 ): Promise<MoveScheduleItemResult> {
   try {
     // 1. 인증 확인
@@ -585,11 +582,7 @@ export async function moveScheduleItem(
       };
     }
 
-    if (
-      !Number.isInteger(toDayNumber) ||
-      toDayNumber < 1 ||
-      toDayNumber > 30
-    ) {
+    if (!Number.isInteger(toDayNumber) || toDayNumber < 1 || toDayNumber > 30) {
       return {
         success: false,
         error: "유효하지 않은 도착 일차 번호입니다. (1~30)",
@@ -622,10 +615,10 @@ export async function moveScheduleItem(
     }
 
     const fromRow = (bothDays as TripItineraryRow[]).find(
-      (r) => r.day_number === fromDayNumber
+      (r) => r.day_number === fromDayNumber,
     );
     const toRow = (bothDays as TripItineraryRow[]).find(
-      (r) => r.day_number === toDayNumber
+      (r) => r.day_number === toDayNumber,
     );
 
     if (!fromRow) {
@@ -644,7 +637,7 @@ export async function moveScheduleItem(
 
     // 5. 이동할 항목 찾기
     const itemIndex = fromRow.schedule.findIndex(
-      (item) => item.place_id === placeId
+      (item) => item.place_id === placeId,
     );
     if (itemIndex === -1) {
       return {
@@ -674,7 +667,7 @@ export async function moveScheduleItem(
 
     // 8. 요약 정보 재계산
     const fromSummary = recalculateSummary(
-      newFromSchedule.map(convertRowToItem)
+      newFromSchedule.map(convertRowToItem),
     );
     const toSummary = recalculateSummary(newToSchedule.map(convertRowToItem));
 
@@ -764,7 +757,7 @@ export async function updateScheduleItem(
   tripId: string,
   dayNumber: number,
   placeId: string,
-  updates: UpdateScheduleItemInput
+  updates: UpdateScheduleItemInput,
 ): Promise<UpdateScheduleItemResult> {
   try {
     // 1. 인증 확인
@@ -849,7 +842,7 @@ export async function updateScheduleItem(
 
     // 5. 항목 찾기 및 수정
     const itemIndex = existingRow.schedule.findIndex(
-      (item) => item.place_id === placeId
+      (item) => item.place_id === placeId,
     );
     if (itemIndex === -1) {
       return {
@@ -937,7 +930,7 @@ export async function updateScheduleItem(
 export async function deleteScheduleItem(
   tripId: string,
   dayNumber: number,
-  placeId: string
+  placeId: string,
 ): Promise<UpdateItineraryResult> {
   try {
     // 1. 인증 확인
@@ -993,7 +986,7 @@ export async function deleteScheduleItem(
 
     // 5. 항목 찾기
     const itemIndex = existingRow.schedule.findIndex(
-      (item) => item.place_id === placeId
+      (item) => item.place_id === placeId,
     );
     if (itemIndex === -1) {
       return {

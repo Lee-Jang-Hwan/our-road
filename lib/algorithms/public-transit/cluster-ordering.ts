@@ -7,8 +7,7 @@ import { calculateCentroid, calculateDistance, calculateDirectionVector, dotProd
 
 export function chooseEndAnchor(
   lodging: LatLng | undefined,
-  clusters: Cluster[],
-  _days: number
+  clusters: Cluster[]
 ): LatLng {
   if (lodging) {
     return lodging;
@@ -88,8 +87,6 @@ export function orderClustersOneDirection(
       );
       return projA - projB;
     });
-
-    console.log("[orderClustersOneDirection] Ordered by start->end progression");
   } else {
     // Fallback: sort by distance to end anchor
     sorted = [...clusters].sort(
@@ -97,11 +94,9 @@ export function orderClustersOneDirection(
         calculateDistance(a.centroid, endAnchor) -
         calculateDistance(b.centroid, endAnchor)
     );
-
-    console.log("[orderClustersOneDirection] Ordered by distance to end anchor (no start anchor)");
   }
 
-  const smoothed = smoothClusterOrder(sorted, endAnchor, startAnchor);
+  const smoothed = smoothClusterOrder(sorted, endAnchor);
 
   // Validate monotonic progression
   const isValid = validateMonotonicProgression(smoothed, endAnchor, startAnchor);
@@ -114,8 +109,7 @@ export function orderClustersOneDirection(
 
 export function smoothClusterOrder(
   sorted: Cluster[],
-  endAnchor: LatLng,
-  startAnchor?: LatLng
+  endAnchor: LatLng
 ): Cluster[] {
   if (sorted.length < 3) {
     return sorted;
@@ -193,9 +187,7 @@ export function validateMonotonicProgression(
 
   const isValid = backtrackCount === 0;
 
-  if (isValid) {
-    console.log("[validateMonotonicProgression] ✓ All clusters progress toward destination");
-  } else {
+  if (!isValid) {
     console.warn(`[validateMonotonicProgression] ✗ ${backtrackCount} backtracking segments detected`);
   }
 

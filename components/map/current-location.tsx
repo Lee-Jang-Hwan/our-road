@@ -45,9 +45,7 @@ export function CurrentLocationMarker({
   pulse = true,
 }: CurrentLocationMarkerProps) {
   const { map, isReady } = useKakaoMap();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const markerRef = React.useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const circleRef = React.useRef<any>(null);
 
   React.useEffect(() => {

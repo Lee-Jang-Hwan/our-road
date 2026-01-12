@@ -136,7 +136,7 @@ interface OffScreenIndicatorProps {
 }
 
 function OffScreenIndicator({ marker, onClick }: OffScreenIndicatorProps) {
-  const { direction, order, angle } = marker;
+  const { direction, order } = marker;
 
   // 방향별 위치 스타일
   const positionStyles: Record<string, React.CSSProperties> = {

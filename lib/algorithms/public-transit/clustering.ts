@@ -99,10 +99,7 @@ export function balanceClusterSizes(
   const maxIterations = 100;
   const flexibilityRange = 0.4; // Allow ±40% from target
 
-  const minSize = Math.max(1, Math.floor(targetPerDay * (1 - flexibilityRange)));
   const maxSize = Math.ceil(targetPerDay * (1 + flexibilityRange));
-
-  console.log(`[balanceClusterSizes] Target: ${targetPerDay}, Range: ${minSize}-${maxSize}`);
 
   for (let iteration = 0; iteration < maxIterations; iteration++) {
     clusters.sort((a, b) => b.waypoints.length - a.waypoints.length);
@@ -114,17 +111,11 @@ export function balanceClusterSizes(
 
     // Stop if balanced enough OR largest is within acceptable range
     if (sizeDiff <= 1 || largest.waypoints.length <= maxSize) {
-      console.log(
-        `[balanceClusterSizes] Balanced after ${iteration} iterations (size diff: ${sizeDiff})`
-      );
       break;
     }
 
     // Only force balancing if largest exceeds max threshold significantly
     if (largest.waypoints.length <= maxSize + 1) {
-      console.log(
-        `[balanceClusterSizes] Stopped - largest cluster (${largest.waypoints.length}) within acceptable range`
-      );
       break;
     }
 
@@ -138,7 +129,6 @@ export function balanceClusterSizes(
     );
 
     if (movableWaypoints.length === 0) {
-      console.log(`[balanceClusterSizes] No movable waypoints in largest cluster`);
       break;
     }
 
@@ -159,9 +149,6 @@ export function balanceClusterSizes(
 
     // Don't move if it's >3x closer to current cluster
     if (candidate.distance > distanceFromLargest * 3) {
-      console.log(
-        `[balanceClusterSizes] Skipping move - would create detour (${Math.round(candidate.distance)}m vs ${Math.round(distanceFromLargest)}m)`
-      );
       break;
     }
 
@@ -170,10 +157,6 @@ export function balanceClusterSizes(
     );
     smallest.waypoints.push(candidate.wp);
   }
-
-  // Log final cluster sizes
-  const sizes = clusters.map((c) => c.waypoints.length).join(", ");
-  console.log(`[balanceClusterSizes] Final sizes: [${sizes}]`);
 }
 
 export function ensureFixedWaypointsIncluded(
@@ -214,8 +197,26 @@ export function balancedClustering(params: {
     throw new Error("Number of days must be positive");
   }
 
-  const actualDays = Math.min(N, waypoints.length);
-  const seeds = selectDistributedSeeds(waypoints, actualDays);
+  // fixedDate가 있는 waypoint는 클러스터링에서 제외
+  // (이들은 나중에 올바른 날짜의 클러스터에 강제 배정됨)
+  const waypointsToCluster = waypoints.filter(
+    (wp) => !(wp.isFixed && wp.fixedDate)
+  );
+
+  // 고정 일정이 모두 제외되어 클러스터링할 waypoint가 없는 경우 처리
+  if (waypointsToCluster.length === 0) {
+    // 모든 waypoint가 고정 일정인 경우, 빈 클러스터들을 반환
+    // (고정 일정은 나중에 assignFixedWaypointsToClusters에서 배정됨)
+    return Array.from({ length: N }, (_, index) => ({
+      clusterId: `cluster-${index + 1}`,
+      dayIndex: index + 1,
+      waypointIds: [],
+      centroid: { lat: 0, lng: 0 }, // 임시 값, 나중에 재계산됨
+    }));
+  }
+
+  const actualDays = Math.min(N, waypointsToCluster.length);
+  const seeds = selectDistributedSeeds(waypointsToCluster, actualDays);
 
   if (seeds.length === 0) {
     throw new Error("Failed to select seeds for clustering");
@@ -223,8 +224,8 @@ export function balancedClustering(params: {
 
   const clusters = initializeClusters(seeds);
 
-  // Assign waypoints to clusters
-  for (const waypoint of waypoints) {
+  // Assign waypoints to clusters (fixedDate가 없는 waypoint만)
+  for (const waypoint of waypointsToCluster) {
     if (seeds.find((seed) => seed.id === waypoint.id)) {
       continue;
     }
@@ -233,7 +234,13 @@ export function balancedClustering(params: {
   }
 
   balanceClusterSizes(clusters, targetPerDay);
-  ensureFixedWaypointsIncluded(clusters, fixedIds, waypoints);
+  // fixedDate가 없는 고정 일정만 ensureFixedWaypointsIncluded에서 처리
+  // (fixedDate가 있는 것은 나중에 assignFixedWaypointsToClusters에서 처리)
+  const fixedIdsWithoutDate = fixedIds.filter((id) => {
+    const wp = waypoints.find((w) => w.id === id);
+    return wp && !wp.fixedDate;
+  });
+  ensureFixedWaypointsIncluded(clusters, fixedIdsWithoutDate, waypoints);
 
   // Filter out empty clusters
   const nonEmptyClusters = clusters.filter((c) => c.waypoints.length > 0);

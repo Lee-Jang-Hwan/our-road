@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useState, useEffect, useCallback } from "react";
+import { use, useState, useEffect } from "react";
 import Link from "next/link";
 import { LuChevronLeft, LuPlus, LuCalendarClock } from "react-icons/lu";
 import { AlertCircle } from "lucide-react";
@@ -45,36 +45,6 @@ export default function SchedulePage({ params }: SchedulePageProps) {
     endDate: "",
   });
   const [isInitialized, setIsInitialized] = useState(false);
-
-  // DB에서 데이터 로드
-  const loadDataFromDB = useCallback(async () => {
-    try {
-      // 병렬로 데이터 로드
-      const [tripResult, placesResult, schedulesResult] = await Promise.all([
-        getTrip(tripId),
-        getPlaces(tripId),
-        getFixedSchedules(tripId),
-      ]);
-
-      if (tripResult.success && tripResult.data) {
-        setTripDates({
-          startDate: tripResult.data.startDate,
-          endDate: tripResult.data.endDate,
-        });
-      }
-
-      if (placesResult.success && placesResult.data) {
-        setPlaces(placesResult.data);
-      }
-
-      if (schedulesResult.success && schedulesResult.data) {
-        setSchedules(schedulesResult.data);
-        saveFixedSchedules(schedulesResult.data);
-      }
-    } catch (error) {
-      console.error("데이터 로드 실패:", error);
-    }
-  }, [tripId, saveFixedSchedules]);
 
   // 초기 로드
   useEffect(() => {
@@ -338,7 +308,7 @@ export default function SchedulePage({ params }: SchedulePageProps) {
       </div>
 
       {/* 하단 버튼 */}
-      <div className="sticky bottom-0 p-4 bg-background border-t safe-area-bottom">
+      <div className="sticky bottom-0 p-4 backdrop-blur-sm bg-background/80 border-t pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:static md:border-t-0 md:pt-4 md:pb-4">
         <Link href={`/plan/${tripId}`}>
           <Button variant="outline" className="w-full h-12">
             완료
