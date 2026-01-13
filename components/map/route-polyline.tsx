@@ -371,7 +371,7 @@ interface RealRoutePolylineProps {
  * - 여러 경로가 겹칠 때 오프셋을 적용하여 나란히 표시
  * - 선택된 경로는 더 두껍고 불투명하게, 비선택 경로는 더 얇고 투명하게 표시
  */
-export function RealRoutePolyline({
+export const RealRoutePolyline = React.memo(function RealRoutePolyline({
   segments,
   strokeWeight = 4,
   strokeOpacity = 0.8,
@@ -379,6 +379,36 @@ export function RealRoutePolyline({
   selectedSegmentIndex,
   enableOffset = true,
 }: RealRoutePolylineProps) {
+  // 디버깅 로그 (개발 환경에서만)
+  if (process.env.NODE_ENV === "development" && segments.length > 0) {
+    const segmentsWithPolyline = segments.filter(s => s.encodedPath || s.path).length;
+    const segmentsWithoutPolyline = segments.length - segmentsWithPolyline;
+    
+    if (segmentsWithoutPolyline > 0) {
+      console.group(`[RealRoutePolyline] 렌더링 - 총 ${segments.length}개 구간`);
+      console.log(`실선 표시: ${segmentsWithPolyline}개, 점선 표시: ${segmentsWithoutPolyline}개`);
+      
+      segments.forEach((seg, idx) => {
+        if (!seg.encodedPath && !seg.path) {
+          console.warn(`구간 ${idx + 1}: polyline 없음 → 점선으로 표시`, {
+            from: `${seg.from.lat.toFixed(4)}, ${seg.from.lng.toFixed(4)}`,
+            to: `${seg.to.lat.toFixed(4)}, ${seg.to.lng.toFixed(4)}`,
+            transportMode: seg.transportMode,
+          });
+        } else {
+          console.log(`구간 ${idx + 1}: polyline 있음 → 실선으로 표시`, {
+            encodedPath: !!seg.encodedPath,
+            path: !!seg.path,
+            pathLength: seg.path?.length || 0,
+            encodedPathLength: seg.encodedPath?.length || 0,
+          });
+        }
+      });
+      
+      console.groupEnd();
+    }
+  }
+
   // 오프셋 계산 (여러 경로가 겹칠 때 나란히 표시)
   const offsets = React.useMemo(() => {
     if (!enableOffset || segments.length <= 1) {
@@ -477,7 +507,41 @@ export function RealRoutePolyline({
       })}
     </>
   );
-}
+}, (prevProps, nextProps) => {
+  // segments 배열이 변경되었는지 확인
+  if (prevProps.segments.length !== nextProps.segments.length) {
+    return false;
+  }
+  
+  // props 비교
+  if (
+    prevProps.strokeWeight !== nextProps.strokeWeight ||
+    prevProps.strokeOpacity !== nextProps.strokeOpacity ||
+    prevProps.useSegmentColors !== nextProps.useSegmentColors
+  ) {
+    return false;
+  }
+  
+  // 각 segment의 주요 속성 비교
+  for (let i = 0; i < prevProps.segments.length; i++) {
+    const prev = prevProps.segments[i];
+    const next = nextProps.segments[i];
+    
+    if (
+      prev.from.lat !== next.from.lat ||
+      prev.from.lng !== next.from.lng ||
+      prev.to.lat !== next.to.lat ||
+      prev.to.lng !== next.to.lng ||
+      prev.encodedPath !== next.encodedPath ||
+      prev.path?.length !== next.path?.length ||
+      prev.transportMode !== next.transportMode
+    ) {
+      return false;
+    }
+  }
+  
+  return true;
+});
 
 export type {
   RoutePolylineProps,

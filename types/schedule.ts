@@ -207,8 +207,11 @@ export interface TransportInfoRow {
       section_time: number;
       station_count?: number;
       start_name?: string;
+      start_coord?: { lat: number; lng: number };
       end_name?: string;
-      polyline?: string; // ← 추가 필요
+      end_coord?: { lat: number; lng: number };
+      polyline?: string;
+      pass_stop_coords?: Array<{ lat: number; lng: number }>;
       lane?: {
         name: string;
         bus_no?: string;
@@ -277,3 +280,51 @@ export interface ItinerarySummary {
   /** 예상 총 비용 (원) */
   estimatedCost?: number;
 }
+
+// ============================================
+// Edit Mode Types (편집 모드 관련 타입)
+// ============================================
+
+/**
+ * 편집 모드 상태 관리 타입
+ */
+export interface EditState {
+  isEditing: boolean;
+  originalItinerary: DailyItinerary[];
+  editedItinerary: DailyItinerary[];
+  saveStatus: "idle" | "saving" | "saved" | "error";
+  lastSavedAt?: Date;
+  changes: {
+    moved: Array<{
+      placeId: string;
+      fromDay: number;
+      fromOrder: number;
+      toDay: number;
+      toOrder: number;
+    }>;
+    added: Array<{
+      placeId: string;
+      day: number;
+      order: number;
+    }>;
+    deleted: string[];
+    durationChanged: Array<{
+      placeId: string;
+      oldDuration: number;
+      newDuration: number;
+    }>;
+    fixedScheduleChanged: boolean;
+  };
+}
+
+/**
+ * 드래그 항목 ID 형식
+ * 형식: day-{dayNumber}-place-{placeId}
+ */
+export type DragItemId = `day-${number}-place-${string}`;
+
+/**
+ * 드롭 존 ID 형식
+ * 형식: day-{dayNumber}-drop-{insertIndex}
+ */
+export type DropZoneId = `day-${number}-drop-${number}`;

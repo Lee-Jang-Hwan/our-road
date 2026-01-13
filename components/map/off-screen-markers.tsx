@@ -270,7 +270,7 @@ export function FitBoundsButton({ markers, className }: FitBoundsButtonProps) {
   return (
     <button
       onClick={handleFitBounds}
-      className={`absolute bottom-3 right-3 z-10 bg-white text-gray-700 p-2 rounded-lg shadow-md hover:bg-gray-50 transition-colors ${className || ""}`}
+      className={`absolute top-3 right-3 z-10 bg-white text-gray-700 p-2 rounded-lg shadow-md hover:bg-gray-50 transition-colors ${className || ""}`}
       title="모든 장소 보기"
     >
       <svg

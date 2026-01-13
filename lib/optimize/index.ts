@@ -133,6 +133,39 @@ export {
 export type { DailyTimeConfigOptions } from "./types";
 
 // ============================================
+// Recalculate Time Exports
+// ============================================
+
+export { recalculateItineraryTimes } from "./recalculate-time";
+
+// ============================================
+// Reuse Route Info Exports (Client-safe)
+// ============================================
+
+// Client-safe 함수만 export (server-only 함수는 직접 import 필요)
+export {
+  getRouteFromDistanceMatrix,
+} from "./reuse-route-info-client";
+
+// Note: getRouteFromStoredItinerary is server-only and should be imported
+// directly from "./reuse-route-info" in server actions/components
+
+// ============================================
+// Validate Itinerary Exports
+// ============================================
+
+export {
+  validateItinerary,
+  validateDayHasPlaces,
+  validateDuration,
+} from "./validate-itinerary";
+
+export type {
+  ValidationError,
+  ValidationResult,
+} from "./validate-itinerary";
+
+// ============================================
 // Distance Matrix Exports
 // ============================================
 

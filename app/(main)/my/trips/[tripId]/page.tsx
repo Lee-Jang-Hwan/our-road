@@ -28,7 +28,7 @@ import { useSafeBack } from "@/hooks/use-safe-back";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, SquarePen } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -61,6 +61,7 @@ import { deleteTrip } from "@/actions/trips/delete-trip";
 import { getPlaces } from "@/actions/places";
 import { optimizeRoute } from "@/actions/optimize/optimize-route";
 import { saveItinerary } from "@/actions/optimize/save-itinerary";
+import { recalculateRoutes } from "@/actions/itinerary/recalculate-routes";
 import { getSegmentColor } from "@/lib/utils";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import type { TripWithDetails, TripStatus, Coordinate } from "@/types";
@@ -155,6 +156,8 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
   // 선택된 장소의 좌표 (맵 이동용)
   const [selectedPlaceCenter, setSelectedPlaceCenter] =
     useState<Coordinate | null>(null);
+  // 경로 재계산 상태
+  const [isRecalculating, setIsRecalculating] = useState(false);
 
   // 최적화 관련 상태
   const [isOptimizing, setIsOptimizing] = useState(false);
@@ -650,7 +653,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
                 ? subPath.polyline
                 : subPath.polyline || transport.polyline,
             transportMode: subTransportMode,
-            segmentIndex: 0,
+            segmentIndex: 0, // 출발지 → 첫 장소: 첫 번째 장소 마커 색상과 일치
             isFromAccommodation,
           });
         }
@@ -661,7 +664,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
           to: toCoord,
           encodedPath: transport.polyline,
           transportMode: baseTransportMode,
-          segmentIndex: 0,
+          segmentIndex: 0, // 출발지 → 첫 장소: 첫 번째 장소 마커 색상과 일치
           isFromAccommodation,
         });
       }
@@ -710,7 +713,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
                   : subPath.polyline || transport.polyline,
               path: pathCoords,
               transportMode: subTransportMode,
-              segmentIndex: i + 1,
+              segmentIndex: i + 1, // i번째 장소 → (i+1)번째 장소: (i+1)번째 장소 마커 색상과 일치
               isFromAccommodation: isAccommodationCoord(subFrom),
               isToAccommodation: isAccommodationCoord(subTo),
             });
@@ -722,7 +725,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
             to: toCoord,
             encodedPath: transport.polyline,
             transportMode: baseTransportMode,
-            segmentIndex: i + 1,
+            segmentIndex: i + 1, // i번째 장소 → (i+1)번째 장소: (i+1)번째 장소 마커 색상과 일치
             isFromAccommodation: isAccommodationCoord(fromCoord),
             isToAccommodation: isAccommodationCoord(toCoord),
           });
@@ -770,7 +773,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
                 ? subPath.polyline
                 : subPath.polyline || transport.polyline,
             transportMode: subTransportMode,
-            segmentIndex: lastIndex,
+            segmentIndex: lastIndex, // 마지막 장소 → 도착지: 마지막 장소 마커 색상과 일치
             isToAccommodation,
             isToDestination,
           });
@@ -782,7 +785,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
           to: toCoord,
           encodedPath: transport.polyline,
           transportMode: baseTransportMode,
-          segmentIndex: lastIndex,
+          segmentIndex: lastIndex, // 마지막 장소 → 도착지: 마지막 장소 마커 색상과 일치
           isToAccommodation,
           isToDestination,
         });
@@ -857,6 +860,31 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
   const handleRetryOptimization = () => {
     setOptimizeError(null);
     runOptimization();
+  };
+
+  // 경로 재계산 핸들러
+  const handleRecalculateRoutes = async () => {
+    setIsRecalculating(true);
+    try {
+      const result = await recalculateRoutes({
+        tripId,
+      });
+
+      if (result.success && result.data) {
+        // DB에서 최신 데이터 다시 로드
+        const reloadResult = await getTripWithDetails(tripId);
+        if (reloadResult.success && reloadResult.data) {
+          setTrip(reloadResult.data);
+        }
+        showSuccessToast("경로가 재계산되었습니다.");
+      } else {
+        showErrorToast(result.error || "경로 재계산에 실패했습니다.");
+      }
+    } catch (error) {
+      showErrorToast("경로 재계산 중 오류가 발생했습니다.");
+    } finally {
+      setIsRecalculating(false);
+    }
   };
 
   // 로딩 중 또는 최적화 중 화면 (스켈레톤 대신 애니메이션 표시)
@@ -940,6 +968,17 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
         <h1 className="font-semibold text-lg flex-1 line-clamp-1">
           {trip.title}
         </h1>
+        {hasItinerary && (
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleStartNavigation}
+            className="gap-2 bg-black text-white hover:bg-black/90"
+          >
+            <LuNavigation className="w-4 h-4" />
+            네비게이션
+          </Button>
+        )}
         <Button variant="ghost" size="icon" onClick={handleShare}>
           <LuShare2 className="w-5 h-5" />
         </Button>
@@ -1018,18 +1057,6 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
             <LuMapPin className="w-4 h-4 shrink-0" />
             <span>장소 {trip.places.length}곳</span>
           </div>
-          {!hasItinerary && (
-            <Link href={`/plan/${tripId}`}>
-              <Button
-                variant="default"
-                size="sm"
-                className="bg-black text-white hover:bg-gray-900"
-              >
-                <LuPencil className="w-4 h-4 mr-2" />
-                편집하기
-              </Button>
-            </Link>
-          )}
           {hasItinerary && (
             <div className="flex items-center gap-1.5">
               <LuClock className="w-4 h-4 shrink-0" />
@@ -1162,18 +1189,20 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
         <div className="flex gap-3 pb-4">
           <Button
             variant="outline"
-            className="flex-1 h-12"
+            className="flex-1 h-12 font-bold"
             onClick={() => router.push(`/plan/${tripId}`)}
           >
             <LuPencil className="w-4 h-4 mr-2" />
-            편집하기
+            자동 경로 변경
           </Button>
-          {hasItinerary && (
-            <Button className="flex-1 h-12" onClick={handleStartNavigation}>
-              <LuNavigation className="w-4 h-4 mr-2" />
-              네비게이션
-            </Button>
-          )}
+          <Button
+            variant="default"
+            className="flex-1 h-12 bg-black text-white hover:bg-black/90 font-bold"
+            onClick={() => router.push(`/my/trips/${tripId}/edit`)}
+          >
+            <SquarePen className="h-4 w-4 mr-2" />
+            수동 경로 변경
+          </Button>
           {!hasItinerary && (
             <Button
               variant="destructive"
