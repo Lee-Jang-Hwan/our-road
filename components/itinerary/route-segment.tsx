@@ -11,13 +11,16 @@ import {
   Banknote,
   Bus,
   Train,
-  Ship,
   ChevronDown,
   ChevronUp,
+  MapPin,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
-import type { RouteSegment as RouteSegmentType, TransportMode } from "@/types/route";
+import type {
+  RouteSegment as RouteSegmentType,
+  TransportMode,
+} from "@/types/route";
 
 // 이동수단 아이콘
 const transportIcons: Record<TransportMode, React.ReactNode> = {
@@ -68,20 +71,36 @@ export function RouteSegment({
   compact = false,
   className,
 }: RouteSegmentProps) {
-  const icon = transportIcons[segment.mode] || <ArrowDown className="h-3.5 w-3.5" />;
+  const icon = transportIcons[segment.mode] || (
+    <ArrowDown className="h-3.5 w-3.5" />
+  );
 
   if (compact) {
     return (
       <div
         className={cn(
-          "flex items-center gap-1.5 text-xs text-muted-foreground",
-          className
+          "flex items-center gap-1.5 text-xs text-muted-foreground flex-wrap",
+          className,
         )}
       >
         {icon}
         <span>{formatDuration(segment.duration)}</span>
-        <span className="text-muted-foreground/50">·</span>
-        <span>{formatDistance(segment.distance)}</span>
+        {segment.mode === "car" && segment.taxiFare && segment.taxiFare > 0 && (
+          <>
+            <span className="text-muted-foreground/50">·</span>
+            <span className="text-foreground text-[10px] font-medium">
+              택시 ₩{segment.taxiFare.toLocaleString()}
+            </span>
+          </>
+        )}
+        {segment.mode === "car" && segment.fare && segment.fare > 0 && (
+          <>
+            <span className="text-muted-foreground/50">·</span>
+            <span className="text-blue-600 text-[10px] font-medium">
+              톨비 ₩{segment.fare.toLocaleString()}
+            </span>
+          </>
+        )}
       </div>
     );
   }
@@ -128,16 +147,14 @@ interface RouteSegmentConnectorProps {
 function getTrafficIcon(trafficType: number, className?: string) {
   switch (trafficType) {
     case 1: // 지하철
-    case 10: // 열차
+    case 4: // 기차
       return <Train className={cn("w-3 h-3", className)} />;
     case 2: // 버스
-    case 11: // 고속버스
-    case 12: // 시외버스
+    case 5: // 고속버스
+    case 6: // 시외버스
       return <Bus className={cn("w-3 h-3", className)} />;
     case 3: // 도보
       return <Footprints className={cn("w-3 h-3", className)} />;
-    case 14: // 해운
-      return <Ship className={cn("w-3 h-3", className)} />;
     default:
       return <TrainFront className={cn("w-3 h-3", className)} />;
   }
@@ -148,14 +165,20 @@ function getTrafficIcon(trafficType: number, className?: string) {
  */
 function getTrafficLabel(trafficType: number): string {
   switch (trafficType) {
-    case 1: return "지하철";
-    case 2: return "버스";
-    case 3: return "도보";
-    case 10: return "열차";
-    case 11: return "고속버스";
-    case 12: return "시외버스";
-    case 14: return "해운";
-    default: return "대중교통";
+    case 1:
+      return "지하철";
+    case 2:
+      return "버스";
+    case 3:
+      return "도보";
+    case 4:
+      return "기차";
+    case 5:
+      return "고속버스";
+    case 6:
+      return "시외버스";
+    default:
+      return "대중교통";
   }
 }
 
@@ -167,13 +190,76 @@ export function RouteSegmentConnector({
   className,
 }: RouteSegmentConnectorProps) {
   const [isExpanded, setIsExpanded] = React.useState(false);
-  const icon = transportIcons[segment.mode] || <ArrowDown className="h-3.5 w-3.5" />;
+  const icon = transportIcons[segment.mode] || (
+    <ArrowDown className="h-3.5 w-3.5" />
+  );
   const hasTransitDetails = segment.mode === "public" && segment.transitDetails;
+  const hasCarSegments =
+    segment.mode === "car" &&
+    segment.carSegments &&
+    segment.carSegments.length > 0;
 
   // 대중교통 구간만 필터링 (도보 제외)
   const transitPaths = hasTransitDetails
     ? segment.transitDetails!.subPaths.filter((sp) => sp.trafficType !== 3)
     : [];
+
+  // 개발 환경: 디버깅 로그
+  if (process.env.NODE_ENV === "development" && segment.mode === "car") {
+    console.group("🚗 [RouteSegmentConnector] 자동차 구간 정보");
+    console.log("기본 정보:", {
+      mode: segment.mode,
+      distance: segment.distance,
+      duration: segment.duration,
+      description: segment.description,
+    });
+    console.log("요금 정보:", {
+      fare: segment.fare,
+      taxiFare: segment.taxiFare,
+    });
+    console.log("구간 정보:", {
+      hasCarSegments,
+      carSegmentsCount: segment.carSegments?.length ?? 0,
+      guidesCount: segment.guides?.length ?? 0,
+    });
+    if (segment.guides && segment.guides.length > 0) {
+      console.log(
+        "IC/톨게이트 안내:",
+        segment.guides.map((g) => ({
+          name: g.name,
+          distance: g.distance,
+          duration: g.duration,
+        })),
+      );
+    }
+    if (segment.carSegments && segment.carSegments.length > 0) {
+      console.log("구간별 상세 정보:");
+      segment.carSegments.forEach((s, idx) => {
+        console.log(`  구간 ${idx + 1}:`, {
+          index: s.index,
+          distance: `${s.distance}m`,
+          duration: `${s.duration}분`,
+          description: s.description || "(설명 없음)",
+          tollFare: s.tollFare ? `₩${s.tollFare.toLocaleString()}` : "없음",
+          guidesCount: s.guides?.length ?? 0,
+          roadNamesCount: s.roadNames?.length ?? 0,
+        });
+        if (s.roadNames && s.roadNames.length > 0) {
+          console.log(
+            `    전체 도로명 (${s.roadNames.length}개):`,
+            s.roadNames,
+          );
+        }
+        if (s.guides && s.guides.length > 0) {
+          console.log(
+            `    IC/톨게이트:`,
+            s.guides.map((g) => g.name),
+          );
+        }
+      });
+    }
+    console.groupEnd();
+  }
 
   return (
     <div className={cn("relative py-2 pl-[18px]", className)}>
@@ -204,14 +290,21 @@ export function RouteSegmentConnector({
                   <span
                     key={index}
                     className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-medium text-white"
-                    style={{ backgroundColor: subPath.lane?.lineColor || "#6b7280" }}
+                    style={{
+                      backgroundColor: subPath.lane?.lineColor || "#6b7280",
+                    }}
                   >
                     {getTrafficIcon(subPath.trafficType, "w-2.5 h-2.5")}
-                    <span>{subPath.lane?.name || getTrafficLabel(subPath.trafficType)}</span>
+                    <span>
+                      {subPath.lane?.name ||
+                        getTrafficLabel(subPath.trafficType)}
+                    </span>
                   </span>
                 ))}
                 {transitPaths.length > 3 && (
-                  <span className="text-[10px] text-muted-foreground">+{transitPaths.length - 3}</span>
+                  <span className="text-[10px] text-muted-foreground">
+                    +{transitPaths.length - 3}
+                  </span>
                 )}
               </div>
 
@@ -253,7 +346,8 @@ export function RouteSegmentConnector({
                       {subPath.trafficType === 3 ? (
                         // 도보
                         <span className="text-muted-foreground">
-                          도보 {formatDistance(subPath.distance)} ({subPath.sectionTime}분)
+                          도보 {formatDistance(subPath.distance)} (
+                          {subPath.sectionTime}분)
                         </span>
                       ) : (
                         // 대중교통
@@ -261,19 +355,27 @@ export function RouteSegmentConnector({
                           <div className="flex items-center gap-1 flex-wrap">
                             <span
                               className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium text-white"
-                              style={{ backgroundColor: subPath.lane?.lineColor || "#6b7280" }}
+                              style={{
+                                backgroundColor:
+                                  subPath.lane?.lineColor || "#6b7280",
+                              }}
                             >
-                              {subPath.lane?.name || getTrafficLabel(subPath.trafficType)}
+                              {subPath.lane?.name ||
+                                getTrafficLabel(subPath.trafficType)}
                             </span>
                             {subPath.way && (
-                              <span className="text-muted-foreground">{subPath.way} 방면</span>
+                              <span className="text-muted-foreground">
+                                {subPath.way} 방면
+                              </span>
                             )}
                           </div>
                           <div className="mt-0.5 text-foreground">
                             {subPath.startName} → {subPath.endName}
                           </div>
                           <div className="text-muted-foreground">
-                            {subPath.stationCount && <span>{subPath.stationCount}개 정류장 · </span>}
+                            {subPath.stationCount && (
+                              <span>{subPath.stationCount}개 정류장 · </span>
+                            )}
                             {subPath.sectionTime}분
                           </div>
                         </div>
@@ -284,8 +386,105 @@ export function RouteSegmentConnector({
               </div>
             )}
           </div>
+        ) : hasCarSegments ? (
+          // 자동차 구간별 정보 표시
+          <div className="space-y-1.5">
+            {/* 요약 정보 (항상 표시) */}
+            <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
+              <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded">
+                {icon}
+                <span>{formatDuration(segment.duration)}</span>
+              </div>
+
+              {/* 택시 요금 */}
+              {segment.taxiFare && segment.taxiFare > 0 && (
+                <span className="text-foreground text-xs font-medium">
+                  택시 ₩{segment.taxiFare.toLocaleString()}
+                </span>
+              )}
+
+              {/* 펼치기/접기 버튼 */}
+              <button
+                type="button"
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {isExpanded ? (
+                  <>
+                    <ChevronUp className="w-3 h-3" />
+                    <span>접기</span>
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="w-3 h-3" />
+                    <span>상세</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* 상세 구간 정보 (주요 안내) */}
+            {isExpanded && segment.carSegments && (
+              <div className="ml-2 pl-3 border-l-2 border-primary/20 space-y-2">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="text-[14px] font-medium text-muted-foreground">
+                    경로 안내
+                  </div>
+                  
+                <span className="text-xs font-medium">·</span>
+                <span>{formatDistance(segment.distance)}</span>
+                  {segment.fare && segment.fare > 0 && (
+                    <span className="text-blue-600 text-xs font-medium">
+                      톨비 ₩{segment.fare.toLocaleString()}
+                    </span>
+                  )}
+                </div>
+
+                {segment.carSegments.map((carSegment, index) => (
+                  <div key={index} className="space-y-1.5">
+                    <div className="flex items-start gap-2 text-xs">
+                      {/* 내용 */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-foreground font-medium">
+                            {carSegment.description ||
+                              `구간 ${carSegment.index + 1}`}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : segment.mode === "car" ? (
+          // 자동차 모드 (carSegments 없어도 fare, taxiFare, guides 표시)
+          <div className="space-y-1.5">
+            {/* 요약 정보 */}
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded">
+                {icon}
+                <span>{formatDuration(segment.duration)}</span>
+              </div>
+
+              {/* 택시 요금 */}
+              {segment.taxiFare && segment.taxiFare > 0 && (
+                <span className="text-blue-600 text-xs font-medium">
+                  택시 ₩{segment.taxiFare.toLocaleString()}
+                </span>
+              )}
+
+              {/* 통행료 */}
+              {segment.fare && segment.fare > 0 && (
+                <span className="text-primary text-xs font-medium">
+                  톨비 ₩{segment.fare.toLocaleString()}
+                </span>
+              )}
+            </div>
+          </div>
         ) : (
-          // 기본 표시 (도보, 자동차 등)
+          // 기본 표시 (도보 등)
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded">
               {icon}
@@ -325,15 +524,12 @@ export function RouteSegmentCard({
   toName,
   className,
 }: RouteSegmentCardProps) {
-  const icon = transportIcons[segment.mode] || <ArrowDown className="h-4 w-4" />;
+  const icon = transportIcons[segment.mode] || (
+    <ArrowDown className="h-4 w-4" />
+  );
 
   return (
-    <div
-      className={cn(
-        "border rounded-lg p-3 bg-card",
-        className
-      )}
-    >
+    <div className={cn("border rounded-lg p-3 bg-card", className)}>
       {/* 헤더 */}
       <div className="flex items-center gap-2 mb-2">
         <div className="flex items-center gap-1.5 text-muted-foreground">
@@ -348,7 +544,9 @@ export function RouteSegmentCard({
       {(fromName || toName) && (
         <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
           {fromName && <span>{fromName}</span>}
-          {fromName && toName && <ArrowDown className="h-3 w-3 rotate-[-90deg]" />}
+          {fromName && toName && (
+            <ArrowDown className="h-3 w-3 rotate-[-90deg]" />
+          )}
           {toName && <span>{toName}</span>}
         </div>
       )}
@@ -395,13 +593,15 @@ export function RouteSegmentInline({
   segment,
   className,
 }: RouteSegmentInlineProps) {
-  const icon = transportIcons[segment.mode] || <ArrowDown className="h-3 w-3" />;
+  const icon = transportIcons[segment.mode] || (
+    <ArrowDown className="h-3 w-3" />
+  );
 
   return (
     <span
       className={cn(
         "inline-flex items-center gap-1 text-xs text-muted-foreground",
-        className
+        className,
       )}
     >
       {icon}

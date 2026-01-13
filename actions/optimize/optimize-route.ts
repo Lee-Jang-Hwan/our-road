@@ -32,7 +32,11 @@ import {
   getDaysBetween,
   generateDateRange,
   createDistanceMatrixGetter,
+  generateDailyTimeConfigs,
+  DEFAULT_MIDDLE_DAY_START_TIME,
+  DEFAULT_MIDDLE_DAY_END_TIME,
 } from "@/lib/optimize";
+import type { DailyTimeConfig } from "@/lib/optimize/types";
 import { optimizePublicTransitRoute } from "./optimize-route-public-transit";
 
 // ============================================
@@ -212,12 +216,26 @@ async function createDailyItinerary(
     const firstPlaceId = dayPlaceIds[0];
     const entry = getDistance(originId, firstPlaceId);
     if (entry) {
+      // 개발 환경: transportFromOrigin 생성 확인
+      if (process.env.NODE_ENV === "development") {
+        console.group("🛣️ [RouteSegment 생성] transportFromOrigin");
+        console.log("entry.fare:", entry.fare);
+        console.log("entry.taxiFare:", entry.taxiFare);
+        console.log("entry.guides:", JSON.stringify(entry.guides, null, 2));
+        console.log("entry.guides 개수:", entry.guides?.length ?? 0);
+        console.groupEnd();
+      }
+      
       transportFromOrigin = {
         mode: entry.mode,
         distance: entry.distance,
         duration: entry.duration,
         polyline: entry.polyline,
+        fare: entry.fare,
+        taxiFare: entry.taxiFare,
         transitDetails: entry.transitDetails,
+        carSegments: entry.carSegments,
+        guides: entry.guides,
       };
       // 泥??μ냼 ?꾩갑 ?쒓컙 = 異쒕컻 ?쒓컙 + ?대룞 ?쒓컙
       currentTime = timeToMinutes(dailyStartTime) + entry.duration;
@@ -248,12 +266,26 @@ async function createDailyItinerary(
       const entry = getDistance(placeId, nextPlaceId);
 
       if (entry) {
+        // 개발 환경: transportToNext 생성 확인
+        if (process.env.NODE_ENV === "development") {
+          console.group(`🛣️ [RouteSegment 생성] transportToNext - ${placeId} → ${nextPlaceId}`);
+          console.log("entry.fare:", entry.fare);
+          console.log("entry.taxiFare:", entry.taxiFare);
+          console.log("entry.guides:", JSON.stringify(entry.guides, null, 2));
+          console.log("entry.guides 개수:", entry.guides?.length ?? 0);
+          console.groupEnd();
+        }
+        
         transportToNext = {
           mode: entry.mode,
           distance: entry.distance,
           duration: entry.duration,
           polyline: entry.polyline,
+          fare: entry.fare,
+          taxiFare: entry.taxiFare,
           transitDetails: entry.transitDetails,
+          carSegments: entry.carSegments,
+          guides: entry.guides,
         };
 
         totalDistance += entry.distance;
@@ -282,12 +314,26 @@ async function createDailyItinerary(
     const lastPlaceId = dayPlaceIds[dayPlaceIds.length - 1];
     const entry = getDistance(lastPlaceId, destinationId);
     if (entry) {
+      // 개발 환경: transportToDestination 생성 확인
+      if (process.env.NODE_ENV === "development") {
+        console.group(`🛣️ [RouteSegment 생성] transportToDestination - ${lastPlaceId} → ${destinationId}`);
+        console.log("entry.fare:", entry.fare);
+        console.log("entry.taxiFare:", entry.taxiFare);
+        console.log("entry.guides:", JSON.stringify(entry.guides, null, 2));
+        console.log("entry.guides 개수:", entry.guides?.length ?? 0);
+        console.groupEnd();
+      }
+      
       transportToDestination = {
         mode: entry.mode,
         distance: entry.distance,
         duration: entry.duration,
         polyline: entry.polyline,
+        fare: entry.fare,
+        taxiFare: entry.taxiFare,
         transitDetails: entry.transitDetails,
+        carSegments: entry.carSegments,
+        guides: entry.guides,
       };
       totalDistance += entry.distance;
       totalDuration += entry.duration;
@@ -611,9 +657,18 @@ export async function optimizeRoute(
       return { startId, endId };
     });
 
-    const dailyMaxMinutes =
-      userOptions?.maxDailyMinutes ??
-      timeToMinutes(trip.dailyEndTime) - timeToMinutes(trip.dailyStartTime);
+    // 일자별 시간 설정 생성
+    // - 1일차: 여행 시작 시간 ~ 20:00
+    // - 중간 일차: 10:00 ~ 20:00
+    // - 마지막 일차: 10:00 ~ 여행 종료 시간
+    const dailyTimeConfigs: DailyTimeConfig[] = generateDailyTimeConfigs({
+      totalDays,
+      startDate: trip.startDate,
+      firstDayStartTime: trip.dailyStartTime,
+      lastDayEndTime: trip.dailyEndTime,
+      middleDayStartTime: DEFAULT_MIDDLE_DAY_START_TIME,
+      middleDayEndTime: DEFAULT_MIDDLE_DAY_END_TIME,
+    });
 
     const distributionResult = distributeToDaily(
       improvedResult.route,
@@ -624,8 +679,8 @@ export async function optimizeRoute(
         endDate: trip.endDate,
         dailyStartTime: trip.dailyStartTime,
         dailyEndTime: trip.dailyEndTime,
-        maxDailyMinutes: dailyMaxMinutes,
         fixedSchedules,
+        dailyTimeConfigs,
         dayEndpoints,
       }
     );
@@ -784,6 +839,11 @@ export async function optimizeRoute(
         }
       }
 
+      // 일자별 시간 설정 적용
+      const dayTimeConfig = dailyTimeConfigs[i];
+      const dayStartTime = minutesToTime(dayTimeConfig.startMinute);
+      const dayEndTime = minutesToTime(dayTimeConfig.endMinute);
+
       if (actualPlaceIds.length === 0) {
         // 鍮??좎? 湲곕낯 ?뺣낫留?
         itinerary.push({
@@ -794,10 +854,10 @@ export async function optimizeRoute(
           totalDuration: 0,
           totalStayDuration: 0,
           placeCount: 0,
-          startTime: trip.dailyStartTime,
-          endTime: trip.dailyStartTime,
-          dailyStartTime: trip.dailyStartTime,
-          dailyEndTime: trip.dailyEndTime,
+          startTime: dayStartTime,
+          endTime: dayStartTime,
+          dailyStartTime: dayStartTime,
+          dailyEndTime: dayEndTime,
           dayOrigin: dayOriginInfo,
           dayDestination: dayDestinationInfo,
         });
@@ -810,8 +870,8 @@ export async function optimizeRoute(
         distanceMatrix,
         date,
         i + 1,
-        trip.dailyStartTime,
-        trip.dailyEndTime,
+        dayStartTime,
+        dayEndTime,
         transportMode,
         actualStartId,
         actualEndId,

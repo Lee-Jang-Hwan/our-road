@@ -104,6 +104,16 @@ function convertTransportInfo(
           })),
         }
       : undefined,
+    carSegments: info.car_segments
+      ? info.car_segments.map((seg) => ({
+          index: seg.index,
+          distance: seg.distance,
+          duration: seg.duration,
+          tollFare: seg.toll_fare,
+          description: seg.description,
+          polyline: seg.polyline,
+        }))
+      : undefined,
   };
 }
 

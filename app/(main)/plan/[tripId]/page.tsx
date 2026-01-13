@@ -152,7 +152,7 @@ export default function TripEditPage({ params }: TripEditPageProps) {
   if (!isLoaded || !tripData) {
     return (
       <main className="flex flex-col min-h-[calc(100dvh-64px)]">
-        <header className="flex items-center justify-between px-4 py-3 border-b">
+        <header className="flex items-center justify-between px-4 py-1 border-b">
           <div className="flex items-center gap-3">
             <Skeleton className="w-10 h-10 rounded-lg" />
             <div>
@@ -223,7 +223,7 @@ export default function TripEditPage({ params }: TripEditPageProps) {
   return (
     <main className="flex flex-col min-h-[calc(100dvh-64px)]">
       {/* 헤더 */}
-      <header className="flex items-center justify-between px-4 py-3 border-b">
+      <header className="flex items-center justify-between px-4 py-1 border-b">
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"

@@ -32,7 +32,6 @@ interface PlacesPageProps {
   params: Promise<{ tripId: string }>;
 }
 
-
 export default function PlacesPage({ params }: PlacesPageProps) {
   const { tripId } = use(params);
   const { getDraftByTripId, savePlaces, isLoaded } = useTripDraft();
@@ -217,8 +216,8 @@ export default function PlacesPage({ params }: PlacesPageProps) {
 
   return (
     <main className="flex flex-col pb-10 min-h-[calc(100dvh-64px)]">
-      {/* ?ㅻ뜑 */}
-      <header className="flex items-center gap-3 px-4 py-3 border-b">
+      {/* 헤더 */}
+      <header className="flex items-center gap-3 px-4 py-1 border-b">
         <Button
           variant="ghost"
           size="icon"

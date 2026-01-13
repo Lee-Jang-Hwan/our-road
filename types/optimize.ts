@@ -36,11 +36,19 @@ export interface OptimizeOptions {
 
 /**
  * 최적화 옵션 기본값
+ *
+ * 참고: 일자별 시간 제약은 다음과 같이 적용됩니다:
+ * - 1일차: 여행 시작 시간(dailyStartTime) ~ 20:00
+ * - 중간 일차: 10:00 ~ 20:00
+ * - 마지막 일차: 10:00 ~ 여행 종료 시간(dailyEndTime)
+ * - 1일 여행: 여행 시작 시간 ~ 여행 종료 시간
+ *
+ * 아래 기본값은 일자별 시간 제약이 적용되지 않을 때 사용됩니다.
  */
 export const DEFAULT_OPTIMIZE_OPTIONS: OptimizeOptions = {
-  maxDailyMinutes: 480,
-  startHour: 9,
-  endHour: 21,
+  maxDailyMinutes: 600, // 10시간 (중간 일차 기준: 10:00~20:00)
+  startHour: 10,
+  endHour: 20,
   algorithm: "nearest_neighbor",
   improvementIterations: 100,
   timeWeight: 1.0,
@@ -161,6 +169,14 @@ export interface DistanceMatrix {
   polylines?: (string | null)[][];
   /** 대중교통 상세 정보 (public 모드일 때) */
   transitDetails?: (TransitDetails | null)[][];
+  /** 통행료 (원) - car 모드일 때 */
+  fares?: (number | null)[][];
+  /** 택시 요금 (원) - car 모드일 때 */
+  taxiFares?: (number | null)[][];
+  /** 주요 IC/톨게이트 안내 정보 - car 모드일 때 */
+  guidesMatrix?: (import("@/types/route").RouteGuide[] | null)[][];
+  /** 자동차 경로 구간별 정보 - car 모드일 때 */
+  carSegmentsMatrix?: (import("@/types/route").CarRouteSegment[] | null)[][];
 }
 
 /**

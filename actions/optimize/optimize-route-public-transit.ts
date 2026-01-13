@@ -28,7 +28,11 @@ import {
   timeToMinutes,
   minutesToTime,
   addMinutesToTime,
+  generateDailyTimeConfigs,
+  DEFAULT_MIDDLE_DAY_START_TIME,
+  DEFAULT_MIDDLE_DAY_END_TIME,
 } from "@/lib/optimize";
+import type { DailyTimeConfig } from "@/lib/optimize/types";
 import { calculateDistance } from "@/lib/algorithms/utils/geo";
 
 // ============================================
@@ -106,6 +110,7 @@ function convertTripOutputToOptimizeResult(
   fixedSchedules: FixedSchedule[],
   errors: OptimizeError[],
   startTime: number,
+  dailyTimeConfigs: DailyTimeConfig[],
 ): OptimizeResult {
   const totalDays = getDaysBetween(trip.startDate, trip.endDate);
   const dates = generateDateRange(trip.startDate, totalDays);
@@ -166,7 +171,12 @@ function convertTripOutputToOptimizeResult(
     let totalDistance = 0;
     let totalDuration = 0;
     let totalStayDuration = 0;
-    let currentTime = timeToMinutes(trip.dailyStartTime);
+
+    // 일자별 시간 설정 적용
+    const dayTimeConfig = dailyTimeConfigs[dayIndex];
+    const dayStartTime = dayTimeConfig ? minutesToTime(dayTimeConfig.startMinute) : trip.dailyStartTime;
+    const dayEndTime = dayTimeConfig ? minutesToTime(dayTimeConfig.endMinute) : trip.dailyEndTime;
+    let currentTime = dayTimeConfig?.startMinute ?? timeToMinutes(trip.dailyStartTime);
 
     // 출발지 정보 (첫날은 trip.origin, 숙소 있으면 숙소, 없으면 표시 안 함)
     let dayOrigin: DailyItinerary["dayOrigin"];
@@ -391,14 +401,14 @@ function convertTripOutputToOptimizeResult(
       }
     }
 
-    // startTime: 출발지 출발 시간 (dailyStartTime)
-    const startTime = trip.dailyStartTime;
+    // startTime: 출발지 출발 시간 (일자별 시작 시간)
+    const startTimeValue = dayStartTime;
 
     // endTime: 마지막 장소 출발 시간 + 도착지까지 이동 시간
-    let endTime =
-      schedule[schedule.length - 1]?.departureTime ?? trip.dailyStartTime;
+    let endTimeValue =
+      schedule[schedule.length - 1]?.departureTime ?? dayStartTime;
     if (transportToDestination) {
-      endTime = addMinutesToTime(endTime, transportToDestination.duration);
+      endTimeValue = addMinutesToTime(endTimeValue, transportToDestination.duration);
     }
 
     itinerary.push({
@@ -409,12 +419,12 @@ function convertTripOutputToOptimizeResult(
       totalDuration,
       totalStayDuration,
       placeCount: schedule.length,
-      startTime,
-      endTime,
+      startTime: startTimeValue,
+      endTime: endTimeValue,
       transportFromOrigin,
       transportToDestination,
-      dailyStartTime: trip.dailyStartTime,
-      dailyEndTime: trip.dailyEndTime,
+      dailyStartTime: dayStartTime,
+      dailyEndTime: dayEndTime,
       dayOrigin,
       dayDestination,
     });
@@ -483,23 +493,39 @@ export async function optimizePublicTransitRoute(
       ? resolveLatLng(trip.accommodations[0].location)
       : undefined;
 
-    // 일일 최대 시간 계산 (자동차 모드와 동일하게 처리)
-    const dailyMaxMinutes =
-      userOptions?.maxDailyMinutes ??
-      timeToMinutes(trip.dailyEndTime) - timeToMinutes(trip.dailyStartTime);
+    const totalDays = getDaysBetween(trip.startDate, trip.endDate);
+
+    // 일자별 시간 제약 생성
+    // - 1일차: 여행 시작 시간 ~ 20:00
+    // - 중간 일차: 10:00 ~ 20:00
+    // - 마지막 일차: 10:00 ~ 여행 종료 시간
+    const dailyTimeConfigs: DailyTimeConfig[] = generateDailyTimeConfigs({
+      totalDays,
+      startDate: trip.startDate,
+      firstDayStartTime: trip.dailyStartTime,
+      lastDayEndTime: trip.dailyEndTime,
+      middleDayStartTime: DEFAULT_MIDDLE_DAY_START_TIME,
+      middleDayEndTime: DEFAULT_MIDDLE_DAY_END_TIME,
+    });
+
+    // TripInput용 일자별 시간 제약 변환
+    const dailyTimeLimits = dailyTimeConfigs.map((config, index) => ({
+      dayNumber: index + 1,
+      maxMinutes: config.maxMinutes,
+      startTime: minutesToTime(config.startMinute),
+      endTime: minutesToTime(config.endMinute),
+    }));
 
     // TripInput 변환 (신규 알고리즘 호환)
     const tripInput: TripInput = {
       tripId,
-      days: getDaysBetween(trip.startDate, trip.endDate),
+      days: totalDays,
       start: originCoord,
       end: destinationCoord,
       lodging: lodgingCoord,
       tripStartDate: trip.startDate,
-      waypoints: places.map((place) =>
-        placeToWaypoint(place, fixedSchedules)
-      ),
-      dailyMaxMinutes,
+      waypoints: places.map((place) => placeToWaypoint(place, fixedSchedules)),
+      dailyTimeLimits,
     };
 
     console.log(
@@ -508,7 +534,7 @@ export async function optimizePublicTransitRoute(
         tripId,
         days: tripInput.days,
         waypointsCount: tripInput.waypoints.length,
-        dailyMaxMinutes,
+        dailyTimeLimits: dailyTimeLimits.map((l) => `Day${l.dayNumber}: ${l.startTime}-${l.endTime} (${l.maxMinutes}min)`),
       },
     );
 
@@ -523,6 +549,7 @@ export async function optimizePublicTransitRoute(
       fixedSchedules,
       errors,
       startTime,
+      dailyTimeConfigs,
     );
 
     // 여행 상태 업데이트
