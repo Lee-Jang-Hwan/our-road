@@ -142,6 +142,95 @@ export const DEFAULT_OPTIMIZE_CONFIG: OptimizeConfig = {
   noImprovementLimit: 20,
 };
 
+/**
+ * 중간 일차 기본 시간 설정 (1일차와 마지막 일차 제외)
+ */
+export const DEFAULT_MIDDLE_DAY_START_TIME = "10:00";
+export const DEFAULT_MIDDLE_DAY_END_TIME = "20:00";
+
+/**
+ * 일자별 시간 설정 생성 옵션
+ */
+export interface DailyTimeConfigOptions {
+  /** 총 일수 */
+  totalDays: number;
+  /** 여행 시작일 (YYYY-MM-DD) */
+  startDate: string;
+  /** 1일차 시작 시간 (HH:mm) - 여행 설정 시작 시간 */
+  firstDayStartTime: string;
+  /** 마지막 일차 종료 시간 (HH:mm) - 여행 설정 종료 시간 */
+  lastDayEndTime: string;
+  /** 중간 일차 시작 시간 (HH:mm) - 기본: 10:00 */
+  middleDayStartTime?: string;
+  /** 중간 일차 종료 시간 (HH:mm) - 기본: 20:00 */
+  middleDayEndTime?: string;
+}
+
+/**
+ * 일자별 시간 설정 생성
+ *
+ * - 1일차: 여행 시작 시간 ~ 중간 일차 종료 시간 (20:00)
+ * - 중간 일차: 10:00 ~ 20:00
+ * - 마지막 일차: 10:00 ~ 여행 종료 시간
+ * - 1일 여행인 경우: 여행 시작 시간 ~ 여행 종료 시간
+ *
+ * @param options - 일자별 시간 설정 옵션
+ * @returns 일자별 시간 설정 배열
+ */
+export function generateDailyTimeConfigs(
+  options: DailyTimeConfigOptions
+): DailyTimeConfig[] {
+  const {
+    totalDays,
+    startDate,
+    firstDayStartTime,
+    lastDayEndTime,
+    middleDayStartTime = DEFAULT_MIDDLE_DAY_START_TIME,
+    middleDayEndTime = DEFAULT_MIDDLE_DAY_END_TIME,
+  } = options;
+
+  const dates = generateDateRange(startDate, totalDays);
+  const configs: DailyTimeConfig[] = [];
+
+  for (let i = 0; i < totalDays; i++) {
+    const isFirstDay = i === 0;
+    const isLastDay = i === totalDays - 1;
+
+    let startTime: string;
+    let endTime: string;
+
+    if (totalDays === 1) {
+      // 1일 여행: 여행 시작 시간 ~ 여행 종료 시간
+      startTime = firstDayStartTime;
+      endTime = lastDayEndTime;
+    } else if (isFirstDay) {
+      // 1일차: 여행 시작 시간 ~ 중간 일차 종료 시간 (20:00)
+      startTime = firstDayStartTime;
+      endTime = middleDayEndTime;
+    } else if (isLastDay) {
+      // 마지막 일차: 중간 일차 시작 시간 (10:00) ~ 여행 종료 시간
+      startTime = middleDayStartTime;
+      endTime = lastDayEndTime;
+    } else {
+      // 중간 일차: 10:00 ~ 20:00
+      startTime = middleDayStartTime;
+      endTime = middleDayEndTime;
+    }
+
+    const startMinute = timeToMinutes(startTime);
+    const endMinute = timeToMinutes(endTime);
+
+    configs.push({
+      date: dates[i],
+      startMinute,
+      endMinute,
+      maxMinutes: endMinute - startMinute,
+    });
+  }
+
+  return configs;
+}
+
 // ============================================
 // Utility Functions
 // ============================================
