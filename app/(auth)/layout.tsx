@@ -1,5 +1,5 @@
+﻿import Image from "next/image";
 import Link from "next/link";
-import { LuRoute } from "react-icons/lu";
 
 export default function AuthLayout({
   children,
@@ -8,17 +8,21 @@ export default function AuthLayout({
 }) {
   return (
     <div className="flex flex-col min-h-[calc(100dvh-64px)]">
-      {/* 로고 헤더 */}
+      {/* 濡쒓퀬 ?ㅻ뜑 */}
       <div className="py-6 px-4">
         <Link href="/" className="flex items-center justify-center gap-2">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-            <LuRoute className="w-6 h-6 text-primary-foreground" />
-          </div>
-          <span className="text-2xl font-bold">OurRoad</span>
+          <Image
+            src="/RUrogo.png"
+            alt="RootUs logo"
+            width={40}
+            height={40}
+            className="h-10 w-10 rounded-xl"
+          />
+          <span className="text-2xl font-bold">RootUs</span>
         </Link>
       </div>
 
-      {/* 인증 컴포넌트 */}
+      {/* ?몄쬆 而댄룷?뚰듃 */}
       {children}
     </div>
   );

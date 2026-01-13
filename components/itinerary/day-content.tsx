@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Clock, Hotel, MapPin, ChevronDown, ChevronUp } from "lucide-react";
 
-import { cn } from "@/lib/utils";
+import { cn, getSegmentColor } from "@/lib/utils";
 import { normalizeTime } from "@/lib/optimize";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ScheduleItem } from "./schedule-item";
@@ -170,6 +170,7 @@ export function DayContent({
               {/* 일정 항목 */}
               <ScheduleItem
                 item={item}
+                orderColor={getSegmentColor(index)}
                 onClick={onItemClick ? () => onItemClick(item) : undefined}
                 onEdit={onEdit ? () => onEdit(item) : undefined}
                 onDelete={onDelete ? () => onDelete(item) : undefined}

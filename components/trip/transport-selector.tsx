@@ -1,7 +1,8 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
-import { Car, TrainFront, Footprints, Check } from "lucide-react";
+import Image from "next/image";
+import { Car, TrainFront, Footprints } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -10,21 +11,24 @@ import type { TransportMode } from "@/types/route";
 interface TransportOption {
   value: TransportMode;
   label: string;
-  description: string;
+  imageSrc: string;
+  imageAlt: string;
   icon: React.ReactNode;
 }
 
 const transportOptions: TransportOption[] = [
   {
     value: "public",
-    label: "대중교통",
-    description: "도보 + 대중교통",
+    label: "대중교통+도보",
+    imageSrc: "/bus.png",
+    imageAlt: "대중교통+도보",
     icon: <TrainFront className="h-5 w-5" />,
   },
   {
     value: "car",
     label: "자동차",
-    description: "자가용/렌터카",
+    imageSrc: "/car.png",
+    imageAlt: "자동차",
     icon: <Car className="h-5 w-5" />,
   },
 ];
@@ -36,9 +40,9 @@ interface TransportSelectorProps {
   onChange: (modes: TransportMode[]) => void;
   /** 비활성화 여부 */
   disabled?: boolean;
-  /** 다중 선택 허용 여부 */
+  /** 복수 선택 허용 여부 */
   multiple?: boolean;
-  /** 레이블 */
+  /** 라벨 */
   label?: string;
   /** 추가 클래스 */
   className?: string;
@@ -56,9 +60,7 @@ export function TransportSelector({
     if (disabled) return;
 
     if (multiple) {
-      // 다중 선택 모드
       if (value.includes(mode)) {
-        // 최소 1개는 선택되어야 함
         if (value.length > 1) {
           onChange(value.filter((m) => m !== mode));
         }
@@ -66,7 +68,6 @@ export function TransportSelector({
         onChange([...value, mode]);
       }
     } else {
-      // 단일 선택 모드
       onChange([mode]);
     }
   };
@@ -74,42 +75,47 @@ export function TransportSelector({
   const isSelected = (mode: TransportMode) => value.includes(mode);
 
   return (
-    <div className={cn("space-y-2 px-2", className)}>
+    <div className={cn("space-y-3 px-2", className)}>
       {label && (
         <label className="text-sm font-medium text-muted-foreground block">
           {label}
         </label>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-4">
         {transportOptions.map((option) => (
           <Button
             key={option.value}
             type="button"
-            variant={isSelected(option.value) ? "default" : "outline"}
+            variant="ghost"
             disabled={disabled}
             onClick={() => handleSelect(option.value)}
             className={cn(
-              "h-auto flex-col items-center justify-center py-3 px-2 touch-target-lg relative",
-              isSelected(option.value) && "ring-2 ring-primary ring-offset-2"
+              "group relative aspect-square w-full h-auto overflow-hidden rounded-2xl border border-muted/60 p-0 text-left shadow-sm transition",
+              "hover:-translate-y-0.5 hover:border-muted-foreground/30 hover:shadow-md",
+              isSelected(option.value) &&
+                "border-[rgba(40,110,220,0.55)] ring-2 ring-[rgba(40,110,220,0.35)] shadow-[0_12px_30px_-18px_rgba(40,110,220,0.6)]"
             )}
           >
-            {isSelected(option.value) && (
-              <div className="absolute top-2 right-2">
-                <Check className="h-4 w-4" />
-              </div>
-            )}
-            <div className="mb-2">{option.icon}</div>
-            <span className="font-medium text-sm">{option.label}</span>
-            <span
+            <Image
+              src={option.imageSrc}
+              alt={option.imageAlt}
+              fill
+              sizes="(max-width: 768px) 50vw, 240px"
+              className="object-cover transition duration-300 group-hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-white/45 via-white/5 to-transparent" />
+            <div
               className={cn(
-                "text-xs mt-0.5",
+                "absolute inset-0 transition",
                 isSelected(option.value)
-                  ? "text-primary-foreground/70"
-                  : "text-muted-foreground"
+                  ? "bg-[rgba(40,110,220,0.2)]"
+                  : "bg-transparent"
               )}
-            >
-              {option.description}
+            />
+            <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-white/60" />
+            <span className="absolute bottom-0 left-0 right-0 p-3 text-center text-sm font-semibold text-neutral-700 drop-shadow-sm">
+              {option.label}
             </span>
           </Button>
         ))}
@@ -138,15 +144,21 @@ export function TransportChip({ mode, className }: TransportChipProps) {
     <span
       className={cn(
         "inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium",
-        mode === "public" && "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-        mode === "car" && "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-        mode === "walking" && "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
+        mode === "public" &&
+          "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
+        mode === "car" &&
+          "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
+        mode === "walking" &&
+          "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
         className
       )}
     >
-      {React.cloneElement(option.icon as React.ReactElement<{ className?: string }>, {
-        className: "h-3 w-3",
-      })}
+      {React.cloneElement(
+        option.icon as React.ReactElement<{ className?: string }>,
+        {
+          className: "h-3 w-3",
+        }
+      )}
       {option.label}
     </span>
   );
