@@ -192,8 +192,7 @@ function getCheckInConfigForDate(
   return {
     accommodation,
     checkInTime: accommodation.checkInTime ?? DEFAULT_CHECKIN_TIME,
-    checkInDurationMin:
-      accommodation.checkInDurationMin ?? DEFAULT_CHECKIN_DURATION_MIN,
+    checkInDurationMin: DEFAULT_CHECKIN_DURATION_MIN,
   };
 }
 

@@ -63,6 +63,8 @@ export interface OptimizeRouteResult {
 // Helper Functions
 // ============================================
 
+const DEFAULT_CHECKIN_DURATION_MIN = 30;
+
 /**
  * Place를 Waypoint로 변환
  */
@@ -125,7 +127,7 @@ function convertTripOutputToOptimizeResult(
   const accommodation = trip.accommodations?.[0];
   const checkInDate = normalizeDateOnly(accommodation?.startDate);
   const checkInTime = accommodation?.checkInTime ?? "15:00";
-  const checkInDurationMin = accommodation?.checkInDurationMin ?? 30;
+  const checkInDurationMin = DEFAULT_CHECKIN_DURATION_MIN;
   const checkInDayIndex =
     checkInDate ? dates.indexOf(checkInDate) : -1;
 
@@ -744,7 +746,7 @@ export async function optimizePublicTransitRoute(
       : undefined;
     const checkInDate = normalizeDateOnly(accommodation?.startDate);
     const checkInTime = accommodation?.checkInTime ?? "15:00";
-    const checkInDurationMin = accommodation?.checkInDurationMin ?? 30;
+    const checkInDurationMin = DEFAULT_CHECKIN_DURATION_MIN;
 
     const totalDays = getDaysBetween(trip.startDate, trip.endDate);
 

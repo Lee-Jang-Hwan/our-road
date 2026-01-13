@@ -22,7 +22,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { LocationInput } from "./location-input";
 import { generateTimeOptions } from "@/lib/schemas";
 import type { CreateTripInput } from "@/lib/schemas";
@@ -54,9 +53,6 @@ export function AccommodationInput({
 
   const startDateValue = form.watch(`${fieldName}.startDate`);
   const endDateValue = form.watch(`${fieldName}.endDate`);
-  const checkInDurationValue = form.watch(
-    `${fieldName}.checkInDurationMin`,
-  );
 
   // 현재 폼의 여행 기간을 직접 참조
   const currentTripStartDate = form.watch("startDate");
@@ -293,30 +289,6 @@ export function AccommodationInput({
               ))}
             </SelectContent>
           </Select>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground whitespace-nowrap">
-            체류(분)
-          </span>
-          <Input
-            type="number"
-            min={0}
-            max={180}
-            step={5}
-            value={checkInDurationValue ?? 30}
-            onChange={(event) => {
-              const rawValue = event.target.value;
-              const nextValue =
-                rawValue === "" ? 30 : Number(rawValue);
-              form.setValue(
-                `${fieldName}.checkInDurationMin`,
-                Number.isNaN(nextValue) ? 30 : nextValue,
-                { shouldValidate: true },
-              );
-            }}
-            className="w-20 h-9"
-          />
         </div>
 
         <div className="flex items-center gap-2">
