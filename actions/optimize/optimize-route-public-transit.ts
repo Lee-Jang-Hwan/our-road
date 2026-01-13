@@ -62,10 +62,7 @@ export interface OptimizeRouteResult {
 /**
  * Place를 Waypoint로 변환
  */
-function placeToWaypoint(
-  place: Place,
-  fixedSchedules: FixedSchedule[],
-): Waypoint {
+function placeToWaypoint(place: Place, fixedSchedules: FixedSchedule[]): Waypoint {
   const fixedSchedule = fixedSchedules.find((s) => s.placeId === place.id);
 
   return {
@@ -499,7 +496,9 @@ export async function optimizePublicTransitRoute(
       end: destinationCoord,
       lodging: lodgingCoord,
       tripStartDate: trip.startDate,
-      waypoints: places.map((place) => placeToWaypoint(place, fixedSchedules)),
+      waypoints: places.map((place) =>
+        placeToWaypoint(place, fixedSchedules)
+      ),
       dailyMaxMinutes,
     };
 

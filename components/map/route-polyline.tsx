@@ -385,7 +385,7 @@ export function RealRoutePolyline({
       return segments.map(() => 0);
     }
     return calculateRouteOffsets(segments.length, 0); // 12미터 간격
-  }, [segments.length, enableOffset]);
+  }, [segments, enableOffset]);
 
   return (
     <>
