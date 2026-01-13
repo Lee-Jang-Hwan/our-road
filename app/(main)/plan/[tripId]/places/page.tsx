@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { use, useState, useEffect, useCallback, useRef } from "react";
 import { LuChevronLeft, LuPlus } from "react-icons/lu";
@@ -62,7 +62,7 @@ export default function PlacesPage({ params }: PlacesPageProps) {
       window.location.href = `/plan/${tripId}`;
     } catch (error) {
       console.error("????꾨즺 泥섎━ ?ㅽ뙣:", error);
-      showErrorToast("?ㅻ쪟媛 諛쒖깮?덉뒿?덈떎.");
+      showErrorToast("오류가 발생했습니다.");
     }
   };
   // Initial load: fetch places from DB first
@@ -102,7 +102,7 @@ export default function PlacesPage({ params }: PlacesPageProps) {
       });
 
       if (!addResult.success || !addResult.data) {
-        showErrorToast(addResult.error || "?μ냼 異붽????ㅽ뙣?덉뒿?덈떎.");
+        showErrorToast(addResult.error || "장소 추가에 실패했습니다.");
         return;
       }
 
@@ -110,7 +110,7 @@ export default function PlacesPage({ params }: PlacesPageProps) {
       setPlaces((prev) => [...prev, addResult.data!]);
       savePlaces([...places, addResult.data]);
       // Sheet瑜??レ? ?딄퀬 怨꾩냽 ?댁뼱??(?곗냽 異붽? 媛??
-      showSuccessToast(`${result.name}??媛) 異붽??섏뿀?듬땲??`);
+      showSuccessToast(`'${result.name}' 장소가 추가되었습니다`);
 
       // ?μ냼 紐⑸줉 ?ㅽ겕濡ㅼ쓣 留??꾨옒濡??대룞
       setTimeout(() => {
@@ -121,7 +121,7 @@ export default function PlacesPage({ params }: PlacesPageProps) {
       }, 100);
     } catch (error) {
       console.error("?μ냼 異붽? ?ㅽ뙣:", error);
-      showErrorToast("?μ냼 異붽????ㅽ뙣?덉뒿?덈떎.");
+      showErrorToast("장소 추가에 실패했습니다.");
     } finally {
       setIsLoading(false);
     }
@@ -140,7 +140,7 @@ export default function PlacesPage({ params }: PlacesPageProps) {
     try {
       const result = await updatePlaceDuration(placeId, tripId, duration);
       if (!result.success) {
-        showErrorToast(result.error || "泥대쪟 ?쒓컙 蹂寃쎌뿉 ?ㅽ뙣?덉뒿?덈떎.");
+        showErrorToast(result.error || "체류 시간 변경에 실패했습니다.");
         // ?ㅽ뙣 ??濡ㅻ갚 (DB?먯꽌 ?ㅼ떆 濡쒕뱶)
         await loadPlacesFromDB();
       }
@@ -158,7 +158,7 @@ export default function PlacesPage({ params }: PlacesPageProps) {
     try {
       const result = await removePlace(placeId, tripId);
       if (!result.success) {
-        showErrorToast(result.error || "?μ냼 ??젣???ㅽ뙣?덉뒿?덈떎.");
+        showErrorToast(result.error || "장소 삭제에 실패했습니다.");
         // ?ㅽ뙣 ??濡ㅻ갚
         setPlaces(prevPlaces);
       }
@@ -180,7 +180,7 @@ export default function PlacesPage({ params }: PlacesPageProps) {
     try {
       const result = await reorderPlaces({ tripId, placeIds });
       if (!result.success) {
-        showErrorToast(result.error || "?쒖꽌 蹂寃쎌뿉 ?ㅽ뙣?덉뒿?덈떎.");
+        showErrorToast(result.error || "순서 변경에 실패했습니다.");
         // ?ㅽ뙣 ??濡ㅻ갚
         setPlaces(prevPlaces);
       }
@@ -192,7 +192,7 @@ export default function PlacesPage({ params }: PlacesPageProps) {
 
   // ?꾩껜 ??젣 ??DB?먯꽌 ??젣
   const handleClearAll = async () => {
-    if (!confirm("紐⑤뱺 ?μ냼瑜???젣?섏떆寃좎뒿?덇퉴?")) return;
+    if (!confirm("모든 장소를 삭제하시겠습니까?")) return;
 
     const prevPlaces = places;
     const placeIds = places.map((p) => p.id);
@@ -203,10 +203,10 @@ export default function PlacesPage({ params }: PlacesPageProps) {
     try {
       const result = await removePlaces(placeIds, tripId);
       if (!result.success) {
-        showErrorToast(result.error || "?μ냼 ??젣???ㅽ뙣?덉뒿?덈떎.");
+        showErrorToast(result.error || "장소 삭제에 실패했습니다.");
         setPlaces(prevPlaces);
       } else {
-        showSuccessToast("紐⑤뱺 ?μ냼媛 ??젣?섏뿀?듬땲??");
+        showSuccessToast("모든 장소가 삭제되었습니다.");
       }
     } catch (error) {
       console.error("?꾩껜 ??젣 ?ㅽ뙣:", error);
