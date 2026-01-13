@@ -62,7 +62,9 @@ import {
 
 import { getTripWithDetails } from "@/actions/trips/get-trip";
 import { deleteTrip } from "@/actions/trips/delete-trip";
+import { updateTripStatus } from "@/actions/trips/update-trip";
 import { addPlace } from "@/actions/places/add-place";
+import { saveItinerary } from "@/actions/optimize/save-itinerary";
 import {
   reorderScheduleItems,
   moveScheduleItem,
@@ -173,6 +175,8 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
     DailyItinerary[]
   >([]);
   const [isRecalculating, setIsRecalculating] = useState(false);
+  const [showPolyline, setShowPolyline] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // 장소 추가 다이얼로그 상태
   const [addPlaceDialogOpen, setAddPlaceDialogOpen] = useState(false);
@@ -180,7 +184,6 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
     null,
   );
   const [selectedDayForPlace, setSelectedDayForPlace] = useState<number>(1);
-
 
   // 여행 상세 로드
   useEffect(() => {
@@ -226,7 +229,6 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
       date: it.date,
     }));
   }, [trip?.itinerary]);
-
 
   // 현재 선택된 일정
   const currentItinerary = useMemo(() => {
@@ -345,7 +347,6 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
         : null,
     };
   }, [currentItinerary, selectedDay, trip]);
-
 
   // 현재 일자 마커 데이터 (일정 순서대로, 구간별 색상 적용)
   const currentDayMarkers = useMemo(() => {
@@ -520,14 +521,18 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
         ) {
           const subPaths = transport.transitDetails.subPaths;
           const fromPlaceName = scheduleItem.placeName;
-          const toPlaceName = currentItinerary.schedule[i + 1]?.placeName || "다음 장소";
-          
+          const toPlaceName =
+            currentItinerary.schedule[i + 1]?.placeName || "다음 장소";
+
           if (process.env.NODE_ENV === "development") {
-            console.log(`[지도 폴리라인] ${fromPlaceName} → ${toPlaceName} (subPaths 분리)`, {
-              subPathsCount: subPaths.length,
-              전체polyline: !!transport.polyline,
-              전체polylineLength: transport.polyline?.length || 0,
-            });
+            console.log(
+              `[지도 폴리라인] ${fromPlaceName} → ${toPlaceName} (subPaths 분리)`,
+              {
+                subPathsCount: subPaths.length,
+                전체polyline: !!transport.polyline,
+                전체polylineLength: transport.polyline?.length || 0,
+              },
+            );
           }
 
           for (const subPath of subPaths) {
@@ -548,7 +553,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
               pathCoords = [subFrom, ...subPath.passStopCoords, subTo];
             }
 
-            // encodedPath 우선순위: 
+            // encodedPath 우선순위:
             // 1. 도보 구간: subPath.polyline
             // 2. 대중교통 구간: subPath.polyline (있으면) 또는 전체 경로 polyline
             // 3. 전체 경로 polyline이 너무 짧으면 (50자 미만) 사용하지 않음
@@ -647,8 +652,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
                 pathCoords: !!finalPath,
                 pathCoordsCount: finalPath?.length || 0,
                 carRoutePolyline: !!carRoutePolyline,
-                표시방식:
-                  finalEncodedPath || finalPath ? "실선" : "점선",
+                표시방식: finalEncodedPath || finalPath ? "실선" : "점선",
               });
             }
 
@@ -669,67 +673,82 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
           const polylineLength = transport.polyline?.length || 0;
           const isPolylineTooShort = hasPolyline && polylineLength < 50;
           const fromPlaceName = scheduleItem.placeName;
-          const toPlaceName = currentItinerary.schedule[i + 1]?.placeName || "다음 장소";
-          
+          const toPlaceName =
+            currentItinerary.schedule[i + 1]?.placeName || "다음 장소";
+
           // transitDetails가 있지만 subPaths가 없는 경우 (열차 경로 등)
           // transitDetails의 좌표를 사용하여 path 생성 시도
           let fallbackPath: Coordinate[] | undefined;
           if (transport.transitDetails) {
-            if (!transport.transitDetails.subPaths || transport.transitDetails.subPaths.length === 0) {
+            if (
+              !transport.transitDetails.subPaths ||
+              transport.transitDetails.subPaths.length === 0
+            ) {
               // subPaths가 없거나 빈 배열인 경우
               if (process.env.NODE_ENV === "development") {
-                console.warn(`[지도 폴리라인] ${fromPlaceName} → ${toPlaceName}: transitDetails는 있지만 subPaths 없음`);
+                console.warn(
+                  `[지도 폴리라인] ${fromPlaceName} → ${toPlaceName}: transitDetails는 있지만 subPaths 없음`,
+                );
               }
-              
+
               // 출발/도착 좌표라도 사용
               if (fromCoord && toCoord) {
                 fallbackPath = [fromCoord, toCoord];
                 if (process.env.NODE_ENV === "development") {
-                  console.log(`  - ⚠️ 출발/도착 좌표만 사용하여 path 생성 (2개 좌표)`);
+                  console.log(
+                    `  - ⚠️ 출발/도착 좌표만 사용하여 path 생성 (2개 좌표)`,
+                  );
                 }
               }
             } else {
               // subPaths가 있지만 모든 subPath에 polyline이 없을 수 있음
               // subPaths의 좌표를 수집하여 path 생성 시도
               const allCoords: Coordinate[] = [];
-              
+
               for (const subPath of transport.transitDetails.subPaths) {
                 if (subPath.startCoord) {
                   allCoords.push(subPath.startCoord);
                 }
-                if (subPath.passStopCoords && subPath.passStopCoords.length > 0) {
+                if (
+                  subPath.passStopCoords &&
+                  subPath.passStopCoords.length > 0
+                ) {
                   allCoords.push(...subPath.passStopCoords);
                 }
                 if (subPath.endCoord) {
                   allCoords.push(subPath.endCoord);
                 }
               }
-              
+
               // 중복 제거
               const uniqueCoords: Coordinate[] = [];
               for (let i = 0; i < allCoords.length; i++) {
                 const coord = allCoords[i];
                 const prevCoord = uniqueCoords[uniqueCoords.length - 1];
-                if (!prevCoord || 
-                    Math.abs(coord.lat - prevCoord.lat) > 0.0001 || 
-                    Math.abs(coord.lng - prevCoord.lng) > 0.0001) {
+                if (
+                  !prevCoord ||
+                  Math.abs(coord.lat - prevCoord.lat) > 0.0001 ||
+                  Math.abs(coord.lng - prevCoord.lng) > 0.0001
+                ) {
                   uniqueCoords.push(coord);
                 }
               }
-              
+
               if (uniqueCoords.length >= 2) {
                 fallbackPath = uniqueCoords;
                 if (process.env.NODE_ENV === "development") {
-                  console.log(`  - ⚠️ subPaths 좌표로 path 생성 (${uniqueCoords.length}개 좌표)`);
+                  console.log(
+                    `  - ⚠️ subPaths 좌표로 path 생성 (${uniqueCoords.length}개 좌표)`,
+                  );
                 }
               }
             }
           }
-          
+
           // 카카오맵 자동차 경로로 보완할 구간인지 확인
           const segmentKey = `${fromCoord.lat},${fromCoord.lng}-${toCoord.lat},${toCoord.lng}`;
           const carRoutePolyline = carRoutePolylines.get(segmentKey);
-          
+
           if (process.env.NODE_ENV === "development") {
             console.log(`[지도 폴리라인] ${fromPlaceName} → ${toPlaceName}`, {
               subPaths없음: true,
@@ -737,26 +756,29 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
               polylineLength,
               polyline너무짧음: isPolylineTooShort,
               transitDetails: !!transport.transitDetails,
-              transitDetailsSubPathsCount: transport.transitDetails?.subPaths?.length || 0,
+              transitDetailsSubPathsCount:
+                transport.transitDetails?.subPaths?.length || 0,
               fallbackPath: !!fallbackPath,
               fallbackPathLength: fallbackPath?.length || 0,
               carRoutePolyline: !!carRoutePolyline,
               표시방식: carRoutePolyline
                 ? "실선 (카카오맵 자동차 경로)"
-                : isPolylineTooShort && !fallbackPath 
-                ? "점선 (polyline 너무 짧음)" 
-                : hasPolyline && !isPolylineTooShort
-                ? "실선 (polyline)" 
-                : fallbackPath
-                ? "실선 (fallback path)"
-                : "점선 (직선)",
+                : isPolylineTooShort && !fallbackPath
+                  ? "점선 (polyline 너무 짧음)"
+                  : hasPolyline && !isPolylineTooShort
+                    ? "실선 (polyline)"
+                    : fallbackPath
+                      ? "실선 (fallback path)"
+                      : "점선 (직선)",
             });
           }
 
           // 카카오맵 자동차 경로가 있으면 우선 사용 (지도 표시용)
           // 자세한 정보에는 기존 transport 정보 유지
-          const finalEncodedPath = carRoutePolyline || (isPolylineTooShort ? undefined : transport.polyline);
-          
+          const finalEncodedPath =
+            carRoutePolyline ||
+            (isPolylineTooShort ? undefined : transport.polyline);
+
           segments.push({
             from: fromCoord,
             to: toCoord,
@@ -831,10 +853,14 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
     }
 
     // 최종 통계
-    const segmentsWithPolyline = segments.filter(s => s.encodedPath || s.path).length;
+    const segmentsWithPolyline = segments.filter(
+      (s) => s.encodedPath || s.path,
+    ).length;
     const segmentsWithoutPolyline = segments.length - segmentsWithPolyline;
-    const segmentsWithPath = segments.filter(s => s.path).length;
-    const segmentsWithEncodedPath = segments.filter(s => s.encodedPath).length;
+    const segmentsWithPath = segments.filter((s) => s.path).length;
+    const segmentsWithEncodedPath = segments.filter(
+      (s) => s.encodedPath,
+    ).length;
 
     if (process.env.NODE_ENV === "development") {
       console.log(`[지도 폴리라인] 생성 완료:`, {
@@ -848,10 +874,14 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
 
       // polyline이 없는 구간 상세 로그
       if (segmentsWithoutPolyline > 0) {
-        console.warn(`[지도 폴리라인] ⚠️ polyline 없는 구간 (${segmentsWithoutPolyline}개):`);
+        console.warn(
+          `[지도 폴리라인] ⚠️ polyline 없는 구간 (${segmentsWithoutPolyline}개):`,
+        );
         segments.forEach((seg, idx) => {
           if (!seg.encodedPath && !seg.path) {
-            console.warn(`  - 구간 ${idx + 1}: ${seg.from.lat.toFixed(4)},${seg.from.lng.toFixed(4)} → ${seg.to.lat.toFixed(4)},${seg.to.lng.toFixed(4)} (직선 표시됨)`);
+            console.warn(
+              `  - 구간 ${idx + 1}: ${seg.from.lat.toFixed(4)},${seg.from.lng.toFixed(4)} → ${seg.to.lat.toFixed(4)},${seg.to.lng.toFixed(4)} (직선 표시됨)`,
+            );
           }
         });
       }
@@ -859,22 +889,31 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
       console.groupEnd();
     }
     return segments;
-  }, [currentItinerary, currentDayMarkers, trip, selectedDay, carRoutePolylines]);
+  }, [
+    currentItinerary,
+    currentDayMarkers,
+    trip,
+    selectedDay,
+    carRoutePolylines,
+  ]);
 
   // 두 좌표 간 거리 계산 (하버사인 공식, km)
-  const calculateDistance = useCallback((from: Coordinate, to: Coordinate): number => {
-    const R = 6371; // 지구 반지름 (km)
-    const dLat = ((to.lat - from.lat) * Math.PI) / 180;
-    const dLng = ((to.lng - from.lng) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos((from.lat * Math.PI) / 180) *
-        Math.cos((to.lat * Math.PI) / 180) *
-        Math.sin(dLng / 2) *
-        Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  }, []);
+  const calculateDistance = useCallback(
+    (from: Coordinate, to: Coordinate): number => {
+      const R = 6371; // 지구 반지름 (km)
+      const dLat = ((to.lat - from.lat) * Math.PI) / 180;
+      const dLng = ((to.lng - from.lng) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((from.lat * Math.PI) / 180) *
+          Math.cos((to.lat * Math.PI) / 180) *
+          Math.sin(dLng / 2) *
+          Math.sin(dLng / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return R * c;
+    },
+    [],
+  );
 
   // polyline이 없는 구간에 대해 카카오맵 자동차 경로 API 호출
   useEffect(() => {
@@ -887,32 +926,37 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
     const segmentsWithoutPolyline = routeSegments.filter((seg) => {
       // encodedPath가 없고
       const hasNoEncodedPath = !seg.encodedPath;
-      
+
       // path가 없거나 2개 좌표만 있는 경우 (직선)
       const hasNoPathOrOnlyTwoCoords = !seg.path || seg.path.length <= 2;
-      
+
       if (!hasNoEncodedPath || !hasNoPathOrOnlyTwoCoords) {
         return false;
       }
-      
+
       const distance = calculateDistance(seg.from, seg.to);
-      
+
       // walking이지만 거리가 1km 이상이면 실제로는 대중교통일 가능성
       const isLongWalking = seg.transportMode === "walking" && distance > 1;
-      
+
       // 대중교통 구간이거나 긴 walking 구간
-      const isPublicTransport = seg.transportMode !== "walking" || isLongWalking;
-      
+      const isPublicTransport =
+        seg.transportMode !== "walking" || isLongWalking;
+
       return isPublicTransport;
     });
 
     if (segmentsWithoutPolyline.length === 0) return;
 
     if (process.env.NODE_ENV === "development") {
-      console.log(`[지도 폴리라인] 카카오맵 자동차 경로 API 호출 대상: ${segmentsWithoutPolyline.length}개 구간`);
+      console.log(
+        `[지도 폴리라인] 카카오맵 자동차 경로 API 호출 대상: ${segmentsWithoutPolyline.length}개 구간`,
+      );
       segmentsWithoutPolyline.forEach((seg, idx) => {
         const distance = calculateDistance(seg.from, seg.to);
-        console.log(`  - 구간 ${idx + 1}: ${seg.from.lat.toFixed(4)},${seg.from.lng.toFixed(4)} → ${seg.to.lat.toFixed(4)},${seg.to.lng.toFixed(4)} (거리: ${distance.toFixed(2)}km, transportMode: ${seg.transportMode})`);
+        console.log(
+          `  - 구간 ${idx + 1}: ${seg.from.lat.toFixed(4)},${seg.from.lng.toFixed(4)} → ${seg.to.lat.toFixed(4)},${seg.to.lng.toFixed(4)} (거리: ${distance.toFixed(2)}km, transportMode: ${seg.transportMode})`,
+        );
       });
     }
 
@@ -937,18 +981,26 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
 
         if (result.success && result.data?.polyline) {
           if (process.env.NODE_ENV === "development") {
-            console.log(`[지도 폴리라인] 카카오맵 자동차 경로 가져옴: ${segmentKey}`);
+            console.log(
+              `[지도 폴리라인] 카카오맵 자동차 경로 가져옴: ${segmentKey}`,
+            );
           }
           return { segmentKey, polyline: result.data.polyline };
         } else {
           if (process.env.NODE_ENV === "development") {
-            console.warn(`[지도 폴리라인] 카카오맵 자동차 경로 조회 실패: ${segmentKey}`, result.error);
+            console.warn(
+              `[지도 폴리라인] 카카오맵 자동차 경로 조회 실패: ${segmentKey}`,
+              result.error,
+            );
           }
           return null;
         }
       } catch (error) {
         if (process.env.NODE_ENV === "development") {
-          console.error(`[지도 폴리라인] 카카오맵 자동차 경로 조회 오류: ${segmentKey}`, error);
+          console.error(
+            `[지도 폴리라인] 카카오맵 자동차 경로 조회 오류: ${segmentKey}`,
+            error,
+          );
         }
         return null;
       }
@@ -970,8 +1022,13 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
         setCarRoutePolylines(newPolylines);
       }
     });
-  }, [routeSegments, trip, currentItinerary, carRoutePolylines, calculateDistance]);
-
+  }, [
+    routeSegments,
+    trip,
+    currentItinerary,
+    carRoutePolylines,
+    calculateDistance,
+  ]);
 
   // 삭제 실행
   const handleDeleteConfirm = () => {
@@ -987,12 +1044,41 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
     });
   };
 
- 
+  // 변경 종료 핸들러 (변경된 내용 저장하고 상태를 optimized로 변경 후 상세 페이지로 이동)
+  const handleCancelEdit = async () => {
+    setIsSaving(true);
+    try {
+      // 1. 변경된 일정을 DB에 저장
+      if (editedItineraries.length > 0) {
+        const saveResult = await saveItinerary({
+          tripId,
+          itinerary: editedItineraries,
+        });
 
-  // 취소 핸들러 (편집 내용 취소하고 조회 페이지로 이동)
-  const handleCancelEdit = () => {
-    setEditedItineraries(originalItineraries);
-    router.push(`/my/trips/${tripId}`);
+        if (!saveResult.success) {
+          showErrorToast(saveResult.error || "일정 저장에 실패했습니다.");
+          setIsSaving(false);
+          return;
+        }
+      }
+
+      // 2. trip 상태를 optimized로 변경
+      const statusResult = await updateTripStatus(tripId, "optimized");
+      if (!statusResult.success) {
+        showErrorToast(statusResult.error || "상태 변경에 실패했습니다.");
+        setIsSaving(false);
+        return;
+      }
+
+      // 3. 성공 메시지 표시
+      showSuccessToast("변경 사항이 저장되었습니다.");
+
+      // 4. 상세 페이지로 이동
+      router.push(`/my/trips/${tripId}`);
+    } catch (error) {
+      showErrorToast("변경 종료 중 오류가 발생했습니다.");
+      setIsSaving(false);
+    }
   };
 
   // 장소 추가 핸들러
@@ -1037,7 +1123,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
       transportToNext: undefined, // 재계산 시 생성됨
     };
 
-    // 4. 일정 업데이트
+    // 4. 일정 업데이트 (자동 재계산 제거 - 사용자가 수동으로 재계산 버튼 클릭 필요)
     const updatedSchedule = [...dayItinerary.schedule, newScheduleItem];
     const updatedItineraries = editedItineraries.map((it) =>
       it.dayNumber === selectedDayForPlace
@@ -1045,27 +1131,19 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
         : it,
     );
 
-    // 5. 경로 재계산
-    const recalculated = await recalculateRoutes({
-      tripId,
-      itineraries: updatedItineraries,
-    });
-
-    if (recalculated.success && recalculated.data) {
-      setEditedItineraries(recalculated.data);
-      // DB에서 최신 데이터 재로드
-      const reloadResult = await getTripWithDetails(tripId);
-      if (reloadResult.success && reloadResult.data?.itinerary) {
-        setTrip(reloadResult.data);
-        setEditedItineraries(reloadResult.data.itinerary);
-        setOriginalItineraries(reloadResult.data.itinerary);
-      }
-      showSuccessToast("장소가 추가되었습니다.");
-      setAddPlaceDialogOpen(false);
-      setSelectedPlace(null);
-    } else {
-      showErrorToast(recalculated.error || "경로 재계산에 실패했습니다.");
+    // 5. 상태 업데이트 및 DB에서 최신 데이터 재로드
+    setEditedItineraries(updatedItineraries);
+    const reloadResult = await getTripWithDetails(tripId);
+    if (reloadResult.success && reloadResult.data?.itinerary) {
+      setTrip(reloadResult.data);
+      setEditedItineraries(reloadResult.data.itinerary);
+      setOriginalItineraries(reloadResult.data.itinerary);
     }
+    showSuccessToast(
+      "장소가 추가되었습니다. 경로 재계산 버튼을 눌러 경로를 업데이트하세요.",
+    );
+    setAddPlaceDialogOpen(false);
+    setSelectedPlace(null);
   };
 
   // 순서 변경 핸들러
@@ -1082,47 +1160,23 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
       return;
     }
 
-    // 2. 순서 변경 후 업데이트된 일정으로 경로 재계산
+    // 2. 상태 업데이트 (자동 재계산 제거 - 사용자가 수동으로 재계산 버튼 클릭 필요)
     const updatedItineraries = editedItineraries.map((it) =>
       it.dayNumber === dayNumber ? result.data! : it,
     );
 
-    const recalculated = await recalculateRoutes({
-      tripId,
-      itineraries: updatedItineraries,
-    });
+    setEditedItineraries(updatedItineraries);
 
-    if (!recalculated.success || !recalculated.data) {
-      showErrorToast(
-        recalculated.error || "경로 재계산에 실패했습니다.",
-      );
-      return;
-    }
-
-    // 3. 검증 (recalculateRoutes가 이미 시간 재계산을 했지만, 검증은 별도로 수행)
-    const validation = validateItinerary(
-      recalculated.data,
-      trip?.dailyStartTime || "10:00",
-      trip?.dailyEndTime || "22:00",
-    );
-
-    if (!validation.isValid) {
-      // 검증 실패 시 첫 번째 에러만 표시
-      showErrorToast(
-        validation.errors[0]?.message || "일정 검증에 실패했습니다.",
-      );
-      return;
-    }
-
-    // 4. 상태 업데이트
-    setEditedItineraries(recalculated.data);
-
-    // 5. DB에서 최신 데이터 다시 로드
+    // 3. DB에서 최신 데이터 다시 로드
     const reloadResult = await getTripWithDetails(tripId);
     if (reloadResult.success && reloadResult.data?.itinerary) {
       setTrip(reloadResult.data);
       setEditedItineraries(reloadResult.data.itinerary);
     }
+
+    showSuccessToast(
+      "순서가 변경되었습니다. 경로 재계산 버튼을 눌러 경로를 업데이트하세요.",
+    );
   };
 
   // 일차 간 이동 핸들러
@@ -1146,7 +1200,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
       return;
     }
 
-    // 2. 이동 후 업데이트된 일정으로 경로 재계산
+    // 2. 상태 업데이트 (자동 재계산 제거 - 사용자가 수동으로 재계산 버튼 클릭 필요)
     const updatedItineraries = editedItineraries.map((it) => {
       if (it.dayNumber === fromDay) {
         return result.data!.fromDay;
@@ -1157,42 +1211,18 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
       return it;
     });
 
-    const recalculated = await recalculateRoutes({
-      tripId,
-      itineraries: updatedItineraries,
-    });
+    setEditedItineraries(updatedItineraries);
 
-    if (!recalculated.success || !recalculated.data) {
-      showErrorToast(
-        recalculated.error || "경로 재계산에 실패했습니다.",
-      );
-      return;
-    }
-
-    // 3. 검증 (recalculateRoutes가 이미 시간 재계산을 했지만, 검증은 별도로 수행)
-    const validation = validateItinerary(
-      recalculated.data,
-      trip?.dailyStartTime || "10:00",
-      trip?.dailyEndTime || "22:00",
-    );
-
-    if (!validation.isValid) {
-      // 검증 실패 시 첫 번째 에러만 표시
-      showErrorToast(
-        validation.errors[0]?.message || "일정 검증에 실패했습니다.",
-      );
-      return;
-    }
-
-    // 4. 상태 업데이트
-    setEditedItineraries(recalculated.data);
-
-    // 5. DB에서 최신 데이터 다시 로드
+    // 3. DB에서 최신 데이터 다시 로드
     const reloadResult = await getTripWithDetails(tripId);
     if (reloadResult.success && reloadResult.data?.itinerary) {
       setTrip(reloadResult.data);
       setEditedItineraries(reloadResult.data.itinerary);
     }
+
+    showSuccessToast(
+      "장소가 이동되었습니다. 경로 재계산 버튼을 눌러 경로를 업데이트하세요.",
+    );
   };
 
   // 장소 삭제 핸들러
@@ -1313,7 +1343,8 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
     try {
       const result = await recalculateRoutes({
         tripId,
-        itineraries: editedItineraries,
+        itineraries: editedItineraries, // 변경된 일정 전달
+        originalItineraries: originalItineraries, // 변경 전 일정 전달 (새 구간 판단용)
       });
 
       if (result.success && result.data) {
@@ -1324,15 +1355,20 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
           setTrip(reloadResult.data);
           if (reloadResult.data.itinerary) {
             setEditedItineraries(reloadResult.data.itinerary);
+            setOriginalItineraries(reloadResult.data.itinerary);
           }
         }
         showSuccessToast("경로가 재계산되었습니다.");
+        // 폴리라인 표시
+        setShowPolyline(true);
+        // 페이지에 머물기 (이동하지 않음)
+        setIsRecalculating(false);
       } else {
         showErrorToast(result.error || "경로 재계산에 실패했습니다.");
+        setIsRecalculating(false);
       }
     } catch (error) {
       showErrorToast("경로 재계산 중 오류가 발생했습니다.");
-    } finally {
       setIsRecalculating(false);
     }
   };
@@ -1375,7 +1411,6 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
       </main>
     );
   }
-
 
   // 미로그인 상태
   if (!user) {
@@ -1539,8 +1574,8 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
             level={7}
             className="absolute inset-0 w-full h-full"
           >
-            {/* 경로 폴리라인 (출발지 → 장소들 → 도착지) - 구간별 색상 적용 */}
-            {routeSegments.length > 0 && (
+            {/* 경로 폴리라인: "변경 경로 저장" 후 표시 */}
+            {showPolyline && routeSegments.length > 0 && (
               <RealRoutePolyline
                 segments={routeSegments}
                 strokeWeight={3}
@@ -1610,6 +1645,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
               onMove={handleMove}
               onDelete={handleDelete}
               onDurationChange={handleDurationChange}
+              hideTime={true}
             />
           </div>
         </>
@@ -1637,9 +1673,16 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
               variant="outline"
               className="flex-1 h-12"
               onClick={handleCancelEdit}
-              disabled={isRecalculating}
+              disabled={isRecalculating || isSaving}
             >
-              편집 종료
+              {isSaving ? (
+                <>
+                  <LuLoader className="w-4 h-4 mr-2 animate-spin" />
+                  저장 중...
+                </>
+              ) : (
+                "변경 종료"
+              )}
             </Button>
             <Button
               className="flex-1 h-12"
@@ -1649,12 +1692,12 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
               {isRecalculating ? (
                 <>
                   <LuLoader className="w-4 h-4 mr-2 animate-spin" />
-                  재계산 중...
+                  저장 중...
                 </>
               ) : (
                 <>
                   <RefreshCw className="w-4 h-4 mr-2" />
-                  경로 재계산
+                  변경 경로 저장
                 </>
               )}
             </Button>
@@ -1731,7 +1774,10 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
                   </SelectTrigger>
                   <SelectContent>
                     {trip.itinerary.map((it) => (
-                      <SelectItem key={it.dayNumber} value={String(it.dayNumber)}>
+                      <SelectItem
+                        key={it.dayNumber}
+                        value={String(it.dayNumber)}
+                      >
                         {it.dayNumber}일차 ({formatDate(it.date)})
                       </SelectItem>
                     ))}

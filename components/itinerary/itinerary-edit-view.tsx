@@ -62,7 +62,12 @@ interface ItineraryEditViewProps {
     toIndex: number,
   ) => void;
   onDelete: (dayNumber: number, placeId: string) => void;
-  onDurationChange?: (dayNumber: number, placeId: string, duration: number) => void;
+  onDurationChange?: (
+    dayNumber: number,
+    placeId: string,
+    duration: number,
+  ) => void;
+  hideTime?: boolean;
 }
 
 export function ItineraryEditView({
@@ -71,6 +76,7 @@ export function ItineraryEditView({
   onMove,
   onDelete,
   onDurationChange,
+  hideTime = false,
 }: ItineraryEditViewProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
 
@@ -159,7 +165,12 @@ export function ItineraryEditView({
         (item) => `day-${toDay}-place-${item.placeId}` === overIdStr,
       );
 
-      onMove(fromDay, toDay, placeId, toIndex >= 0 ? toIndex : toItinerary.schedule.length);
+      onMove(
+        fromDay,
+        toDay,
+        placeId,
+        toIndex >= 0 ? toIndex : toItinerary.schedule.length,
+      );
     }
   };
 
@@ -196,22 +207,28 @@ export function ItineraryEditView({
             >
               <div className="space-y-1 px-4">
                 {itinerary.schedule.map((item, index) => (
-                  <div key={`${item.placeId}-${item.order}`} className="space-y-1">
+                  <div
+                    key={`${item.placeId}-${item.order}`}
+                    className="space-y-1"
+                  >
                     <DraggableScheduleItem
                       item={item}
                       dayNumber={itinerary.dayNumber}
                       placeCount={itinerary.schedule.length}
-                      onDelete={() => onDelete(itinerary.dayNumber, item.placeId)}
+                      onDelete={() =>
+                        onDelete(itinerary.dayNumber, item.placeId)
+                      }
                       onDurationChange={
                         onDurationChange
                           ? (duration) =>
                               onDurationChange(
                                 itinerary.dayNumber,
                                 item.placeId,
-                                duration
+                                duration,
                               )
                           : undefined
                       }
+                      hideTime={hideTime}
                     />
                     {/* 장소 사이 드롭 존 */}
                     {index < itinerary.schedule.length - 1 && (
@@ -231,4 +248,3 @@ export function ItineraryEditView({
     </DndContext>
   );
 }
-

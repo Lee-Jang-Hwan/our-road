@@ -57,6 +57,7 @@ interface DraggableScheduleItemProps {
   placeCount: number; // 일차별 총 장소 수 (최소 1개 확인용)
   onDelete?: () => void;
   onDurationChange?: (duration: number) => void;
+  hideTime?: boolean;
 }
 
 export function DraggableScheduleItem({
@@ -65,6 +66,7 @@ export function DraggableScheduleItem({
   placeCount,
   onDelete,
   onDurationChange,
+  hideTime = false,
 }: DraggableScheduleItemProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [durationDialogOpen, setDurationDialogOpen] = useState(false);
@@ -163,6 +165,7 @@ export function DraggableScheduleItem({
             <BaseScheduleItem
               item={item}
               draggable={false}
+              hideTime={hideTime}
               className="border-0 bg-transparent p-0 shadow-none hover:bg-transparent"
             />
           </div>

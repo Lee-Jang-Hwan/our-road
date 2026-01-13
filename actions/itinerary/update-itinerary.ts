@@ -44,6 +44,10 @@ export interface UpdateDayItineraryInput {
   totalDuration?: number;
   /** 총 체류 시간 (분) */
   totalStayDuration?: number;
+  /** 출발지에서 첫 장소까지 이동 정보 */
+  transportFromOrigin?: import("@/types/route").RouteSegment;
+  /** 마지막 장소에서 도착지까지 이동 정보 */
+  transportToDestination?: import("@/types/route").RouteSegment;
 }
 
 /**
@@ -372,7 +376,7 @@ export async function updateDayItinerary(
       };
     }
 
-    const { tripId, dayNumber, schedule, ...summaryUpdates } = input;
+    const { tripId, dayNumber, schedule, transportFromOrigin, transportToDestination, ...summaryUpdates } = input;
 
     // 2. UUID 형식 검증
     if (!isValidUUID(tripId)) {
@@ -432,7 +436,45 @@ export async function updateDayItinerary(
         ...item,
         order: index + 1,
       }));
-      updatedSchedule = orderedSchedule.map(convertItemToRow);
+
+      // 기존 일정과 비교하여 구간이 변경된 항목의 transport_to_next 제거
+      const existingSchedule = existingRow.schedule;
+      const cleanedSchedule = orderedSchedule.map((item, index) => {
+        // 마지막 항목은 transport_to_next가 없으므로 그대로 유지
+        if (index === orderedSchedule.length - 1) {
+          return item;
+        }
+
+        // 다음 장소 ID 확인
+        const nextItem = orderedSchedule[index + 1];
+        if (!nextItem) {
+          return item;
+        }
+
+        // 기존 일정에서 같은 순서의 항목 찾기
+        const existingItem = existingSchedule[index];
+        const existingNextItem = existingSchedule[index + 1];
+
+        // 구간이 변경되었는지 확인 (다음 장소가 다르면 구간 변경)
+        const segmentChanged = 
+          !existingItem || 
+          !existingNextItem || 
+          existingItem.place_id !== item.placeId || 
+          existingNextItem.place_id !== nextItem.placeId;
+
+        // 구간이 변경되었으면 transport_to_next 제거 (경로 재계산 필요)
+        if (segmentChanged) {
+          return {
+            ...item,
+            transportToNext: undefined,
+          };
+        }
+
+        // 구간이 동일하면 transport_to_next 유지
+        return item;
+      });
+
+      updatedSchedule = cleanedSchedule.map(convertItemToRow);
 
       // 요약 정보 재계산
       const recalculated = recalculateSummary(orderedSchedule);
@@ -455,13 +497,92 @@ export async function updateDayItinerary(
       summary.total_stay_duration = summaryUpdates.totalStayDuration;
     }
 
-    // 7. 일정 업데이트
+    // 7. transportFromOrigin, transportToDestination 변환
+    const convertRouteSegmentToJsonb = (segment?: import("@/types/route").RouteSegment) => {
+      if (!segment) return null;
+      return {
+        mode: segment.mode,
+        distance: segment.distance,
+        duration: segment.duration,
+        description: segment.description,
+        fare: segment.fare,
+        taxi_fare: segment.taxiFare,
+        polyline: segment.polyline,
+        transit_details: segment.transitDetails
+          ? {
+              total_fare: segment.transitDetails.totalFare,
+              transfer_count: segment.transitDetails.transferCount,
+              walking_time: segment.transitDetails.walkingTime,
+              walking_distance: segment.transitDetails.walkingDistance,
+              sub_paths: segment.transitDetails.subPaths.map((sp) => ({
+                traffic_type: sp.trafficType,
+                distance: sp.distance,
+                section_time: sp.sectionTime,
+                station_count: sp.stationCount,
+                start_name: sp.startName,
+                end_name: sp.endName,
+                polyline: sp.polyline,
+                lane: sp.lane
+                  ? {
+                      name: sp.lane.name,
+                      bus_no: sp.lane.busNo,
+                      bus_type: sp.lane.busType,
+                      subway_code: sp.lane.subwayCode,
+                      line_color: sp.lane.lineColor,
+                    }
+                  : undefined,
+                way: sp.way,
+              })),
+            }
+          : undefined,
+        car_segments: segment.carSegments
+          ? segment.carSegments.map((seg) => ({
+              index: seg.index,
+              distance: seg.distance,
+              duration: seg.duration,
+              toll_fare: seg.tollFare,
+              description: seg.description,
+              polyline: seg.polyline,
+              guides: seg.guides?.map((g) => ({
+                name: g.name,
+                coord: g.coord,
+                distance: g.distance,
+                duration: g.duration,
+                type: g.type,
+                guidance: g.guidance,
+              })),
+            }))
+          : undefined,
+        guides: segment.guides?.map((g) => ({
+          name: g.name,
+          coord: g.coord,
+          distance: g.distance,
+          duration: g.duration,
+          type: g.type,
+          guidance: g.guidance,
+        })),
+      };
+    };
+
+    // 8. 일정 업데이트
+    const updateData: Record<string, any> = {
+      schedule: updatedSchedule,
+      ...summary,
+    };
+
+    // transportFromOrigin이 제공된 경우 업데이트
+    if (transportFromOrigin !== undefined) {
+      updateData.transport_from_origin = convertRouteSegmentToJsonb(transportFromOrigin);
+    }
+
+    // transportToDestination이 제공된 경우 업데이트
+    if (transportToDestination !== undefined) {
+      updateData.transport_to_destination = convertRouteSegmentToJsonb(transportToDestination);
+    }
+
     const { data, error: updateError } = await supabase
       .from("trip_itineraries")
-      .update({
-        schedule: updatedSchedule,
-        ...summary,
-      })
+      .update(updateData)
       .eq("trip_id", tripId)
       .eq("day_number", dayNumber)
       .select()
@@ -475,7 +596,7 @@ export async function updateDayItinerary(
       };
     }
 
-    // 8. 캐시 무효화
+    // 9. 캐시 무효화
     invalidateCache(tripId, dayNumber);
 
     return {
