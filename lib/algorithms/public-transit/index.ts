@@ -238,13 +238,20 @@ export async function generatePublicTransitRoute(
     throw new Error("Failed to generate day plans");
   }
 
+  // 일자별 시간 제약 배열 생성 (dailyTimeLimits 또는 단일 dailyMaxMinutes 사용)
+  const dailyMaxMinutesArray: number[] = input.dailyTimeLimits
+    ? input.dailyTimeLimits.map((limit) => limit.maxMinutes)
+    : input.dailyMaxMinutes
+      ? Array(input.days).fill(input.dailyMaxMinutes)
+      : [];
+
   // Complexity-based removal with safeguards
-  if (input.dailyMaxMinutes) {
+  if (dailyMaxMinutesArray.length > 0) {
     const maxRemovalIterations = Math.floor(waypoints.length * 0.5); // Remove max 50% of waypoints
     let removalCount = 0;
 
     while (
-      exceedsDailyLimitProxy(dayPlans, input.dailyMaxMinutes, waypointMap) &&
+      exceedsDailyLimitProxy(dayPlans, dailyMaxMinutesArray, waypointMap) &&
       removalCount < maxRemovalIterations
     ) {
       const worstPoint = selectWorstComplexityPoint(
@@ -280,7 +287,7 @@ export async function generatePublicTransitRoute(
   let segmentCosts = await callRoutingAPIForSegments(segments);
 
   // API-based time optimization (Phase 2)
-  if (input.dailyMaxMinutes) {
+  if (dailyMaxMinutesArray.length > 0) {
     const maxReoptimizationRounds = 3;
     let roundCount = 0;
 
@@ -297,7 +304,7 @@ export async function generatePublicTransitRoute(
       );
       const overloadedDays = identifyOverloadedDays(
         dayTimeInfos,
-        input.dailyMaxMinutes
+        dailyMaxMinutesArray
       );
 
       if (overloadedDays.length === 0) {

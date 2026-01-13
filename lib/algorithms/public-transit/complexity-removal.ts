@@ -16,21 +16,37 @@ const WEIGHTS = {
   ZETA_STAYTIME: 1.0,
 };
 
+/**
+ * 일자별 시간 제한을 초과하는지 프록시 체크
+ * @param dayPlans - 일자별 계획
+ * @param dailyMaxMinutesOrArray - 단일 값 또는 일자별 최대 시간 배열
+ * @param waypoints - 웨이포인트 맵
+ */
 export function exceedsDailyLimitProxy(
   dayPlans: DayPlan[],
-  dailyMaxMinutes: number,
+  dailyMaxMinutesOrArray: number | number[],
   waypoints: Map<string, Waypoint>
 ): boolean {
   if (!Array.isArray(dayPlans) || dayPlans.length === 0) {
     return false;
   }
 
-  if (!Number.isFinite(dailyMaxMinutes) || dailyMaxMinutes <= 0) {
-    return false;
-  }
+  // 일자별 최대 시간 배열로 변환
+  const dailyMaxMinutesArray = Array.isArray(dailyMaxMinutesOrArray)
+    ? dailyMaxMinutesOrArray
+    : dayPlans.map(() => dailyMaxMinutesOrArray);
 
-  return dayPlans.some((dayPlan) => {
+  return dayPlans.some((dayPlan, dayIndex) => {
     if (!dayPlan || !Array.isArray(dayPlan.waypointOrder)) {
+      return false;
+    }
+
+    const dailyMaxMinutes = dailyMaxMinutesArray[dayIndex] ?? (
+      Array.isArray(dailyMaxMinutesOrArray)
+        ? dailyMaxMinutesOrArray[0]
+        : dailyMaxMinutesOrArray
+    );
+    if (!Number.isFinite(dailyMaxMinutes) || dailyMaxMinutes <= 0) {
       return false;
     }
 
@@ -304,16 +320,30 @@ export function calculateActualDailyTimes(
 
 /**
  * Identify days that exceed the daily time limit
+ * @param dayTimeInfos - 일자별 시간 정보
+ * @param dailyMaxMinutesOrArray - 단일 값 또는 일자별 최대 시간 배열
  */
 export function identifyOverloadedDays(
   dayTimeInfos: DayTimeInfo[],
-  dailyMaxMinutes: number
+  dailyMaxMinutesOrArray: number | number[]
 ): DayTimeInfo[] {
+  // 일자별 최대 시간 배열로 변환
+  const dailyMaxMinutesArray = Array.isArray(dailyMaxMinutesOrArray)
+    ? dailyMaxMinutesOrArray
+    : dayTimeInfos.map(() => dailyMaxMinutesOrArray);
+
   return dayTimeInfos
-    .map((info) => ({
-      ...info,
-      exceedMinutes: Math.max(0, info.totalMinutes - dailyMaxMinutes),
-    }))
+    .map((info) => {
+      const dailyMaxMinutes = dailyMaxMinutesArray[info.dayIndex] ?? (
+        Array.isArray(dailyMaxMinutesOrArray)
+          ? dailyMaxMinutesOrArray[0]
+          : dailyMaxMinutesOrArray
+      );
+      return {
+        ...info,
+        exceedMinutes: Math.max(0, info.totalMinutes - dailyMaxMinutes),
+      };
+    })
     .filter((info) => info.exceedMinutes > 0)
     .sort((a, b) => b.exceedMinutes - a.exceedMinutes); // Most overloaded first
 }

@@ -32,7 +32,11 @@ import {
   getDaysBetween,
   generateDateRange,
   createDistanceMatrixGetter,
+  generateDailyTimeConfigs,
+  DEFAULT_MIDDLE_DAY_START_TIME,
+  DEFAULT_MIDDLE_DAY_END_TIME,
 } from "@/lib/optimize";
+import type { DailyTimeConfig } from "@/lib/optimize/types";
 import { optimizePublicTransitRoute } from "./optimize-route-public-transit";
 
 // ============================================
@@ -635,9 +639,18 @@ export async function optimizeRoute(
     const totalDays = getDaysBetween(trip.startDate, trip.endDate);
     const dates = generateDateRange(trip.startDate, totalDays);
 
-    const dailyMaxMinutes =
-      userOptions?.maxDailyMinutes ??
-      timeToMinutes(trip.dailyEndTime) - timeToMinutes(trip.dailyStartTime);
+    // 일자별 시간 설정 생성
+    // - 1일차: 여행 시작 시간 ~ 20:00
+    // - 중간 일차: 10:00 ~ 20:00
+    // - 마지막 일차: 10:00 ~ 여행 종료 시간
+    const dailyTimeConfigs: DailyTimeConfig[] = generateDailyTimeConfigs({
+      totalDays,
+      startDate: trip.startDate,
+      firstDayStartTime: trip.dailyStartTime,
+      lastDayEndTime: trip.dailyEndTime,
+      middleDayStartTime: DEFAULT_MIDDLE_DAY_START_TIME,
+      middleDayEndTime: DEFAULT_MIDDLE_DAY_END_TIME,
+    });
 
     const distributionResult = distributeToDaily(
       improvedResult.route,
@@ -648,8 +661,8 @@ export async function optimizeRoute(
         endDate: trip.endDate,
         dailyStartTime: trip.dailyStartTime,
         dailyEndTime: trip.dailyEndTime,
-        maxDailyMinutes: dailyMaxMinutes,
         fixedSchedules,
+        dailyTimeConfigs,
       }
     );
 
@@ -808,6 +821,11 @@ export async function optimizeRoute(
         }
       }
 
+      // 일자별 시간 설정 적용
+      const dayTimeConfig = dailyTimeConfigs[i];
+      const dayStartTime = minutesToTime(dayTimeConfig.startMinute);
+      const dayEndTime = minutesToTime(dayTimeConfig.endMinute);
+
       if (actualPlaceIds.length === 0) {
         // 빈 날은 기본 정보만
         itinerary.push({
@@ -818,10 +836,10 @@ export async function optimizeRoute(
           totalDuration: 0,
           totalStayDuration: 0,
           placeCount: 0,
-          startTime: trip.dailyStartTime,
-          endTime: trip.dailyStartTime,
-          dailyStartTime: trip.dailyStartTime,
-          dailyEndTime: trip.dailyEndTime,
+          startTime: dayStartTime,
+          endTime: dayStartTime,
+          dailyStartTime: dayStartTime,
+          dailyEndTime: dayEndTime,
           dayOrigin: dayOriginInfo,
           dayDestination: dayDestinationInfo,
         });
@@ -834,8 +852,8 @@ export async function optimizeRoute(
         distanceMatrix,
         date,
         i + 1,
-        trip.dailyStartTime,
-        trip.dailyEndTime,
+        dayStartTime,
+        dayEndTime,
         transportMode,
         actualStartId,
         actualEndId,

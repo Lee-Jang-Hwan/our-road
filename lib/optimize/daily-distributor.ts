@@ -7,11 +7,15 @@ import type { FixedSchedule } from "@/types/schedule";
 import type {
   OptimizeNode,
   DayAssignment,
+  DailyTimeConfig,
 } from "./types";
 import {
   timeToMinutes,
   getDaysBetween,
   generateDateRange,
+  generateDailyTimeConfigs,
+  DEFAULT_MIDDLE_DAY_START_TIME,
+  DEFAULT_MIDDLE_DAY_END_TIME,
 } from "./types";
 import { createDistanceMatrixGetter } from "./distance-matrix";
 
@@ -27,11 +31,11 @@ export interface DailyDistributorOptions {
   startDate: string;
   /** 여행 종료일 (YYYY-MM-DD) */
   endDate: string;
-  /** 일일 시작 시간 (HH:mm, 기본: "10:00") */
+  /** 일일 시작 시간 (HH:mm, 기본: "10:00") - 1일차 시작 시간으로 사용 */
   dailyStartTime?: string;
-  /** 일일 종료 시간 (HH:mm, 기본: "22:00") */
+  /** 일일 종료 시간 (HH:mm, 기본: "22:00") - 마지막 일차 종료 시간으로 사용 */
   dailyEndTime?: string;
-  /** 일일 최대 활동 시간 (분) - 지정하지 않으면 startTime~endTime 전체 사용 */
+  /** 일일 최대 활동 시간 (분) - deprecated, 일자별 시간 설정 사용 권장 */
   maxDailyMinutes?: number;
   /** 고정 일정 목록 */
   fixedSchedules?: FixedSchedule[];
@@ -39,6 +43,8 @@ export interface DailyDistributorOptions {
   placeDurations?: Map<string, number>;
   /** 진행 콜백 */
   onProgress?: (day: number, totalDays: number) => void;
+  /** 일자별 시간 설정 (제공되면 dailyStartTime/dailyEndTime/maxDailyMinutes 무시) */
+  dailyTimeConfigs?: DailyTimeConfig[];
 }
 
 /**
@@ -71,6 +77,12 @@ function calculateEndMinutes(startTime: string, durationMinutes: number): number
 /**
  * 일자별 가용 시간 계산
  *
+ * 일자별 시간 제약:
+ * - 1일차: 여행 시작 시간 ~ 중간 일차 종료 시간 (20:00)
+ * - 중간 일차: 10:00 ~ 20:00
+ * - 마지막 일차: 10:00 ~ 여행 종료 시간
+ * - 1일 여행: 여행 시작 시간 ~ 여행 종료 시간
+ *
  * @param options - 분배 옵션
  * @returns 일자별 가용 시간 배열
  */
@@ -82,23 +94,30 @@ function calculateDailyAvailability(
     endDate,
     dailyStartTime = "10:00",
     dailyEndTime = "22:00",
-    maxDailyMinutes,
     fixedSchedules = [],
     placeDurations,
+    dailyTimeConfigs,
   } = options;
 
   const totalDays = getDaysBetween(startDate, endDate);
   const dates = generateDateRange(startDate, totalDays);
 
-  const dailyEndMinute = timeToMinutes(dailyEndTime);
-  const dailyStartMinute = timeToMinutes(dailyStartTime);
-  // maxDailyMinutes가 지정되지 않으면 startTime~endTime 전체 시간 사용
-  const timeWindowMinutes = dailyEndMinute - dailyStartMinute;
-  const defaultAvailable = maxDailyMinutes
-    ? Math.min(timeWindowMinutes, maxDailyMinutes)
-    : timeWindowMinutes;
+  // 일자별 시간 설정 생성 (dailyTimeConfigs가 제공되지 않으면 자동 생성)
+  const timeConfigs = dailyTimeConfigs ?? generateDailyTimeConfigs({
+    totalDays,
+    startDate,
+    firstDayStartTime: dailyStartTime,
+    lastDayEndTime: dailyEndTime,
+    middleDayStartTime: DEFAULT_MIDDLE_DAY_START_TIME,
+    middleDayEndTime: DEFAULT_MIDDLE_DAY_END_TIME,
+  });
 
-  return dates.map((date) => {
+  return dates.map((date, index) => {
+    // 해당 날짜의 시간 설정
+    const timeConfig = timeConfigs[index];
+    const availableMinutesForDay = timeConfig?.maxMinutes ??
+      (timeToMinutes(dailyEndTime) - timeToMinutes(dailyStartTime));
+
     // 해당 날짜의 고정 일정 필터링
     const daySchedules = fixedSchedules.filter((s) => s.date === date);
 
@@ -120,7 +139,7 @@ function calculateDailyAvailability(
 
     return {
       date,
-      availableMinutes: Math.max(0, defaultAvailable - reservedMinutes),
+      availableMinutes: Math.max(0, availableMinutesForDay - reservedMinutes),
       reservedSlots,
       assignedPlaces: [],
       usedMinutes: reservedMinutes,
@@ -360,18 +379,30 @@ export function toDayAssignments(
 ): DayAssignment[] {
   const totalDays = getDaysBetween(options.startDate, options.endDate);
   const dates = generateDateRange(options.startDate, totalDays);
-  const maxMinutes =
-    options.maxDailyMinutes ??
-    timeToMinutes(options.dailyEndTime ?? "22:00") -
-      timeToMinutes(options.dailyStartTime ?? "10:00");
 
-  return result.days.map((placeIds, index) => ({
-    dayNumber: index + 1,
-    date: dates[index],
-    placeIds,
-    usedMinutes: result.dailyDurations[index],
-    remainingMinutes: maxMinutes - result.dailyDurations[index],
-  }));
+  // 일자별 시간 설정 생성
+  const timeConfigs = options.dailyTimeConfigs ?? generateDailyTimeConfigs({
+    totalDays,
+    startDate: options.startDate,
+    firstDayStartTime: options.dailyStartTime ?? "10:00",
+    lastDayEndTime: options.dailyEndTime ?? "22:00",
+    middleDayStartTime: DEFAULT_MIDDLE_DAY_START_TIME,
+    middleDayEndTime: DEFAULT_MIDDLE_DAY_END_TIME,
+  });
+
+  return result.days.map((placeIds, index) => {
+    const maxMinutes = timeConfigs[index]?.maxMinutes ??
+      (timeToMinutes(options.dailyEndTime ?? "22:00") -
+        timeToMinutes(options.dailyStartTime ?? "10:00"));
+
+    return {
+      dayNumber: index + 1,
+      date: dates[index],
+      placeIds,
+      usedMinutes: result.dailyDurations[index],
+      remainingMinutes: maxMinutes - result.dailyDurations[index],
+    };
+  });
 }
 
 /**

@@ -271,13 +271,30 @@ export interface Waypoint {
   fixedStartTime?: string; // "HH:mm" format
 }
 
+/**
+ * 일자별 시간 제약 설정
+ */
+export interface DailyTimeLimit {
+  /** 일차 (1부터 시작) */
+  dayNumber: number;
+  /** 해당 일차의 최대 활동 시간 (분) */
+  maxMinutes: number;
+  /** 시작 시간 (HH:mm) */
+  startTime: string;
+  /** 종료 시간 (HH:mm) */
+  endTime: string;
+}
+
 export interface TripInput {
   tripId?: string;
   days: number;
   start: LatLng;
   end?: LatLng;
   lodging?: LatLng;
+  /** @deprecated 일자별 시간 제약(dailyTimeLimits) 사용 권장 */
   dailyMaxMinutes?: number;
+  /** 일자별 시간 제약 설정 (각 일자별로 다른 시간 제약 적용) */
+  dailyTimeLimits?: DailyTimeLimit[];
   tripStartDate?: string; // 여행 시작 날짜 (YYYY-MM-DD) - 고정 일정 날짜 계산용
   waypoints: Waypoint[];
 }
