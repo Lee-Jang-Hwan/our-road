@@ -1,4 +1,4 @@
-// ============================================
+﻿// ============================================
 // Routing API Integration
 // ============================================
 
@@ -49,6 +49,19 @@ export function extractSegments(
     return waypoint ? waypoint.coord : null;
   };
 
+  const pushSegment = (
+    fromId: string,
+    toId: string,
+    fromCoord: LatLng,
+    toCoord: LatLng,
+  ) => {
+    segments.push({
+      key: { fromId, toId },
+      fromCoord,
+      toCoord,
+    });
+  };
+
   for (let dayIndex = 0; dayIndex < dayPlans.length; dayIndex++) {
     const dayPlan = dayPlans[dayIndex];
     if (!dayPlan || !Array.isArray(dayPlan.waypointOrder)) {
@@ -59,13 +72,9 @@ export function extractSegments(
     const isFirstDay = dayIndex === 0;
     const isLastDay = dayIndex === dayPlans.length - 1;
 
-    const firstWaypointId = dayPlan.waypointOrder[0];
-    const lastWaypointId =
-      dayPlan.waypointOrder[dayPlan.waypointOrder.length - 1];
-
-    // 출발지 좌표 및 ID 결정
-    let startCoord: LatLng;
-    let startId: string;
+    // Determine start coordinate and ID
+    let startCoord: LatLng = start;
+    let startId = "__origin__";
 
     if (isFirstDay) {
       startCoord = start;
@@ -74,7 +83,7 @@ export function extractSegments(
       startCoord = lodging;
       startId = "__accommodation_0__";
     } else {
-      // 숙소가 없으면 전날 마지막 경유지에서 시작
+      // ??덈꺖揶쎛 ??곸몵筌??袁④텊 筌띾뜆?筌?野껋럩?筌왖?癒?퐣 ??뽰삂
       const prevDayPlan = dayPlans[dayIndex - 1];
 
       if (
@@ -99,7 +108,98 @@ export function extractSegments(
       }
     }
 
-    // 첫 경유지로 가는 구간
+    const checkInBreakIndex = dayPlan.checkInBreakIndex;
+    const hasCheckInBreak =
+      lodging &&
+      Number.isFinite(checkInBreakIndex) &&
+      typeof checkInBreakIndex === "number";
+
+    if (hasCheckInBreak && lodging) {
+      let endCoord: LatLng | undefined;
+      let endId: string | undefined;
+      if (isLastDay && end) {
+        const lastId =
+          dayPlan.waypointOrder[dayPlan.waypointOrder.length - 1];
+        const lastCoord = getWaypointCoord(lastId);
+        const isSameAsLastWaypoint =
+          !!lastCoord &&
+          Math.abs(end.lat - lastCoord.lat) < 0.00001 &&
+          Math.abs(end.lng - lastCoord.lng) < 0.00001;
+        if (!isSameAsLastWaypoint) {
+          endCoord = end;
+          endId = "__destination__";
+        }
+      } else if (lodging) {
+        endCoord = lodging;
+        endId = "__accommodation_0__";
+      }
+
+      const breakIndex = Math.min(
+        Math.max(checkInBreakIndex, 0),
+        dayPlan.waypointOrder.length,
+      );
+      const amWaypointIds = dayPlan.waypointOrder.slice(0, breakIndex);
+      const pmWaypointIds = dayPlan.waypointOrder.slice(breakIndex);
+      const lodgingId = "__accommodation_0__";
+
+      if (amWaypointIds.length > 0) {
+        const firstAmId = amWaypointIds[0];
+        const firstAmCoord = getWaypointCoord(firstAmId);
+        if (firstAmCoord) {
+          pushSegment(startId, firstAmId, startCoord, firstAmCoord);
+        }
+
+        for (let i = 0; i < amWaypointIds.length - 1; i++) {
+          const fromId = amWaypointIds[i];
+          const toId = amWaypointIds[i + 1];
+          const fromCoord = getWaypointCoord(fromId);
+          const toCoord = getWaypointCoord(toId);
+          if (fromCoord && toCoord) {
+            pushSegment(fromId, toId, fromCoord, toCoord);
+          }
+        }
+
+        const lastAmId = amWaypointIds[amWaypointIds.length - 1];
+        const lastAmCoord = getWaypointCoord(lastAmId);
+        if (lastAmCoord) {
+          pushSegment(lastAmId, lodgingId, lastAmCoord, lodging);
+        }
+      } else {
+        pushSegment(startId, lodgingId, startCoord, lodging);
+      }
+
+      if (pmWaypointIds.length > 0) {
+        const firstPmId = pmWaypointIds[0];
+        const firstPmCoord = getWaypointCoord(firstPmId);
+        if (firstPmCoord) {
+          pushSegment(lodgingId, firstPmId, lodging, firstPmCoord);
+        }
+
+        for (let i = 0; i < pmWaypointIds.length - 1; i++) {
+          const fromId = pmWaypointIds[i];
+          const toId = pmWaypointIds[i + 1];
+          const fromCoord = getWaypointCoord(fromId);
+          const toCoord = getWaypointCoord(toId);
+          if (fromCoord && toCoord) {
+            pushSegment(fromId, toId, fromCoord, toCoord);
+          }
+        }
+
+        const lastPmId = pmWaypointIds[pmWaypointIds.length - 1];
+        const lastPmCoord = getWaypointCoord(lastPmId);
+        if (endCoord && endId && lastPmCoord) {
+          pushSegment(lastPmId, endId, lastPmCoord, endCoord);
+        }
+      }
+
+      continue;
+    }
+
+    const firstWaypointId = dayPlan.waypointOrder[0];
+    const lastWaypointId =
+      dayPlan.waypointOrder[dayPlan.waypointOrder.length - 1];
+
+    // 筌?野껋럩?筌왖嚥?揶쎛???닌덉퍢
     const firstCoord = getWaypointCoord(firstWaypointId);
     if (firstCoord) {
       segments.push({
@@ -109,7 +209,7 @@ export function extractSegments(
       });
     }
 
-    // 경유지 간 구간
+    // 野껋럩?筌왖 揶??닌덉퍢
     for (let i = 0; i < dayPlan.waypointOrder.length - 1; i++) {
       const fromId = dayPlan.waypointOrder[i];
       const toId = dayPlan.waypointOrder[i + 1];
@@ -125,14 +225,14 @@ export function extractSegments(
       }
     }
 
-    // 도착지 좌표 및 ID 결정
+    // ?袁⑷컩筌왖 ?ル슦紐?獄?ID 野껉퀣??
     const lastCoord = getWaypointCoord(lastWaypointId);
     let endCoord: LatLng | undefined;
     let endId: string | undefined;
 
     if (isLastDay && end) {
-      // 마지막 날은 항상 도착지 사용
-      // (마지막 경유지와 도착지가 완전히 같은 좌표가 아니면 항상 추가)
+      // 筌띾뜆?筌??醫? ??湲??袁⑷컩筌왖 ????
+      // (筌띾뜆?筌?野껋럩?筌왖?? ?袁⑷컩筌왖揶쎛 ?袁⑹읈??揶쏆늿? ?ル슦紐닷첎? ?袁⑤빍筌???湲??곕떽?)
       const isSameAsLastWaypoint =
         !!lastCoord &&
         Math.abs(end.lat - lastCoord.lat) < 0.00001 &&
@@ -142,15 +242,15 @@ export function extractSegments(
         endCoord = end;
         endId = "__destination__";
       }
-      // 마지막 경유지와 도착지가 완전히 같으면 순환 여행으로 간주하여 endCoord를 설정하지 않음
+      // 筌띾뜆?筌?野껋럩?筌왖?? ?袁⑷컩筌왖揶쎛 ?袁⑹읈??揶쏆늿?앾쭖???쀬넎 ??六??곗쨮 揶쏄쑴竊??뤿연 endCoord????쇱젟??? ??놁벉
     } else if (lodging) {
-      // 마지막 날이 아니고 숙소가 있으면 숙소
+      // 筌띾뜆?筌??醫롮뵠 ?袁⑤빍????덈꺖揶쎛 ??됱몵筌???덈꺖
       endCoord = lodging;
       endId = "__accommodation_0__";
     }
-    // 숙소가 없고 마지막 날이 아니면 endCoord를 설정하지 않음 (다음 날 이어짐)
+    // ??덈꺖揶쎛 ??얩?筌띾뜆?筌??醫롮뵠 ?袁⑤빍筌?endCoord????쇱젟??? ??놁벉 (??쇱벉 ????곷선筌?
 
-    // 마지막 경유지에서 도착지로 가는 구간
+    // 筌띾뜆?筌?野껋럩?筌왖?癒?퐣 ?袁⑷컩筌왖嚥?揶쎛???닌덉퍢
     if (endCoord && endId && lastCoord) {
       segments.push({
         key: { fromId: lastWaypointId, toId: endId },
@@ -244,7 +344,7 @@ async function fetchSingleSegment(
 
   const distanceMeters = calculateDistance(segment.fromCoord, segment.toCoord);
 
-  // 700 이하만: 도보 API 호출
+  // 700 ??꾨릭筌? ?袁⑤궖 API ?紐꾪뀱
   if (distanceMeters <= 700) {
     try {
       const walkingRoute = await getTmapWalkingRoute(
@@ -253,7 +353,7 @@ async function fetchSingleSegment(
       );
 
       if (walkingRoute) {
-        // 도보 구간도 transitDetails 형태로 제공 (지도 표시를 위해)
+        // ?袁⑤궖 ?닌덉퍢??transitDetails ?類κ묶嚥???볥궗 (筌왖????뽯뻻???袁る퉸)
         const result: SegmentCost = {
           key: segment.key,
           durationMinutes: walkingRoute.totalDuration,
@@ -266,7 +366,7 @@ async function fetchSingleSegment(
             walkingDistance: walkingRoute.totalDistance,
             subPaths: [
               {
-                trafficType: 3, // 도보
+                trafficType: 3, // ?袁⑤궖
                 distance: walkingRoute.totalDistance,
                 sectionTime: walkingRoute.totalDuration,
                 startCoord: segment.fromCoord,
@@ -284,11 +384,11 @@ async function fetchSingleSegment(
       // TMAP API failed, will use fallback
     }
 
-    // TMAP API 실패 시 fallback
+    // TMAP API ??쎈솭 ??fallback
     return calculateWalkingSegmentCostWithDetails(segment, distanceMeters);
   }
 
-  // 700m 초과과: 대중교통 API 호출
+  // 700m ?λ뜃?득? ??餓λ쵌???API ?紐꾪뀱
   // Check circuit breaker
   if (!checkCircuitBreaker()) {
     return fallbackSegmentCost(segment, distanceMeters);
@@ -370,9 +470,9 @@ export async function callRoutingAPIForSegments(
 
 /**
  * Calculate walking segment cost for short distances (<= 700m)
- * - Walking speed: 4 km/h (약 67m/분)
+ * - Walking speed: 4 km/h (??67m/??
  * - No API call required
- * - transitDetails 포함 (지도에서 도보 경로로 표시하기 위해)
+ * - transitDetails ??釉?(筌왖?袁⑸퓠???袁⑤궖 野껋럥以덃에???뽯뻻??띾┛ ?袁る퉸)
  */
 function calculateWalkingSegmentCostWithDetails(
   segment: SegmentRequest,
@@ -390,7 +490,7 @@ function calculateWalkingSegmentCostWithDetails(
     key: segment.key,
     durationMinutes: finalDuration,
     distanceMeters,
-    // TMap polyline 없이 직선 연결 (from-to 좌표로 지도에 표시)
+    // TMap polyline ??곸뵠 筌욊낯苑??怨뚭퍙 (from-to ?ル슦紐닸에?筌왖?袁⑸퓠 ??뽯뻻)
     transitDetails: {
       totalFare: 0,
       transferCount: 0,
@@ -398,12 +498,12 @@ function calculateWalkingSegmentCostWithDetails(
       walkingDistance: distanceMeters,
       subPaths: [
         {
-          trafficType: 3, // 도보
+          trafficType: 3, // ?袁⑤궖
           distance: distanceMeters,
           sectionTime: finalDuration,
           startCoord: segment.fromCoord,
           endCoord: segment.toCoord,
-          // polyline 없음 = 직선 연결
+          // polyline ??곸벉 = 筌욊낯苑??怨뚭퍙
         },
       ],
     },
@@ -432,6 +532,8 @@ function fallbackSegmentCost(
     key: segment.key,
     durationMinutes: finalDuration,
     distanceMeters,
-    // transitDetails 없음 = API 실패 시 fallback
+    // transitDetails ??곸벉 = API ??쎈솭 ??fallback
   };
 }
+
+

@@ -291,6 +291,9 @@ export interface TripInput {
   start: LatLng;
   end?: LatLng;
   lodging?: LatLng;
+  checkInDate?: string;
+  checkInTime?: string;
+  checkInDurationMin?: number;
   /** @deprecated 일자별 시간 제약(dailyTimeLimits) 사용 권장 */
   dailyMaxMinutes?: number;
   /** 일자별 시간 제약 설정 (각 일자별로 다른 시간 제약 적용) */
@@ -310,6 +313,7 @@ export interface DayPlan {
   dayIndex: number;
   waypointOrder: string[];
   excludedWaypointIds: string[];
+  checkInBreakIndex?: number;
 }
 
 export interface SegmentKey {

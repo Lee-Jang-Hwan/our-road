@@ -100,6 +100,12 @@ function resolveLatLng(location?: TripLocationLike | null): LatLng | undefined {
   return undefined;
 }
 
+function normalizeDateOnly(dateStr?: string): string | undefined {
+  if (!dateStr) return undefined;
+  const trimmed = dateStr.trim();
+  return trimmed.split("T")[0].split(" ")[0];
+}
+
 /**
  * TripOutput을 OptimizeResult로 변환
  */
@@ -116,6 +122,12 @@ function convertTripOutputToOptimizeResult(
   const dates = generateDateRange(trip.startDate, totalDays);
   const originCoord = resolveLatLng(trip.origin);
   const destinationCoord = resolveLatLng(trip.destination);
+  const accommodation = trip.accommodations?.[0];
+  const checkInDate = normalizeDateOnly(accommodation?.startDate);
+  const checkInTime = accommodation?.checkInTime ?? "15:00";
+  const checkInDurationMin = accommodation?.checkInDurationMin ?? 30;
+  const checkInDayIndex =
+    checkInDate ? dates.indexOf(checkInDate) : -1;
 
   // Place ID로 매핑
   const placeMap = new Map(places.map((p) => [p.id, p]));
@@ -159,6 +171,25 @@ function convertTripOutputToOptimizeResult(
   const segmentMap = new Map(
     output.segmentCosts.map((s) => [`${s.key.fromId}:${s.key.toId}`, s]),
   );
+
+  const toRouteSegment = (
+    segment?: SegmentCost,
+  ): ScheduleItem["transportToNext"] | undefined => {
+    if (!segment) return undefined;
+    const isWalking =
+      !segment.transitDetails ||
+      (segment.transitDetails.subPaths.length === 1 &&
+        segment.transitDetails.subPaths[0].trafficType === 3);
+
+    return {
+      mode: isWalking ? "walking" : "public",
+      distance: segment.distanceMeters || 0,
+      duration: segment.durationMinutes,
+      polyline:
+        typeof segment.polyline === "string" ? segment.polyline : undefined,
+      transitDetails: segment.transitDetails,
+    };
+  };
 
   // DailyItinerary 생성
   const itinerary: DailyItinerary[] = [];
@@ -246,24 +277,242 @@ function convertTripOutputToOptimizeResult(
     // 숙소가 없고 마지막 날이 아니면 dayDestination은 undefined (다음 날 이어짐)
 
     // 출발지 → 첫 장소 이동 정보
+    let originId: string;
+    if (dayIndex === 0) {
+      originId = "__origin__";
+    } else if (hasAccommodation) {
+      originId = "__accommodation_0__";
+    } else {
+      const prevDayPlan = output.dayPlans[dayIndex - 1];
+      originId =
+        prevDayPlan && prevDayPlan.waypointOrder.length > 0
+          ? prevDayPlan.waypointOrder[prevDayPlan.waypointOrder.length - 1]
+          : "__origin__";
+    }
+
+    const isCheckInDay =
+      hasAccommodation &&
+      accommodation &&
+      checkInDayIndex === dayIndex &&
+      dayPlan.checkInBreakIndex !== undefined;
+
+    if (isCheckInDay) {
+      const breakIndex = Math.min(
+        Math.max(dayPlan.checkInBreakIndex ?? dayPlan.waypointOrder.length, 0),
+        dayPlan.waypointOrder.length,
+      );
+      const amWaypointIds = dayPlan.waypointOrder.slice(0, breakIndex);
+      const pmWaypointIds = dayPlan.waypointOrder.slice(breakIndex);
+      const lodgingId = "__accommodation_0__";
+
+      let transportFromOrigin: DailyItinerary["transportFromOrigin"];
+      let transportToHotel: ScheduleItem["transportToNext"];
+      let transportFromHotel: ScheduleItem["transportToNext"];
+
+      if (dayOrigin && amWaypointIds.length > 0) {
+        const firstPlaceId = amWaypointIds[0];
+        const segment = segmentMap.get(`${originId}:${firstPlaceId}`);
+        transportFromOrigin = toRouteSegment(segment);
+
+        if (segment) {
+          currentTime += segment.durationMinutes;
+          totalDistance += segment.distanceMeters || 0;
+          totalDuration += segment.durationMinutes;
+        }
+      }
+
+      for (let i = 0; i < amWaypointIds.length; i++) {
+        const placeId = amWaypointIds[i];
+        const place = placeMap.get(placeId);
+        if (!place) continue;
+
+        const arrivalTime = minutesToTime(currentTime);
+        const departureTime = addMinutesToTime(
+          arrivalTime,
+          place.estimatedDuration,
+        );
+        totalStayDuration += place.estimatedDuration;
+
+        let transportToNext: ScheduleItem["transportToNext"];
+        if (i < amWaypointIds.length - 1) {
+          const nextPlaceId = amWaypointIds[i + 1];
+          const segment = segmentMap.get(`${placeId}:${nextPlaceId}`);
+          transportToNext = toRouteSegment(segment);
+          if (segment) {
+            currentTime =
+              timeToMinutes(departureTime) + segment.durationMinutes;
+            totalDistance += segment.distanceMeters || 0;
+            totalDuration += segment.durationMinutes;
+          }
+        } else {
+          const segment = segmentMap.get(`${placeId}:${lodgingId}`);
+          transportToNext = toRouteSegment(segment);
+          transportToHotel = transportToNext;
+          if (segment) {
+            currentTime =
+              timeToMinutes(departureTime) + segment.durationMinutes;
+            totalDistance += segment.distanceMeters || 0;
+            totalDuration += segment.durationMinutes;
+          }
+        }
+
+        const fixedSchedule = fixedScheduleMap.get(place.id);
+        const isFixed = !!fixedSchedule;
+
+        schedule.push({
+          order: i + 1,
+          placeId: place.id,
+          placeName: place.name,
+          arrivalTime,
+          departureTime,
+          duration: place.estimatedDuration,
+          isFixed,
+          transportToNext,
+        });
+      }
+
+      if (amWaypointIds.length === 0) {
+        const segment = segmentMap.get(`${originId}:${lodgingId}`);
+        transportToHotel = toRouteSegment(segment);
+        if (segment) {
+          currentTime += segment.durationMinutes;
+          totalDistance += segment.distanceMeters || 0;
+          totalDuration += segment.durationMinutes;
+        }
+      }
+
+      const arrivalTime = minutesToTime(currentTime);
+      const checkInStartMinute = Math.max(
+        timeToMinutes(checkInTime),
+        currentTime,
+      );
+      const checkInStartTime = minutesToTime(checkInStartMinute);
+      const checkInEndTime = minutesToTime(
+        checkInStartMinute + checkInDurationMin,
+      );
+      currentTime = checkInStartMinute + checkInDurationMin;
+      totalStayDuration += checkInDurationMin;
+
+      if (pmWaypointIds.length > 0) {
+        const firstPmId = pmWaypointIds[0];
+        const segment = segmentMap.get(`${lodgingId}:${firstPmId}`);
+        transportFromHotel = toRouteSegment(segment);
+
+        if (segment) {
+          currentTime += segment.durationMinutes;
+          totalDistance += segment.distanceMeters || 0;
+          totalDuration += segment.durationMinutes;
+        }
+      }
+
+      for (let i = 0; i < pmWaypointIds.length; i++) {
+        const placeId = pmWaypointIds[i];
+        const place = placeMap.get(placeId);
+        if (!place) continue;
+
+        const arrivalTimeValue = minutesToTime(currentTime);
+        const departureTime = addMinutesToTime(
+          arrivalTimeValue,
+          place.estimatedDuration,
+        );
+        totalStayDuration += place.estimatedDuration;
+
+        let transportToNext: ScheduleItem["transportToNext"];
+        if (i < pmWaypointIds.length - 1) {
+          const nextPlaceId = pmWaypointIds[i + 1];
+          const segment = segmentMap.get(`${placeId}:${nextPlaceId}`);
+          transportToNext = toRouteSegment(segment);
+          if (segment) {
+            currentTime =
+              timeToMinutes(departureTime) + segment.durationMinutes;
+            totalDistance += segment.distanceMeters || 0;
+            totalDuration += segment.durationMinutes;
+          }
+        }
+
+        const fixedSchedule = fixedScheduleMap.get(place.id);
+        const isFixed = !!fixedSchedule;
+
+        schedule.push({
+          order: amWaypointIds.length + i + 1,
+          placeId: place.id,
+          placeName: place.name,
+          arrivalTime: arrivalTimeValue,
+          departureTime,
+          duration: place.estimatedDuration,
+          isFixed,
+          transportToNext,
+        });
+      }
+
+      let transportToDestination: DailyItinerary["transportToDestination"];
+      if (pmWaypointIds.length > 0 && dayDestination) {
+        const lastPlaceId = pmWaypointIds[pmWaypointIds.length - 1];
+        const destinationId = isLastDay
+          ? "__destination__"
+          : hasAccommodation
+            ? "__accommodation_0__"
+            : "__destination__";
+        const segment = segmentMap.get(`${lastPlaceId}:${destinationId}`);
+        transportToDestination = toRouteSegment(segment);
+        if (segment) {
+          totalDistance += segment.distanceMeters || 0;
+          totalDuration += segment.durationMinutes;
+        }
+      }
+
+      const checkInEvent: DailyItinerary["checkInEvent"] = {
+        accommodationName: accommodation.location.name,
+        accommodationAddress: accommodation.location.address,
+        lat: accommodation.location.lat,
+        lng: accommodation.location.lng,
+        checkInTime,
+        durationMin: checkInDurationMin,
+        arrivalTime,
+        startTime: checkInStartTime,
+        endTime: checkInEndTime,
+        insertAfterOrder: amWaypointIds.length,
+        transportToHotel,
+        transportFromHotel,
+      };
+
+      const startTimeValue = dayStartTime;
+      const hasPm = pmWaypointIds.length > 0;
+      let endTimeValue = hasPm
+        ? schedule[schedule.length - 1]?.departureTime ?? dayStartTime
+        : checkInEndTime;
+      if (hasPm && transportToDestination) {
+        endTimeValue = addMinutesToTime(
+          endTimeValue,
+          transportToDestination.duration,
+        );
+      }
+
+      itinerary.push({
+        dayNumber: dayIndex + 1,
+        date,
+        schedule,
+        totalDistance,
+        totalDuration,
+        totalStayDuration,
+        placeCount: schedule.length,
+        startTime: startTimeValue,
+        endTime: endTimeValue,
+        transportFromOrigin,
+        transportToDestination,
+        dailyStartTime: dayStartTime,
+        dailyEndTime: dayEndTime,
+        dayOrigin,
+        dayDestination,
+        checkInEvent,
+      });
+      continue;
+    }
+
     // dayOrigin이 있는 경우에만 transportFromOrigin 생성
     let transportFromOrigin: DailyItinerary["transportFromOrigin"];
     if (dayOrigin && dayPlan.waypointOrder.length > 0) {
       const firstPlaceId = dayPlan.waypointOrder[0];
-
-      // originId 결정: 첫날은 __origin__, 숙소 있으면 __accommodation_0__, 없으면 전날 마지막 장소 ID
-      let originId: string;
-      if (dayIndex === 0) {
-        originId = "__origin__";
-      } else if (hasAccommodation) {
-        originId = "__accommodation_0__";
-      } else {
-        const prevDayPlan = output.dayPlans[dayIndex - 1];
-        originId =
-          prevDayPlan && prevDayPlan.waypointOrder.length > 0
-            ? prevDayPlan.waypointOrder[prevDayPlan.waypointOrder.length - 1]
-            : "__origin__";
-      }
 
       const segmentKey = `${originId}:${firstPlaceId}`;
       const segment = segmentMap.get(segmentKey);
@@ -489,9 +738,13 @@ export async function optimizePublicTransitRoute(
       throw new Error("Invalid trip origin coordinates");
     }
     const destinationCoord = resolveLatLng(trip.destination);
-    const lodgingCoord = trip.accommodations?.[0]
-      ? resolveLatLng(trip.accommodations[0].location)
+    const accommodation = trip.accommodations?.[0];
+    const lodgingCoord = accommodation
+      ? resolveLatLng(accommodation.location)
       : undefined;
+    const checkInDate = normalizeDateOnly(accommodation?.startDate);
+    const checkInTime = accommodation?.checkInTime ?? "15:00";
+    const checkInDurationMin = accommodation?.checkInDurationMin ?? 30;
 
     const totalDays = getDaysBetween(trip.startDate, trip.endDate);
 
@@ -523,6 +776,9 @@ export async function optimizePublicTransitRoute(
       start: originCoord,
       end: destinationCoord,
       lodging: lodgingCoord,
+      checkInDate,
+      checkInTime: accommodation ? checkInTime : undefined,
+      checkInDurationMin: accommodation ? checkInDurationMin : undefined,
       tripStartDate: trip.startDate,
       waypoints: places.map((place) => placeToWaypoint(place, fixedSchedules)),
       dailyTimeLimits,
@@ -534,6 +790,8 @@ export async function optimizePublicTransitRoute(
         tripId,
         days: tripInput.days,
         waypointsCount: tripInput.waypoints.length,
+        accommodationStartDate: accommodation?.startDate,
+        normalizedCheckInDate: checkInDate,
         dailyTimeLimits: dailyTimeLimits.map((l) => `Day${l.dayNumber}: ${l.startTime}-${l.endTime} (${l.maxMinutes}min)`),
       },
     );

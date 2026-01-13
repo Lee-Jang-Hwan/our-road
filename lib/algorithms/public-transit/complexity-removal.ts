@@ -22,10 +22,16 @@ const WEIGHTS = {
  * @param dailyMaxMinutesOrArray - 단일 값 또는 일자별 최대 시간 배열
  * @param waypoints - 웨이포인트 맵
  */
+export interface CheckInAdjustment {
+  dayIndex: number;
+  durationMin: number;
+}
+
 export function exceedsDailyLimitProxy(
   dayPlans: DayPlan[],
   dailyMaxMinutesOrArray: number | number[],
-  waypoints: Map<string, Waypoint>
+  waypoints: Map<string, Waypoint>,
+  checkInAdjustment?: CheckInAdjustment
 ): boolean {
   if (!Array.isArray(dayPlans) || dayPlans.length === 0) {
     return false;
@@ -79,7 +85,14 @@ export function exceedsDailyLimitProxy(
     }
 
     const distanceKm = distanceMeters / 1000;
-    const estimatedMinutes = distanceKm * MINUTES_PER_KM;
+    let estimatedMinutes = distanceKm * MINUTES_PER_KM;
+    if (
+      checkInAdjustment &&
+      dayIndex === checkInAdjustment.dayIndex &&
+      dayPlan.checkInBreakIndex !== undefined
+    ) {
+      estimatedMinutes += checkInAdjustment.durationMin;
+    }
     return estimatedMinutes > dailyMaxMinutes;
   });
 }
@@ -260,7 +273,8 @@ export interface DayTimeInfo {
 export function calculateActualDailyTimes(
   dayPlans: DayPlan[],
   segmentCosts: import("@/types").SegmentCost[],
-  waypoints: Map<string, Waypoint>
+  waypoints: Map<string, Waypoint>,
+  checkInAdjustment?: CheckInAdjustment
 ): DayTimeInfo[] {
   const costMap = new Map<string, import("@/types").SegmentCost>();
   for (const cost of segmentCosts) {
@@ -308,6 +322,14 @@ export function calculateActualDailyTimes(
       if (endCost) {
         totalMinutes += endCost.durationMinutes;
       }
+    }
+
+    if (
+      checkInAdjustment &&
+      index === checkInAdjustment.dayIndex &&
+      dayPlan.checkInBreakIndex !== undefined
+    ) {
+      totalMinutes += checkInAdjustment.durationMin;
     }
 
     return {

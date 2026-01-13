@@ -13,11 +13,17 @@ import type {
   OptimizeError,
   DistanceMatrix,
 } from "@/types/optimize";
-import type { DailyItinerary, ScheduleItem, FixedSchedule, DayEndpoint } from "@/types/schedule";
+import type {
+  DailyItinerary,
+  ScheduleItem,
+  FixedSchedule,
+  DayEndpoint,
+  CheckInEvent,
+} from "@/types/schedule";
 import type { Place, TripPlaceRow } from "@/types/place";
 import type { Trip, TripRow, TripLocation } from "@/types/trip";
 import type { DailyAccommodation } from "@/types/accommodation";
-import type { TransportMode } from "@/types/route";
+import type { TransportMode, RouteSegment } from "@/types/route";
 import type { OptimizeNode } from "@/lib/optimize/types";
 import {
   createDistanceMatrix,
@@ -36,6 +42,7 @@ import {
   DEFAULT_MIDDLE_DAY_START_TIME,
   DEFAULT_MIDDLE_DAY_END_TIME,
 } from "@/lib/optimize";
+import type { DistanceEntry } from "@/lib/optimize";
 import type { DailyTimeConfig } from "@/lib/optimize/types";
 import { optimizePublicTransitRoute } from "./optimize-route-public-transit";
 
@@ -164,6 +171,110 @@ function accommodationToOptimizeNode(
     duration: 0,
     priority: 0,
     isFixed: false,
+  };
+}
+
+const DEFAULT_CHECKIN_TIME = "15:00";
+const DEFAULT_CHECKIN_DURATION_MIN = 30;
+
+interface CheckInConfig {
+  accommodation: DailyAccommodation;
+  checkInTime: string;
+  checkInDurationMin: number;
+}
+
+function getCheckInConfigForDate(
+  accommodations: DailyAccommodation[],
+  date: string
+): CheckInConfig | null {
+  const accommodation = accommodations.find((acc) => acc.startDate === date);
+  if (!accommodation) return null;
+  return {
+    accommodation,
+    checkInTime: accommodation.checkInTime ?? DEFAULT_CHECKIN_TIME,
+    checkInDurationMin:
+      accommodation.checkInDurationMin ?? DEFAULT_CHECKIN_DURATION_MIN,
+  };
+}
+
+function buildRouteSegment(entry?: DistanceEntry | null): RouteSegment | undefined {
+  if (!entry) return undefined;
+  return {
+    mode: entry.mode,
+    distance: entry.distance,
+    duration: entry.duration,
+    polyline: entry.polyline,
+    fare: entry.fare,
+    taxiFare: entry.taxiFare,
+    transitDetails: entry.transitDetails,
+    carSegments: entry.carSegments,
+    guides: entry.guides,
+  };
+}
+
+function splitPlaceIdsByCheckIn(params: {
+  dayPlaceIds: string[];
+  nodeMap: Map<string, OptimizeNode>;
+  distanceMatrix: DistanceMatrix;
+  dayStartTime: string;
+  dayStartId: string;
+  checkInTime: string;
+}): { amPlaceIds: string[]; pmPlaceIds: string[]; splitIndex: number } {
+  const {
+    dayPlaceIds,
+    nodeMap,
+    distanceMatrix,
+    dayStartTime,
+    dayStartId,
+    checkInTime,
+  } = params;
+
+  if (dayPlaceIds.length === 0) {
+    return { amPlaceIds: [], pmPlaceIds: [], splitIndex: 0 };
+  }
+
+  const checkInMinute = timeToMinutes(checkInTime);
+  let currentTime = timeToMinutes(dayStartTime);
+  let lastId = dayStartId;
+  let splitIndex = dayPlaceIds.length;
+
+  if (checkInMinute <= currentTime) {
+    return { amPlaceIds: [], pmPlaceIds: [...dayPlaceIds], splitIndex: 0 };
+  }
+
+  const getDistance = createDistanceMatrixGetter(distanceMatrix);
+
+  for (let i = 0; i < dayPlaceIds.length; i++) {
+    const placeId = dayPlaceIds[i];
+    const node = nodeMap.get(placeId);
+    if (!node) continue;
+
+    const travelMinutes = getDistance(lastId, placeId)?.duration ?? 0;
+    const arrivalBase = currentTime + travelMinutes;
+
+    if (node.isFixed && node.fixedStartTime) {
+      const fixedMinute = timeToMinutes(node.fixedStartTime);
+      if (fixedMinute >= checkInMinute) {
+        splitIndex = i;
+        break;
+      }
+      const arrival = Math.max(fixedMinute, arrivalBase);
+      currentTime = arrival + node.duration;
+    } else {
+      if (arrivalBase >= checkInMinute) {
+        splitIndex = i;
+        break;
+      }
+      currentTime = arrivalBase + node.duration;
+    }
+
+    lastId = placeId;
+  }
+
+  return {
+    amPlaceIds: dayPlaceIds.slice(0, splitIndex),
+    pmPlaceIds: dayPlaceIds.slice(splitIndex),
+    splitIndex,
   };
 }
 
@@ -843,6 +954,11 @@ export async function optimizeRoute(
       const dayTimeConfig = dailyTimeConfigs[i];
       const dayStartTime = minutesToTime(dayTimeConfig.startMinute);
       const dayEndTime = minutesToTime(dayTimeConfig.endMinute);
+      const checkInConfig = getCheckInConfigForDate(tripAccommodations, date);
+      const shouldApplyCheckIn =
+        !!checkInConfig &&
+        dayDestinationInfo?.type === "accommodation" &&
+        actualEndId.startsWith("__accommodation_");
 
       if (actualPlaceIds.length === 0) {
         // 鍮??좎? 湲곕낯 ?뺣낫留?
@@ -860,6 +976,145 @@ export async function optimizeRoute(
           dailyEndTime: dayEndTime,
           dayOrigin: dayOriginInfo,
           dayDestination: dayDestinationInfo,
+        });
+        continue;
+      }
+
+      if (shouldApplyCheckIn && checkInConfig) {
+        const { amPlaceIds, pmPlaceIds } = splitPlaceIdsByCheckIn({
+          dayPlaceIds: actualPlaceIds,
+          nodeMap,
+          distanceMatrix,
+          dayStartTime,
+          dayStartId: actualStartId,
+          checkInTime: checkInConfig.checkInTime,
+        });
+
+        const accommodationId = actualEndId;
+        const getDistance = createDistanceMatrixGetter(distanceMatrix);
+
+        const amItinerary =
+          amPlaceIds.length > 0
+            ? await createDailyItinerary(
+                amPlaceIds,
+                nodeMap,
+                distanceMatrix,
+                date,
+                i + 1,
+                dayStartTime,
+                dayEndTime,
+                transportMode,
+                actualStartId,
+                accommodationId,
+                false,
+              )
+            : null;
+
+        let arrivalTime = dayStartTime;
+        let transportToHotel: RouteSegment | undefined;
+
+        if (amItinerary) {
+          arrivalTime = amItinerary.endTime;
+          transportToHotel = amItinerary.transportToDestination;
+        } else {
+          const entry = getDistance(actualStartId, accommodationId);
+          transportToHotel = buildRouteSegment(entry);
+          const travelMinutes = entry?.duration ?? 0;
+          arrivalTime = addMinutesToTime(dayStartTime, travelMinutes);
+        }
+
+        const checkInStartMinute = Math.max(
+          timeToMinutes(checkInConfig.checkInTime),
+          timeToMinutes(arrivalTime),
+        );
+        const checkInStartTime = minutesToTime(checkInStartMinute);
+        const checkInEndTime = minutesToTime(
+          checkInStartMinute + checkInConfig.checkInDurationMin,
+        );
+
+        const pmItinerary =
+          pmPlaceIds.length > 0
+            ? await createDailyItinerary(
+                pmPlaceIds,
+                nodeMap,
+                distanceMatrix,
+                date,
+                i + 1,
+                checkInEndTime,
+                dayEndTime,
+                transportMode,
+                accommodationId,
+                actualEndId,
+                false,
+              )
+            : null;
+
+        const checkInEvent: CheckInEvent = {
+          accommodationName: checkInConfig.accommodation.location.name,
+          accommodationAddress: checkInConfig.accommodation.location.address,
+          lat: checkInConfig.accommodation.location.lat,
+          lng: checkInConfig.accommodation.location.lng,
+          checkInTime: checkInConfig.checkInTime,
+          durationMin: checkInConfig.checkInDurationMin,
+          arrivalTime,
+          startTime: checkInStartTime,
+          endTime: checkInEndTime,
+          insertAfterOrder: amItinerary?.schedule.length ?? 0,
+          transportToHotel,
+          transportFromHotel: pmItinerary?.transportFromOrigin,
+        };
+
+        const mergedSchedule: ScheduleItem[] = [];
+        if (amItinerary) {
+          mergedSchedule.push(...amItinerary.schedule);
+        }
+        if (pmItinerary) {
+          const offset = mergedSchedule.length;
+          mergedSchedule.push(
+            ...pmItinerary.schedule.map((item, index) => ({
+              ...item,
+              order: offset + index + 1,
+            })),
+          );
+        }
+
+        const totalDistance =
+          (amItinerary?.totalDistance ?? 0) + (pmItinerary?.totalDistance ?? 0);
+        const totalDuration =
+          (amItinerary?.totalDuration ?? 0) + (pmItinerary?.totalDuration ?? 0);
+        const totalStayDuration =
+          (amItinerary?.totalStayDuration ?? 0) +
+          (pmItinerary?.totalStayDuration ?? 0) +
+          checkInConfig.checkInDurationMin;
+        const startTimeValue =
+          amItinerary?.startTime ??
+          pmItinerary?.startTime ??
+          dayStartTime;
+        const endTimeValue =
+          pmItinerary?.endTime ??
+          checkInEndTime ??
+          amItinerary?.endTime ??
+          startTimeValue;
+
+        itinerary.push({
+          dayNumber: i + 1,
+          date,
+          schedule: mergedSchedule,
+          totalDistance,
+          totalDuration,
+          totalStayDuration,
+          placeCount: mergedSchedule.length,
+          startTime: startTimeValue,
+          endTime: endTimeValue,
+          transportFromOrigin: amItinerary?.transportFromOrigin,
+          transportToDestination:
+            pmItinerary?.transportToDestination ??
+            amItinerary?.transportToDestination,
+          dailyStartTime: dayStartTime,
+          dailyEndTime: dayEndTime,
+          dayOrigin: dayOriginInfo,
+          dayDestination: dayDestinationInfo,
+          checkInEvent,
         });
         continue;
       }

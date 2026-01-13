@@ -7,6 +7,7 @@ import { preprocessWaypoints, determineTripMode } from "./preprocess";
 import { zoneClustering } from "./clustering";
 import { chooseEndAnchor, orderClustersOneDirection } from "./cluster-ordering";
 import { generateDayPlans } from "./day-plan";
+import { applyCheckInSplit } from "./check-in-split";
 import { calculateCentroid } from "../utils/geo";
 import {
   exceedsDailyLimitProxy,
@@ -34,8 +35,14 @@ function logPublicTransitDebug(message: string, data?: unknown): void {
  * ?좎쭨 臾몄옄?댁쓣 濡쒖뺄 ?좎쭨濡??뚯떛 (??꾩〈 臾몄젣 諛⑹?)
  * @param dateStr "YYYY-MM-DD" ?뺤떇???좎쭨 臾몄옄?? * @returns 濡쒖뺄 ??꾩〈 湲곗? Date 媛앹껜
  */
+function normalizeDateOnly(dateStr: string): string {
+  const trimmed = dateStr.trim();
+  return trimmed.split("T")[0].split(" ")[0];
+}
+
 function parseLocalDate(dateStr: string): Date {
-  const [year, month, day] = dateStr.split("-").map(Number);
+  const normalized = normalizeDateOnly(dateStr);
+  const [year, month, day] = normalized.split("-").map(Number);
   // ?붿? 0遺???쒖옉?섎?濡?-1
   return new Date(year, month - 1, day);
 }
@@ -74,6 +81,27 @@ function groupFixedWaypointsByDay(
   }
 
   return grouped;
+}
+
+function getCheckInAdjustment(
+  input: TripInput
+): { dayIndex: number; durationMin: number } | null {
+  if (!input.tripStartDate || !input.checkInDate || !input.checkInTime) {
+    return null;
+  }
+  const startDate = parseLocalDate(input.tripStartDate);
+  const checkInDate = parseLocalDate(input.checkInDate);
+  const dayIndex = Math.floor(
+    (checkInDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  if (dayIndex < 0 || dayIndex >= input.days) {
+    return null;
+  }
+  const durationMin = input.checkInDurationMin ?? 30;
+  if (!Number.isFinite(durationMin) || durationMin < 0) {
+    return null;
+  }
+  return { dayIndex, durationMin };
 }
 
 function buildDayAnchors(
@@ -279,6 +307,14 @@ export async function generatePublicTransitRoute(
     throw new Error("Failed to generate day plans");
   }
 
+  applyCheckInSplit({
+    dayPlans,
+    waypoints: waypointMap,
+    input,
+  });
+
+  const checkInAdjustment = getCheckInAdjustment(input);
+
   if (PUBLIC_TRANSIT_DEBUG && waypointNameById) {
     logPublicTransitDebug(
       "day plan order",
@@ -303,7 +339,12 @@ export async function generatePublicTransitRoute(
     let removalCount = 0;
 
     while (
-      exceedsDailyLimitProxy(dayPlans, dailyMaxMinutesArray, waypointMap) &&
+      exceedsDailyLimitProxy(
+        dayPlans,
+        dailyMaxMinutesArray,
+        waypointMap,
+        checkInAdjustment
+      ) &&
       removalCount < maxRemovalIterations
     ) {
       const worstPoint = selectWorstComplexityPoint(
@@ -352,7 +393,8 @@ export async function generatePublicTransitRoute(
       const dayTimeInfos = calculateActualDailyTimes(
         dayPlans,
         segmentCosts,
-        waypointMap
+        waypointMap,
+        checkInAdjustment
       );
       const overloadedDays = identifyOverloadedDays(
         dayTimeInfos,
@@ -442,6 +484,7 @@ export async function generatePublicTransitRoute(
     segmentCosts,
   });
 }
+
 
 
 

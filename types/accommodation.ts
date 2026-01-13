@@ -16,6 +16,7 @@ export interface DailyAccommodation {
   location: TripLocation;
   /** 체크인 시간 (HH:mm) */
   checkInTime?: string;
+  checkInDurationMin?: number;
   /** 체크아웃 시간 (HH:mm) */
   checkOutTime?: string;
 }

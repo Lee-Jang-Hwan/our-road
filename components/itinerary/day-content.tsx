@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { ScheduleItem } from "./schedule-item";
 import { RouteSegmentConnector } from "./route-segment";
 import { DaySummary } from "./day-summary";
+import { CheckInEventItem } from "./check-in-event";
 import type {
   DailyItinerary,
   ScheduleItem as ScheduleItemType,
@@ -90,6 +91,14 @@ export function DayContent({
     itinerary.dayDestination ??
     (destination ? { ...destination, type: "destination" } : null);
 
+  const checkInEvent = itinerary.checkInEvent;
+  const showCheckInAtStart =
+    checkInEvent && checkInEvent.insertAfterOrder === 0;
+  const skipDestinationConnector =
+    checkInEvent &&
+    !checkInEvent.transportFromHotel &&
+    checkInEvent.insertAfterOrder >= itinerary.schedule.length;
+
   return (
     <div className={cn("space-y-4", className)}>
       {/* 헤더 */}
@@ -132,9 +141,25 @@ export function DayContent({
                 }
               />
               {/* 시작점 → 첫 장소 이동 */}
-              {itinerary.transportFromOrigin && (
+              {!showCheckInAtStart && itinerary.transportFromOrigin && (
                 <RouteSegmentConnector
                   segment={itinerary.transportFromOrigin}
+                />
+              )}
+              {showCheckInAtStart && checkInEvent?.transportToHotel && (
+                <RouteSegmentConnector
+                  segment={checkInEvent.transportToHotel}
+                />
+              )}
+            </>
+          )}
+
+          {showCheckInAtStart && checkInEvent && (
+            <>
+              <CheckInEventItem event={checkInEvent} />
+              {checkInEvent.transportFromHotel && (
+                <RouteSegmentConnector
+                  segment={checkInEvent.transportFromHotel}
                 />
               )}
             </>
@@ -160,17 +185,34 @@ export function DayContent({
               />
 
               {/* 이동 구간 (마지막 항목 제외) */}
-              {index < itinerary.schedule.length - 1 &&
+              {checkInEvent &&
+              checkInEvent.insertAfterOrder === item.order ? (
+                <>
+                  {checkInEvent.transportToHotel && (
+                    <RouteSegmentConnector
+                      segment={checkInEvent.transportToHotel}
+                    />
+                  )}
+                  <CheckInEventItem event={checkInEvent} />
+                  {checkInEvent.transportFromHotel && (
+                    <RouteSegmentConnector
+                      segment={checkInEvent.transportFromHotel}
+                    />
+                  )}
+                </>
+              ) : (
+                index < itinerary.schedule.length - 1 &&
                 item.transportToNext && (
                   <RouteSegmentConnector segment={item.transportToNext} />
-                )}
+                )
+              )}
             </React.Fragment>
           ))}
 
           {/* 끝점 (도착지 또는 숙소) - dayDestination 우선, 없으면 trip destination 사용 */}
           {resolvedDestination && (
             <>
-              {itinerary.transportToDestination && (
+              {!skipDestinationConnector && itinerary.transportToDestination && (
                 <RouteSegmentConnector
                   segment={itinerary.transportToDestination}
                 />
