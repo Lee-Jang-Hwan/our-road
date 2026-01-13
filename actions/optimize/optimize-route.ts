@@ -1,4 +1,4 @@
-"use server";
+﻿"use server";
 
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
@@ -44,7 +44,7 @@ import { optimizePublicTransitRoute } from "./optimize-route-public-transit";
 // ============================================
 
 /**
- * 최적화 실행 결과
+ * 理쒖쟻???ㅽ뻾 寃곌낵
  */
 export interface OptimizeRouteResult {
   success: boolean;
@@ -56,7 +56,7 @@ export interface OptimizeRouteResult {
 }
 
 /**
- * 최적화 진행 단계
+ * 理쒖쟻??吏꾪뻾 ?④퀎
  */
 type OptimizeStage =
   | "validating"
@@ -73,7 +73,7 @@ type OptimizeStage =
 // ============================================
 
 /**
- * TripRow를 Trip으로 변환
+ * TripRow瑜?Trip?쇰줈 蹂??
  */
 function convertRowToTrip(row: TripRow): Trip {
   return {
@@ -95,7 +95,7 @@ function convertRowToTrip(row: TripRow): Trip {
 }
 
 /**
- * TripPlaceRow를 Place로 변환
+ * TripPlaceRow瑜?Place濡?蹂??
  */
 function convertRowToPlace(row: TripPlaceRow): Place {
   return {
@@ -114,7 +114,7 @@ function convertRowToPlace(row: TripPlaceRow): Place {
 }
 
 /**
- * Place를 OptimizeNode로 변환
+ * Place瑜?OptimizeNode濡?蹂??
  */
 function placeToOptimizeNode(place: Place, priority: number): OptimizeNode {
   return {
@@ -128,7 +128,7 @@ function placeToOptimizeNode(place: Place, priority: number): OptimizeNode {
 }
 
 /**
- * TripLocation을 OptimizeNode로 변환
+ * TripLocation??OptimizeNode濡?蹂??
  */
 function locationToOptimizeNode(
   location: TripLocation,
@@ -148,7 +148,7 @@ function locationToOptimizeNode(
 }
 
 /**
- * 숙소를 OptimizeNode로 변환
+ * ?숈냼瑜?OptimizeNode濡?蹂??
  */
 function accommodationToOptimizeNode(
   accom: DailyAccommodation,
@@ -167,27 +167,24 @@ function accommodationToOptimizeNode(
   };
 }
 
-/**
- * 이동수단 결정 (여행 설정 기준)
- */
 function getPrimaryTransportMode(modes: TransportMode[]): TransportMode {
-  // 자동차가 포함되어 있으면 자동차 우선
+  // ?먮룞李④? ?ы븿?섏뼱 ?덉쑝硫??먮룞李??곗꽑
   if (modes.includes("car")) {
     return "car";
   }
-  // 대중교통이 포함되어 있으면 대중교통
+  // ?以묎탳?듭씠 ?ы븿?섏뼱 ?덉쑝硫??以묎탳??
   if (modes.includes("public")) {
     return "public";
   }
-  // 그 외에는 도보
+  // 洹??몄뿉???꾨낫
   return "walking";
 }
 
 /**
- * 일자별 분배 결과를 DailyItinerary로 변환
- * @param skipTransportToDestination - true면 도착지까지 이동 정보 생략 (숙소 없는 날)
- * @param dayOrigin - 이 날의 시작점 정보 (출발지 또는 전날 숙소)
- * @param dayDestination - 이 날의 끝점 정보 (도착지, 숙소, 또는 undefined)
+ * ?쇱옄蹂?遺꾨같 寃곌낵瑜?DailyItinerary濡?蹂??
+ * @param skipTransportToDestination - true硫??꾩갑吏源뚯? ?대룞 ?뺣낫 ?앸왂 (?숈냼 ?녿뒗 ??
+ * @param dayOrigin - ???좎쓽 ?쒖옉???뺣낫 (異쒕컻吏 ?먮뒗 ?꾨궇 ?숈냼)
+ * @param dayDestination - ???좎쓽 ?앹젏 ?뺣낫 (?꾩갑吏, ?숈냼, ?먮뒗 undefined)
  */
 async function createDailyItinerary(
   dayPlaceIds: string[],
@@ -211,7 +208,7 @@ async function createDailyItinerary(
   let totalDuration = 0;
   let totalStayDuration = 0;
 
-  // 출발지에서 첫 장소까지 이동 정보 계산
+  // 異쒕컻吏?먯꽌 泥??μ냼源뚯? ?대룞 ?뺣낫 怨꾩궛
   let transportFromOrigin: DailyItinerary["transportFromOrigin"];
   let currentTime = timeToMinutes(dailyStartTime);
 
@@ -240,7 +237,7 @@ async function createDailyItinerary(
         carSegments: entry.carSegments,
         guides: entry.guides,
       };
-      // 첫 장소 도착 시간 = 출발 시간 + 이동 시간
+      // 泥??μ냼 ?꾩갑 ?쒓컙 = 異쒕컻 ?쒓컙 + ?대룞 ?쒓컙
       currentTime = timeToMinutes(dailyStartTime) + entry.duration;
       totalDistance += entry.distance;
       totalDuration += entry.duration;
@@ -253,7 +250,7 @@ async function createDailyItinerary(
 
     if (!node) continue;
 
-    // 고정 일정인 경우 해당 시간으로 조정
+    // 怨좎젙 ?쇱젙??寃쎌슦 ?대떦 ?쒓컙?쇰줈 議곗젙
     if (node.isFixed && node.fixedStartTime) {
       currentTime = timeToMinutes(node.fixedStartTime);
     }
@@ -261,7 +258,7 @@ async function createDailyItinerary(
     const arrivalTime = minutesToTime(currentTime);
     const departureTime = addMinutesToTime(arrivalTime, node.duration);
 
-    // 다음 장소까지 이동 정보 계산
+    // ?ㅼ쓬 ?μ냼源뚯? ?대룞 ?뺣낫 怨꾩궛
     let transportToNext: ScheduleItem["transportToNext"];
 
     if (i < dayPlaceIds.length - 1) {
@@ -311,7 +308,7 @@ async function createDailyItinerary(
     });
   }
 
-  // 마지막 장소에서 도착지까지 이동 정보 계산 (숙소 없는 날은 생략)
+  // 留덉?留??μ냼?먯꽌 ?꾩갑吏源뚯? ?대룞 ?뺣낫 怨꾩궛 (?숈냼 ?녿뒗 ?좎? ?앸왂)
   let transportToDestination: DailyItinerary["transportToDestination"];
   if (dayPlaceIds.length > 0 && !skipTransportToDestination) {
     const lastPlaceId = dayPlaceIds[dayPlaceIds.length - 1];
@@ -343,12 +340,12 @@ async function createDailyItinerary(
     }
   }
 
-  // startTime: 출발지 출발 시간 (dailyStartTime)
-  // endTime: 마지막 장소 출발 시간 + 도착지까지 이동 시간
+  // startTime: 異쒕컻吏 異쒕컻 ?쒓컙 (dailyStartTime)
+  // endTime: 留덉?留??μ냼 異쒕컻 ?쒓컙 + ?꾩갑吏源뚯? ?대룞 ?쒓컙
   const startTime = dailyStartTime;
   let endTime = schedule[schedule.length - 1]?.departureTime ?? dailyStartTime;
   
-  // 도착지까지 이동 시간이 있으면 추가
+  // ?꾩갑吏源뚯? ?대룞 ?쒓컙???덉쑝硫?異붽?
   if (transportToDestination) {
     endTime = addMinutesToTime(endTime, transportToDestination.duration);
   }
@@ -371,22 +368,21 @@ async function createDailyItinerary(
     dayDestination,
   };
 }
-
 // ============================================
 // Main Server Action
 // ============================================
 
 /**
- * 경로 최적화 실행 Server Action
+ * 寃쎈줈 理쒖쟻???ㅽ뻾 Server Action
  *
- * 1. 거리 행렬 계산
- * 2. Nearest Neighbor 초기 경로 생성
- * 3. 고정 일정 반영
- * 4. 일자별 분배
- * 5. 구간 이동 정보 조회
+ * 1. 嫄곕━ ?됰젹 怨꾩궛
+ * 2. Nearest Neighbor 珥덇린 寃쎈줈 ?앹꽦
+ * 3. 怨좎젙 ?쇱젙 諛섏쁺
+ * 4. ?쇱옄蹂?遺꾨같
+ * 5. 援ш컙 ?대룞 ?뺣낫 議고쉶
  *
- * @param input - 최적화 요청 (tripId 필수)
- * @returns 최적화 결과
+ * @param input - 理쒖쟻???붿껌 (tripId ?꾩닔)
+ * @returns 理쒖쟻??寃곌낵
  *
  * @example
  * ```tsx
@@ -403,19 +399,19 @@ export async function optimizeRoute(
   const errors: OptimizeError[] = [];
 
   try {
-    // 1. 인증 확인
+    // 1. ?몄쬆 ?뺤씤
     const { userId } = await auth();
     if (!userId) {
       return {
         success: false,
         error: {
           code: "AUTH_ERROR",
-          message: "로그인이 필요합니다.",
+          message: "濡쒓렇?몄씠 ?꾩슂?⑸땲??",
         },
       };
     }
 
-    // 2. 입력 검증
+    // 2. ?낅젰 寃利?
     const validationResult = simpleOptimizeRequestSchema.safeParse(input);
     if (!validationResult.success) {
       const errorMessage = validationResult.error.errors
@@ -432,10 +428,10 @@ export async function optimizeRoute(
 
     const { tripId, options: userOptions } = validationResult.data;
 
-    // 3. Supabase 클라이언트 생성
+    // 3. Supabase ?대씪?댁뼵???앹꽦
     const supabase = createClerkSupabaseClient();
 
-    // 4. 여행 및 관련 데이터 조회
+    // 4. ?ы뻾 諛?愿???곗씠??議고쉶
     const [tripResult, placesResult, schedulesResult] = await Promise.all([
       supabase.from("trips").select("*").eq("id", tripId).single(),
       supabase
@@ -457,7 +453,7 @@ export async function optimizeRoute(
         success: false,
         error: {
           code: "NOT_FOUND",
-          message: "여행을 찾을 수 없습니다.",
+          message: "?ы뻾??李얠쓣 ???놁뒿?덈떎.",
         },
       };
     }
@@ -466,8 +462,7 @@ export async function optimizeRoute(
     const places = (placesResult.data ?? []).map((row) =>
       convertRowToPlace(row as TripPlaceRow)
     );
-
-    // 고정 일정 변환
+    // 怨좎젙 ?쇱젙 蹂??
     const fixedSchedules: FixedSchedule[] = (schedulesResult.data ?? []).map(
       (row) => ({
         id: row.id,
@@ -479,18 +474,18 @@ export async function optimizeRoute(
       })
     );
 
-    // 5. 최소 장소 수 확인
+    // 5. 理쒖냼 ?μ냼 ???뺤씤
     if (places.length < 2) {
       return {
         success: false,
         error: {
           code: "INSUFFICIENT_PLACES",
-          message: "최소 2개 이상의 장소가 필요합니다.",
+          message: "理쒖냼 2媛??댁긽???μ냼媛 ?꾩슂?⑸땲??",
         },
       };
     }
 
-    // 6. 고정 일정 유효성 검증
+    // 6. 怨좎젙 ?쇱젙 ?좏슚??寃利?
     const constraintValidation = validateFixedSchedules(fixedSchedules, {
       startDate: trip.startDate,
       endDate: trip.endDate,
@@ -505,12 +500,12 @@ export async function optimizeRoute(
           code: "FIXED_SCHEDULE_CONFLICT",
           message:
             constraintValidation.conflicts[0]?.message ??
-            "고정 일정에 충돌이 있습니다.",
+            "怨좎젙 ?쇱젙??異⑸룎???덉뒿?덈떎.",
         },
       };
     }
 
-    // 경고 메시지는 errors에 추가
+    // 寃쎄퀬 硫붿떆吏??errors??異붽?
     for (const warning of constraintValidation.warnings) {
       errors.push({
         code: "UNKNOWN",
@@ -518,10 +513,10 @@ export async function optimizeRoute(
       });
     }
 
-    // 7. 노드 맵 생성
+    // 7. ?몃뱶 留??앹꽦
     const nodeMap = new Map<string, OptimizeNode>();
 
-    // 출발지/도착지 노드 생성
+    // 異쒕컻吏/?꾩갑吏 ?몃뱶 ?앹꽦
     const originNode = locationToOptimizeNode(trip.origin, "__origin__");
     const destinationNode = locationToOptimizeNode(
       trip.destination,
@@ -531,17 +526,15 @@ export async function optimizeRoute(
     nodeMap.set(originNode.id, originNode);
     nodeMap.set(destinationNode.id, destinationNode);
 
-    // 숙소 노드 생성 (연속 일정 지원)
+    // ?숈냼 ?몃뱶 ?앹꽦 (?곗냽 ?쇱젙 吏??
     const accommodationNodes = new Map<string, OptimizeNode>();
     const tripAccommodations = trip.accommodations ?? [];
-
     for (let i = 0; i < tripAccommodations.length; i++) {
       const accom = tripAccommodations[i];
       const node = accommodationToOptimizeNode(accom, i);
       nodeMap.set(node.id, node);
-
-      // 숙소 기간 내 모든 날짜에 대해 노드 매핑 (startDate부터 endDate 전날까지)
-      // 체크아웃은 endDate 아침이므로, endDate 전날까지 숙박
+      // ?숈냼 湲곌컙 ??紐⑤뱺 ?좎쭨??????몃뱶 留ㅽ븨 (startDate遺??endDate ?꾨궇源뚯?)
+      // 泥댄겕?꾩썐? endDate ?꾩묠?대?濡? endDate ?꾨궇源뚯? ?숇컯
       const start = new Date(accom.startDate);
       const end = new Date(accom.endDate);
       for (let d = new Date(start); d < end; d.setDate(d.getDate() + 1)) {
@@ -550,37 +543,35 @@ export async function optimizeRoute(
       }
     }
 
-    // 장소 노드 생성
+    // ?μ냼 ?몃뱶 ?앹꽦
     const placeNodes: OptimizeNode[] = [];
     for (let i = 0; i < places.length; i++) {
       const place = places[i];
 
-      // 고정 일정인 장소 확인
+      // 怨좎젙 ?쇱젙???μ냼 ?뺤씤
       const fixedSchedule = fixedSchedules.find(
         (s) => s.placeId === place.id
       );
 
       let node: OptimizeNode;
       if (fixedSchedule) {
-        // 고정 일정이 있는 장소
+        // 怨좎젙 ?쇱젙???덈뒗 ?μ냼
         node = fixedScheduleToNode(fixedSchedule, {
           id: place.id,
           name: place.name,
           coordinate: place.coordinate,
         });
       } else {
-        // 일반 장소
+        // ?쇰컲 ?μ냼
         node = placeToOptimizeNode(place, i + 1);
       }
 
       nodeMap.set(node.id, node);
       placeNodes.push(node);
     }
-
-    // 8. 이동 수단 결정
+    // 8. ?대룞 ?섎떒 寃곗젙
     const transportMode = getPrimaryTransportMode(trip.transportModes);
-
-    // 9. 대중교통 모드: 신규 알고리즘 사용
+    // 9. ?以묎탳??紐⑤뱶: ?좉퇋 ?뚭퀬由ъ쬁 ?ъ슜
     if (transportMode === "public") {
       return await optimizePublicTransitRoute({
         tripId,
@@ -594,7 +585,7 @@ export async function optimizeRoute(
       });
     }
 
-    // 10. 차량 모드: 기존 거리 행렬 방식
+    // 10. 李⑤웾 紐⑤뱶: 湲곗〈 嫄곕━ ?됰젹 諛⑹떇
     const allAccommodationNodes = Array.from(accommodationNodes.values());
     const allNodes = [
       originNode,
@@ -605,17 +596,17 @@ export async function optimizeRoute(
 
     const distanceMatrix = await createDistanceMatrix(allNodes, {
       mode: transportMode,
-      useApi: true, // API 기반 실제 거리 사용
+      useApi: true, // API 湲곕컲 ?ㅼ젣 嫄곕━ ?ъ슜
       batchSize: 3,
     });
 
-    // 10. 최적화 설정
+    // 10. 理쒖쟻???ㅼ젙
     const optimizeConfig = {
       timeWeight: userOptions?.timeWeight ?? 1.0,
       distanceWeight: userOptions?.distanceWeight ?? 0.1,
     };
 
-    // 11. Nearest Neighbor 초기 경로 생성
+    // 11. Nearest Neighbor 珥덇린 寃쎈줈 ?앹꽦
     const initialResult = nearestNeighborWithEndpoints(
       placeNodes,
       distanceMatrix,
@@ -624,7 +615,7 @@ export async function optimizeRoute(
       destinationNode.id
     );
 
-    // 12. 2-opt로 경로 개선
+    // 12. 2-opt濡?寃쎈줈 媛쒖꽑
     const improvedResult = twoOptWithEndpoints(
       initialResult.route,
       distanceMatrix,
@@ -635,9 +626,36 @@ export async function optimizeRoute(
       }
     );
 
-    // 13. 일자별 분배
+    // 13. ?쇱옄蹂?遺꾨같
     const totalDays = getDaysBetween(trip.startDate, trip.endDate);
     const dates = generateDateRange(trip.startDate, totalDays);
+    const dayEndpoints = dates.map((date, index) => {
+      const isFirstDay = index === 0;
+      const isLastDay = index === totalDays - 1;
+      let startId: string | undefined;
+      let endId: string | undefined;
+
+      if (isFirstDay) {
+        startId = originNode.id;
+      } else {
+        const prevDate = dates[index - 1];
+        const prevAccomNode = accommodationNodes.get(prevDate);
+        if (prevAccomNode) {
+          startId = prevAccomNode.id;
+        }
+      }
+
+      if (isLastDay) {
+        endId = destinationNode.id;
+      } else {
+        const todayAccomNode = accommodationNodes.get(date);
+        if (todayAccomNode) {
+          endId = todayAccomNode.id;
+        }
+      }
+
+      return { startId, endId };
+    });
 
     // 일자별 시간 설정 생성
     // - 1일차: 여행 시작 시간 ~ 20:00
@@ -663,10 +681,11 @@ export async function optimizeRoute(
         dailyEndTime: trip.dailyEndTime,
         fixedSchedules,
         dailyTimeConfigs,
+        dayEndpoints,
       }
     );
 
-    // 분배되지 못한 장소 경고 (출발지/도착지/숙소 제외)
+    // 遺꾨같?섏? 紐삵븳 ?μ냼 寃쎄퀬 (異쒕컻吏/?꾩갑吏/?숈냼 ?쒖쇅)
     const actualUnassignedPlaces = distributionResult.unassignedPlaces.filter(
       (id) =>
         id !== "__origin__" &&
@@ -675,7 +694,7 @@ export async function optimizeRoute(
     );
 
     if (actualUnassignedPlaces.length > 0) {
-      // 상세 정보 포함하여 전달
+      // ?곸꽭 ?뺣낫 ?ы븿?섏뿬 ?꾨떖
       const unassignedPlaceDetails = actualUnassignedPlaces.map((placeId) => {
         const place = places.find((p) => p.id === placeId);
         const node = nodeMap.get(placeId);
@@ -683,7 +702,7 @@ export async function optimizeRoute(
           placeId,
           placeName: place?.name || placeId,
           reasonCode: "TIME_EXCEEDED" as const,
-          reasonMessage: "일일 활동 시간이 부족하여 일정에 포함하지 못했습니다.",
+          reasonMessage: "?쇱씪 ?쒕룞 ?쒓컙??遺議깊븯???쇱젙???ы븿?섏? 紐삵뻽?듬땲??",
           details: {
             estimatedDuration: place?.estimatedDuration ?? node?.duration,
           },
@@ -692,7 +711,7 @@ export async function optimizeRoute(
 
       errors.push({
         code: "EXCEEDS_DAILY_LIMIT",
-        message: `${actualUnassignedPlaces.length}개 장소가 일정에 포함되지 못했습니다.`,
+        message: `${actualUnassignedPlaces.length}媛??μ냼媛 ?쇱젙???ы븿?섏? 紐삵뻽?듬땲??`,
         details: {
           unassignedPlaces: actualUnassignedPlaces,
           unassignedPlaceDetails,
@@ -700,7 +719,7 @@ export async function optimizeRoute(
       });
     }
 
-    // 14. DailyItinerary 생성 (일자별 동적 시작/끝점)
+    // 14. DailyItinerary ?앹꽦 (?쇱옄蹂??숈쟻 ?쒖옉/?앹젏)
     const itinerary: DailyItinerary[] = [];
     const totalDaysCount = distributionResult.days.length;
 
@@ -710,20 +729,19 @@ export async function optimizeRoute(
       const isFirstDay = i === 0;
       const isLastDay = i === totalDaysCount - 1;
 
-      // 출발지/도착지/숙소 제외 (실제 방문 장소만)
+      // 異쒕컻吏/?꾩갑吏/?숈냼 ?쒖쇅 (?ㅼ젣 諛⑸Ц ?μ냼留?
       const actualPlaceIds = dayPlaceIds.filter(
         (id) =>
           id !== "__origin__" &&
           id !== "__destination__" &&
           !id.startsWith("__accommodation_")
       );
-
-      // 시작점 결정
+      // ?쒖옉??寃곗젙
       let actualStartId: string;
       let dayOriginInfo: DayEndpoint | undefined;
 
       if (isFirstDay) {
-        // 첫날: 출발지에서 시작
+        // 泥ル궇: 異쒕컻吏?먯꽌 ?쒖옉
         actualStartId = originNode.id;
         dayOriginInfo = {
           name: trip.origin.name,
@@ -733,9 +751,9 @@ export async function optimizeRoute(
           type: "origin",
         };
       } else {
-        // 그 외: 이전 날의 숙소 또는 이전 날 마지막 장소
+        // 洹??? ?댁쟾 ?좎쓽 ?숈냼 ?먮뒗 ?댁쟾 ??留덉?留??μ냼
         const prevDate = dates[i - 1];
-        // 연속 일정 지원: prevDate가 startDate <= prevDate < endDate 범위에 있는 숙소 찾기
+        // ?곗냽 ?쇱젙 吏?? prevDate媛 startDate <= prevDate < endDate 踰붿쐞???덈뒗 ?숈냼 李얘린
         const prevAccomData = tripAccommodations.find(
           (a) => a.startDate <= prevDate && prevDate < a.endDate
         );
@@ -754,7 +772,7 @@ export async function optimizeRoute(
           itinerary[i - 1] &&
           itinerary[i - 1].schedule.length > 0
         ) {
-          // 이전 날 마지막 방문 장소 (숙소가 없는 경우)
+          // ?댁쟾 ??留덉?留?諛⑸Ц ?μ냼 (?숈냼媛 ?녿뒗 寃쎌슦)
           const lastSchedule = itinerary[i - 1].schedule[itinerary[i - 1].schedule.length - 1];
           actualStartId = lastSchedule.placeId;
           const lastNode = nodeMap.get(lastSchedule.placeId);
@@ -764,11 +782,11 @@ export async function optimizeRoute(
               address: "",
               lat: lastNode.coordinate.lat,
               lng: lastNode.coordinate.lng,
-              type: "lastPlace", // 전날 마지막 장소에서 시작
+              type: "lastPlace", // ?꾨궇 留덉?留??μ냼?먯꽌 ?쒖옉
             };
           }
         } else {
-          // 이전 날 방문 장소가 없으면 출발지 사용
+          // ?댁쟾 ??諛⑸Ц ?μ냼媛 ?놁쑝硫?異쒕컻吏 ?ъ슜
           actualStartId = originNode.id;
           dayOriginInfo = {
             name: trip.origin.name,
@@ -780,13 +798,13 @@ export async function optimizeRoute(
         }
       }
 
-      // 끝점 결정
+      // ?앹젏 寃곗젙
       let actualEndId: string;
       let skipTransportToDestination = false;
       let dayDestinationInfo: DayEndpoint | undefined;
 
       if (isLastDay) {
-        // 마지막 날: 무조건 도착지
+        // 留덉?留??? 臾댁“嫄??꾩갑吏
         actualEndId = destinationNode.id;
         dayDestinationInfo = {
           name: trip.destination.name,
@@ -796,8 +814,8 @@ export async function optimizeRoute(
           type: "destination",
         };
       } else {
-        // 중간 날: 숙소가 있으면 숙소, 없으면 마지막 장소에서 종료
-        // 연속 일정 지원: date가 startDate <= date < endDate 범위에 있는 숙소 찾기
+        // 以묎컙 ?? ?숈냼媛 ?덉쑝硫??숈냼, ?놁쑝硫?留덉?留??μ냼?먯꽌 醫낅즺
+        // ?곗냽 ?쇱젙 吏?? date媛 startDate <= date < endDate 踰붿쐞???덈뒗 ?숈냼 李얘린
         const todayAccomData = tripAccommodations.find(
           (a) => a.startDate <= date && date < a.endDate
         );
@@ -813,11 +831,11 @@ export async function optimizeRoute(
             type: "accommodation",
           };
         } else {
-          // 숙소 없음: 마지막 장소에서 종료 (transportToDestination 생략)
-          // 실제 끝점은 없지만 dummy ID 사용
+          // ?숈냼 ?놁쓬: 留덉?留??μ냼?먯꽌 醫낅즺 (transportToDestination ?앸왂)
+          // ?ㅼ젣 ?앹젏? ?놁?留?dummy ID ?ъ슜
           actualEndId = "__no_destination__";
           skipTransportToDestination = true;
-          // dayDestinationInfo는 undefined로 유지 (끝점 없음 = 마지막 장소에서 종료)
+          // dayDestinationInfo??undefined濡??좎? (?앹젏 ?놁쓬 = 留덉?留??μ냼?먯꽌 醫낅즺)
         }
       }
 
@@ -827,7 +845,7 @@ export async function optimizeRoute(
       const dayEndTime = minutesToTime(dayTimeConfig.endMinute);
 
       if (actualPlaceIds.length === 0) {
-        // 빈 날은 기본 정보만
+        // 鍮??좎? 湲곕낯 ?뺣낫留?
         itinerary.push({
           dayNumber: i + 1,
           date,
@@ -865,7 +883,7 @@ export async function optimizeRoute(
       itinerary.push(dailyItinerary);
     }
 
-    // 15. 통계 계산
+    // 15. ?듦퀎 怨꾩궛
     const statistics: OptimizeStatistics = {
       totalPlaces: places.length,
       totalDays: totalDays,
@@ -886,13 +904,13 @@ export async function optimizeRoute(
       improvementPercentage: improvedResult.improvementPercentage,
     };
 
-    // 16. 여행 상태 업데이트
+    // 16. ?ы뻾 ?곹깭 ?낅뜲?댄듃
     await supabase
       .from("trips")
       .update({ status: "optimized" })
       .eq("id", tripId);
 
-    // 17. 캐시 무효화
+    // 17. 罹먯떆 臾댄슚??
     revalidatePath("/my");
     revalidatePath(`/plan/${tripId}`);
     revalidatePath(`/my/trips/${tripId}`);
@@ -911,7 +929,7 @@ export async function optimizeRoute(
       },
     };
   } catch (error) {
-    console.error("❌ [최적화 서버 액션 실패] optimizeRoute 실패", {
+    console.error("??[理쒖쟻???쒕쾭 ?≪뀡 ?ㅽ뙣] optimizeRoute ?ㅽ뙣", {
       tripId: input.tripId,
       error: error instanceof Error ? error.message : String(error),
       timestamp: new Date().toISOString(),
@@ -920,8 +938,13 @@ export async function optimizeRoute(
       success: false,
       error: {
         code: "UNKNOWN",
-        message: "최적화 중 오류가 발생했습니다. 다시 시도해주세요.",
+        message: "理쒖쟻??以??ㅻ쪟媛 諛쒖깮?덉뒿?덈떎. ?ㅼ떆 ?쒕룄?댁＜?몄슂.",
       },
     };
   }
 }
+
+
+
+
+

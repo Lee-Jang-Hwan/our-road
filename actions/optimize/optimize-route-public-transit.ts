@@ -66,10 +66,7 @@ export interface OptimizeRouteResult {
 /**
  * Place를 Waypoint로 변환
  */
-function placeToWaypoint(
-  place: Place,
-  fixedSchedules: FixedSchedule[],
-): Waypoint {
+function placeToWaypoint(place: Place, fixedSchedules: FixedSchedule[]): Waypoint {
   const fixedSchedule = fixedSchedules.find((s) => s.placeId === place.id);
 
   return {

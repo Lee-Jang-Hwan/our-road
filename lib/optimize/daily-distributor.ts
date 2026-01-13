@@ -1,5 +1,5 @@
 // ============================================
-// Daily Distributor (일자별 분배 로직)
+// Daily Distributor (?쇱옄蹂?遺꾨같 濡쒖쭅)
 // ============================================
 
 import type { DistanceMatrix, DayDistributionResult } from "@/types/optimize";
@@ -24,12 +24,12 @@ import { createDistanceMatrixGetter } from "./distance-matrix";
 // ============================================
 
 /**
- * 일자별 분배 옵션
+ * ?쇱옄蹂?遺꾨같 ?듭뀡
  */
 export interface DailyDistributorOptions {
-  /** 여행 시작일 (YYYY-MM-DD) */
+  /** ?ы뻾 ?쒖옉??(YYYY-MM-DD) */
   startDate: string;
-  /** 여행 종료일 (YYYY-MM-DD) */
+  /** ?ы뻾 醫낅즺??(YYYY-MM-DD) */
   endDate: string;
   /** 일일 시작 시간 (HH:mm, 기본: "10:00") - 1일차 시작 시간으로 사용 */
   dailyStartTime?: string;
@@ -37,29 +37,31 @@ export interface DailyDistributorOptions {
   dailyEndTime?: string;
   /** 일일 최대 활동 시간 (분) - deprecated, 일자별 시간 설정 사용 권장 */
   maxDailyMinutes?: number;
-  /** 고정 일정 목록 */
+  /** 怨좎젙 ?쇱젙 紐⑸줉 */
   fixedSchedules?: FixedSchedule[];
-  /** 장소별 체류시간 맵 (placeId -> minutes) */
+  /** ?μ냼蹂?泥대쪟?쒓컙 留?(placeId -> minutes) */
   placeDurations?: Map<string, number>;
-  /** 진행 콜백 */
+  /** Day-specific start/end endpoint IDs */
+  dayEndpoints?: Array<{ startId?: string; endId?: string }>;
+  /** 吏꾪뻾 肄쒕갚 */
   onProgress?: (day: number, totalDays: number) => void;
   /** 일자별 시간 설정 (제공되면 dailyStartTime/dailyEndTime/maxDailyMinutes 무시) */
   dailyTimeConfigs?: DailyTimeConfig[];
 }
 
 /**
- * 일자별 가용 시간 정보
+ * ?쇱옄蹂?媛???쒓컙 ?뺣낫
  */
 interface DailyAvailability {
-  /** 날짜 (YYYY-MM-DD) */
+  /** ?좎쭨 (YYYY-MM-DD) */
   date: string;
-  /** 가용 시간 (분) */
+  /** 媛???쒓컙 (遺? */
   availableMinutes: number;
-  /** 고정 일정으로 예약된 시간 슬롯 */
+  /** 怨좎젙 ?쇱젙?쇰줈 ?덉빟???쒓컙 ?щ’ */
   reservedSlots: Array<{ start: number; end: number; placeId: string }>;
-  /** 할당된 장소 ID */
+  /** ?좊떦???μ냼 ID */
   assignedPlaces: string[];
-  /** 사용된 시간 (분) */
+  /** ?ъ슜???쒓컙 (遺? */
   usedMinutes: number;
 }
 
@@ -68,14 +70,14 @@ interface DailyAvailability {
 // ============================================
 
 /**
- * 시작 시간과 체류 시간으로 종료 시간(분) 계산
+ * ?쒖옉 ?쒓컙怨?泥대쪟 ?쒓컙?쇰줈 醫낅즺 ?쒓컙(遺? 怨꾩궛
  */
 function calculateEndMinutes(startTime: string, durationMinutes: number): number {
   return timeToMinutes(startTime) + durationMinutes;
 }
 
 /**
- * 일자별 가용 시간 계산
+ * ?쇱옄蹂?媛???쒓컙 怨꾩궛
  *
  * 일자별 시간 제약:
  * - 1일차: 여행 시작 시간 ~ 중간 일차 종료 시간 (20:00)
@@ -121,7 +123,7 @@ function calculateDailyAvailability(
     // 해당 날짜의 고정 일정 필터링
     const daySchedules = fixedSchedules.filter((s) => s.date === date);
 
-    // 예약된 시간 슬롯 생성 (장소 체류시간으로 종료 시간 계산)
+    // ?덉빟???쒓컙 ?щ’ ?앹꽦 (?μ냼 泥대쪟?쒓컙?쇰줈 醫낅즺 ?쒓컙 怨꾩궛)
     const reservedSlots = daySchedules.map((s) => {
       const duration = placeDurations?.get(s.placeId) ?? 60;
       return {
@@ -131,7 +133,7 @@ function calculateDailyAvailability(
       };
     });
 
-    // 고정 일정이 차지하는 총 시간
+    // 怨좎젙 ?쇱젙??李⑥??섎뒗 珥??쒓컙
     const reservedMinutes = reservedSlots.reduce(
       (sum, slot) => sum + (slot.end - slot.start),
       0
@@ -153,18 +155,18 @@ function calculateDailyAvailability(
 // ============================================
 
 /**
- * 경로를 일자별로 분배
+ * 寃쎈줈瑜??쇱옄蹂꾨줈 遺꾨같
  *
- * 최적화된 경로를 일자별 시간 제약에 맞게 분배합니다.
- * - 고정 일정은 해당 날짜에 우선 배치
- * - 일반 장소는 순서를 유지하면서 균등하게 분배
- * - 이동 시간도 고려하여 분배
+ * 理쒖쟻?붾맂 寃쎈줈瑜??쇱옄蹂??쒓컙 ?쒖빟??留욊쾶 遺꾨같?⑸땲??
+ * - 怨좎젙 ?쇱젙? ?대떦 ?좎쭨???곗꽑 諛곗튂
+ * - ?쇰컲 ?μ냼???쒖꽌瑜??좎??섎㈃??洹좊벑?섍쾶 遺꾨같
+ * - ?대룞 ?쒓컙??怨좊젮?섏뿬 遺꾨같
  *
- * @param route - 최적화된 경로 (장소 ID 순서)
- * @param nodes - 노드 맵
- * @param distanceMatrix - 거리 행렬
- * @param options - 분배 옵션
- * @returns 분배 결과
+ * @param route - 理쒖쟻?붾맂 寃쎈줈 (?μ냼 ID ?쒖꽌)
+ * @param nodes - ?몃뱶 留?
+ * @param distanceMatrix - 嫄곕━ ?됰젹
+ * @param options - 遺꾨같 ?듭뀡
+ * @returns 遺꾨같 寃곌낵
  *
  * @example
  * ```ts
@@ -194,12 +196,12 @@ export function distributeToDaily(
 
   const totalDays = dailyAvailability.length;
 
-  // 결과 초기화
+  // 寃곌낵 珥덇린??
   const days: string[][] = dailyAvailability.map(() => []);
   const dailyDurations: number[] = dailyAvailability.map(() => 0);
   const unassignedPlaces: string[] = [];
 
-  // 1단계: 고정 일정과 일반 장소 분리
+  // 1?④퀎: 怨좎젙 ?쇱젙怨??쇰컲 ?μ냼 遺꾨━
   const fixedPlaces: Array<{ placeId: string; dayIndex: number }> = [];
   const normalPlaces: string[] = [];
 
@@ -224,49 +226,72 @@ export function distributeToDaily(
     }
   }
 
-  // 2단계: 일반 장소를 일자별로 균등 분배
-  // 각 일자별 목표 장소 수 계산
+  // 2?④퀎: ?쇰컲 ?μ냼瑜??쇱옄蹂꾨줈 洹좊벑 遺꾨같
+  // 媛??쇱옄蹂?紐⑺몴 ?μ냼 ??怨꾩궛
   const placesPerDay = Math.ceil(normalPlaces.length / totalDays);
 
+  const dayEndpoints = options.dayEndpoints ?? [];
+  const dayPlaceCounts = days.map((day) => day.length);
+  const dayLastPlaceIds = dailyAvailability.map(() => null as string | null);
+  const dayEndTravelMinutes = dailyAvailability.map(() => 0);
+
+  const getDayStartId = (dayIndex: number): string | undefined =>
+    dayEndpoints[dayIndex]?.startId;
+
+  const getDayEndId = (dayIndex: number): string | undefined =>
+    dayEndpoints[dayIndex]?.endId;
+
+  const getTravelMinutes = (
+    fromId?: string | null,
+    toId?: string | null
+  ): number => {
+    if (!fromId || !toId) return 0;
+    const entry = getDistance(fromId, toId);
+    return entry?.duration ?? 0;
+  };
+
+  const getPlacementDelta = (
+    dayIndex: number,
+    node: OptimizeNode
+  ): { delta: number; newEndTravel: number } => {
+    const prevLastPlaceId = dayLastPlaceIds[dayIndex];
+    const travelFromPrev = prevLastPlaceId
+      ? getTravelMinutes(prevLastPlaceId, node.id)
+      : getTravelMinutes(getDayStartId(dayIndex), node.id);
+    const prevEndTravel = dayEndTravelMinutes[dayIndex];
+    const dayEndId = getDayEndId(dayIndex);
+    const newEndTravel = dayEndId
+      ? getTravelMinutes(node.id, dayEndId)
+      : 0;
+    const delta = node.duration + travelFromPrev + newEndTravel - prevEndTravel;
+    return { delta, newEndTravel };
+  };
+
   let currentDayIndex = 0;
-  let currentDayPlaceCount = 0;
-  let lastPlaceId: string | null = null;
 
   for (const placeId of normalPlaces) {
     const node = nodes.get(placeId);
     if (!node) continue;
 
-    // 현재 위치에서의 이동 시간 계산
-    let travelTime = 0;
-    if (lastPlaceId) {
-      const entry = getDistance(lastPlaceId, placeId);
-      travelTime = entry?.duration ?? 0;
-    }
-
-    // 현재 일자가 목표 장소 수에 도달했거나 시간이 부족하면 다음 일자로
     const day = dailyAvailability[currentDayIndex];
-    const requiredMinutes = node.duration + travelTime;
+    const { delta: requiredMinutes } = getPlacementDelta(currentDayIndex, node);
 
     const shouldMoveToNextDay =
-      (currentDayPlaceCount >= placesPerDay && currentDayIndex < totalDays - 1) ||
+      (dayPlaceCounts[currentDayIndex] >= placesPerDay &&
+        currentDayIndex < totalDays - 1) ||
       (day.availableMinutes < requiredMinutes && currentDayIndex < totalDays - 1);
 
     if (shouldMoveToNextDay) {
       currentDayIndex++;
-      currentDayPlaceCount = 0;
-
-      // 일자가 바뀌면 이동 시간 재계산
-      if (lastPlaceId) {
-        const entry = getDistance(lastPlaceId, placeId);
-        travelTime = entry?.duration ?? 0;
-      }
     }
 
-    // 배치 시도
     let assigned = false;
     for (let d = currentDayIndex; d < dailyAvailability.length; d++) {
       const targetDay = dailyAvailability[d];
-      const adjustedRequired = node.duration + travelTime;
+      const { delta: adjustedRequired, newEndTravel } = getPlacementDelta(
+        d,
+        node
+      );
 
       if (targetDay.availableMinutes >= adjustedRequired) {
         days[d].push(placeId);
@@ -275,18 +300,15 @@ export function distributeToDaily(
         targetDay.usedMinutes += adjustedRequired;
         targetDay.availableMinutes -= adjustedRequired;
 
+        dayLastPlaceIds[d] = placeId;
+        dayEndTravelMinutes[d] = newEndTravel;
+        dayPlaceCounts[d] += 1;
         currentDayIndex = d;
-        currentDayPlaceCount++;
-        lastPlaceId = placeId;
         assigned = true;
         break;
       }
-
-      // 다음 일자로 넘어갈 때 이동시간 재계산
-      travelTime = 0;
     }
 
-    // 배치 실패
     if (!assigned) {
       unassignedPlaces.push(placeId);
     }
@@ -294,7 +316,7 @@ export function distributeToDaily(
     onProgress?.(currentDayIndex + 1, dailyAvailability.length);
   }
 
-  // 3단계: 각 일자 내에서 고정 일정 기준으로 정렬
+  // 3?④퀎: 媛??쇱옄 ?댁뿉??怨좎젙 ?쇱젙 湲곗??쇰줈 ?뺣젹
   for (let d = 0; d < days.length; d++) {
     const dayPlaces = days[d];
     if (dayPlaces.length <= 1) continue;
@@ -314,21 +336,21 @@ export function distributeToDaily(
       }
     }
 
-    // 고정 일정 시간순 정렬
+    // 怨좎젙 ?쇱젙 ?쒓컙???뺣젹
     fixedPlaces.sort((a, b) => a.startMinute - b.startMinute);
 
-    // 고정 일정 사이에 비고정 장소 배치 (간단한 방식)
+    // 怨좎젙 ?쇱젙 ?ъ씠??鍮꾧퀬???μ냼 諛곗튂 (媛꾨떒??諛⑹떇)
     const sortedDay: string[] = [];
 
     if (fixedPlaces.length === 0) {
-      // 고정 일정 없음: 그대로 유지
+      // 怨좎젙 ?쇱젙 ?놁쓬: 洹몃?濡??좎?
       sortedDay.push(...dayPlaces);
     } else {
-      // 첫 번째 고정 일정 전
+      // 泥?踰덉㎏ 怨좎젙 ?쇱젙 ??
       let nonFixedIdx = 0;
 
       for (const fixed of fixedPlaces) {
-        // 고정 일정 전에 배치할 수 있는 비고정 장소들
+        // 怨좎젙 ?쇱젙 ?꾩뿉 諛곗튂?????덈뒗 鍮꾧퀬???μ냼??
         while (nonFixedIdx < nonFixedPlaces.length) {
           const nextNonFixed = nonFixedPlaces[nonFixedIdx];
           const node = nodes.get(nextNonFixed);
@@ -337,19 +359,19 @@ export function distributeToDaily(
             continue;
           }
 
-          // 이 장소를 고정 일정 전에 배치할 수 있는지 확인
-          // (간단히 순서대로 배치)
+          // ???μ냼瑜?怨좎젙 ?쇱젙 ?꾩뿉 諛곗튂?????덈뒗吏 ?뺤씤
+          // (媛꾨떒???쒖꽌?濡?諛곗튂)
           sortedDay.push(nextNonFixed);
           nonFixedIdx++;
 
-          // 한 개만 배치 (더 정교한 로직은 필요시 추가)
+          // ??媛쒕쭔 諛곗튂 (???뺢탳??濡쒖쭅? ?꾩슂??異붽?)
           break;
         }
 
         sortedDay.push(fixed.id);
       }
 
-      // 남은 비고정 장소들
+      // ?⑥? 鍮꾧퀬???μ냼??
       while (nonFixedIdx < nonFixedPlaces.length) {
         sortedDay.push(nonFixedPlaces[nonFixedIdx]);
         nonFixedIdx++;
@@ -367,11 +389,11 @@ export function distributeToDaily(
 }
 
 /**
- * 일자별 분배 결과를 DayAssignment 배열로 변환
+ * ?쇱옄蹂?遺꾨같 寃곌낵瑜?DayAssignment 諛곗뿴濡?蹂??
  *
- * @param result - 분배 결과
- * @param options - 분배 옵션
- * @returns DayAssignment 배열
+ * @param result - 遺꾨같 寃곌낵
+ * @param options - 遺꾨같 ?듭뀡
+ * @returns DayAssignment 諛곗뿴
  */
 export function toDayAssignments(
   result: DayDistributionResult,
@@ -406,11 +428,11 @@ export function toDayAssignments(
 }
 
 /**
- * 분배 결과 검증
+ * 遺꾨같 寃곌낵 寃利?
  *
- * @param result - 분배 결과
- * @param originalRoute - 원본 경로
- * @returns 검증 결과
+ * @param result - 遺꾨같 寃곌낵
+ * @param originalRoute - ?먮낯 寃쎈줈
+ * @returns 寃利?寃곌낵
  */
 export function validateDistribution(
   result: DayDistributionResult,
@@ -449,10 +471,10 @@ export function validateDistribution(
 }
 
 /**
- * 일자별 분배 요약 통계
+ * ?쇱옄蹂?遺꾨같 ?붿빟 ?듦퀎
  *
- * @param result - 분배 결과
- * @returns 통계 정보
+ * @param result - 遺꾨같 寃곌낵
+ * @returns ?듦퀎 ?뺣낫
  */
 export function getDistributionStats(result: DayDistributionResult): {
   totalDays: number;
@@ -477,3 +499,6 @@ export function getDistributionStats(result: DayDistributionResult): {
     unassignedCount: result.unassignedPlaces.length,
   };
 }
+
+
+
