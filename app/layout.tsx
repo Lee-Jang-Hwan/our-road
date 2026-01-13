@@ -1,31 +1,62 @@
-import type { Metadata, Viewport } from "next";
+﻿import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { koKR } from "@clerk/localizations";
-import { Geist, Geist_Mono, Single_Day, Chango } from "next/font/google";
+import localFont from "next/font/local";
 
 import { SyncUserProvider } from "@/components/providers/sync-user-provider";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-const singleDay = Single_Day({
-  variable: "--font-single-day",
-  weight: "400",
-});
-
-const chango = Chango({
-  variable: "--font-chango",
-  weight: "400",
-  subsets: ["latin"],
+const pretendard = localFont({
+  src: [
+    {
+      path: "../public/fonts/pretendad/Pretendard-Thin.woff2",
+      weight: "100",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/pretendad/Pretendard-ExtraLight.woff2",
+      weight: "200",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/pretendad/Pretendard-Light.woff2",
+      weight: "300",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/pretendad/Pretendard-Regular.woff2",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/pretendad/Pretendard-Medium.woff2",
+      weight: "500",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/pretendad/Pretendard-SemiBold.woff2",
+      weight: "600",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/pretendad/Pretendard-Bold.woff2",
+      weight: "700",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/pretendad/Pretendard-ExtraBold.woff2",
+      weight: "800",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/pretendad/Pretendard-Black.woff2",
+      weight: "900",
+      style: "normal",
+    },
+  ],
+  variable: "--font-pretendard",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -33,9 +64,9 @@ export const metadata: Metadata = {
     default: "RootUs",
     template: "%s | RootUs",
   },
-  description: "우리한테 딱 맞는 여행&데이트 코스",
+  description: "?곕━?쒗뀒 ??留욌뒗 ?ы뻾&?곗씠??肄붿뒪",
   applicationName: "RootUs",
-  keywords: ["여행", "데이트", "코스", "최적화", "일정", "여행지", "데이트코스"],
+  keywords: ["travel", "date", "course", "itinerary", "plan", "trip", "route"],
   authors: [{ name: "RootUs Team" }],
   creator: "RootUs",
   publisher: "RootUs",
@@ -52,32 +83,26 @@ export const metadata: Metadata = {
     locale: "ko_KR",
     url: "/",
     title: "RootUs",
-    description: "우리한테 딱 맞는 여행&데이트 코스",
+    description: "?곕━?쒗뀒 ??留욌뒗 ?ы뻾&?곗씠??肄붿뒪",
     siteName: "RootUs",
     images: [
       {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "RootUs - 우리한테 딱 맞는 여행&데이트 코스",
+        alt: "RootUs - ?곕━?쒗뀒 ??留욌뒗 ?ы뻾&?곗씠??肄붿뒪",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
     title: "RootUs",
-    description: "우리한테 딱 맞는 여행&데이트 코스",
+    description: "?곕━?쒗뀒 ??留욌뒗 ?ы뻾&?곗씠??肄붿뒪",
     images: ["/og-image.png"],
   },
   icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png" },
-    ],
-    apple: [
-      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
-    ],
+    icon: [{ url: "/RUrogo.png", sizes: "1024x1024", type: "image/png" }],
+    apple: [{ url: "/RUrogo.png", sizes: "1024x1024", type: "image/png" }],
   },
   manifest: "/manifest.json",
 };
@@ -86,7 +111,7 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  viewportFit: "cover", // iOS Safe Area 지원
+  viewportFit: "cover", // iOS Safe Area 吏??
 };
 
 export default function RootLayout({
@@ -105,7 +130,7 @@ export default function RootLayout({
           />
         </head>
         <body
-          className={`${geistSans.variable} ${geistMono.variable} ${singleDay.variable} ${chango.variable} antialiased desktop-background`}
+          className={`${pretendard.variable} antialiased desktop-background`}
         >
           <SyncUserProvider>
             <div className="app-container-safe">

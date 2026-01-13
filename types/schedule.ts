@@ -78,6 +78,36 @@ export interface ScheduleItem {
   isFixed: boolean;
 }
 
+export interface CheckInEvent {
+  accommodationName: string;
+  accommodationAddress: string;
+  lat: number;
+  lng: number;
+  checkInTime: string;
+  durationMin: number;
+  arrivalTime: string;
+  startTime: string;
+  endTime: string;
+  insertAfterOrder: number;
+  transportToHotel?: RouteSegment;
+  transportFromHotel?: RouteSegment;
+}
+
+export interface CheckInEventRow {
+  accommodation_name: string;
+  accommodation_address: string;
+  lat: number;
+  lng: number;
+  check_in_time: string;
+  duration_min: number;
+  arrival_time: string;
+  start_time: string;
+  end_time: string;
+  insert_after_order: number;
+  transport_to_hotel?: TransportInfoRow;
+  transport_from_hotel?: TransportInfoRow;
+}
+
 /**
  * 일자별 시작점/끝점 정보
  */
@@ -124,6 +154,7 @@ export interface DailyItinerary {
   dailyStartTime?: string;
   /** 설정된 일과 종료 시간 (HH:mm) */
   dailyEndTime?: string;
+  checkInEvent?: CheckInEvent;
   /** 이 날의 시작점 정보 (출발지 또는 전날 숙소) */
   dayOrigin?: DayEndpoint;
   /** 이 날의 끝점 정보 (도착지 또는 숙소) */
@@ -152,6 +183,7 @@ export interface TripItineraryRow {
   daily_start_time?: string;
   /** 설정된 일과 종료 시간 (HH:mm) */
   daily_end_time?: string;
+  check_in_event?: CheckInEventRow;
 }
 
 /**

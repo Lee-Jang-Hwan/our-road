@@ -336,11 +336,17 @@ export default function SharedTripPage({ params }: SharedTripPageProps) {
   const currentDayMarkers = useMemo(() => {
     if (!currentItinerary || !trip?.places) return [];
 
+    const placeCoordinates = new Map<string, Coordinate>();
+    trip.places.forEach((place) => {
+      placeCoordinates.set(place.id, place.coordinate);
+    });
+
     return currentItinerary.schedule.map((item, index) => {
-      const place = trip.places.find((p) => p.id === item.placeId);
+      const coordinate =
+        placeCoordinates.get(item.placeId) ?? { lat: 37.5665, lng: 126.978 };
       return {
         id: item.placeId,
-        coordinate: place?.coordinate || { lat: 37.5665, lng: 126.978 },
+        coordinate,
         order: item.order,
         name: item.placeName,
         isFixed: item.isFixed,

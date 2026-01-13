@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -12,7 +12,7 @@ import {
   LuLoader,
   LuMap,
 } from "react-icons/lu";
-import { Plane, Map } from "lucide-react";
+import { Car, Footprints, Map, Plane, Route, TrainFront } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,7 +47,7 @@ import type { TripListItem, TripStatus, TransportMode } from "@/types";
 import { calculateTripDuration } from "@/types/trip";
 
 /**
- * 상태별 배지 스타일 (세분화된 작성중 상태)
+ * 상태별 배지 스타일 (세분화된 작성 중 상태)
  */
 function getStatusBadge(status: TripStatus, placeCount: number) {
   switch (status) {
@@ -56,19 +56,19 @@ function getStatusBadge(status: TripStatus, placeCount: number) {
       if (placeCount === 0) {
         return (
           <Badge className="text-xs bg-gray-100 text-gray-600 border-gray-300">
-            📝 기본 정보만 입력
+            기본 정보만 입력
           </Badge>
         );
       } else if (placeCount <= 2) {
         return (
           <Badge className="text-xs bg-orange-100 text-orange-700 border-orange-300">
-            📍 장소 {placeCount}곳 추가됨
+            장소 {placeCount}개 추가됨
           </Badge>
         );
       } else {
         return (
           <Badge className="text-xs bg-blue-100 text-blue-700 border-blue-300">
-            ✅ 최적화 준비 완료 ({placeCount}곳)
+            최적화 준비 완료 ({placeCount}개)
           </Badge>
         );
       }
@@ -77,21 +77,21 @@ function getStatusBadge(status: TripStatus, placeCount: number) {
     case "optimizing":
       return (
         <Badge className="text-xs bg-yellow-100 text-yellow-800 border-yellow-300">
-          ⏳ 최적화 중
+          최적화 중
         </Badge>
       );
 
     case "optimized":
       return (
-        <Badge className="text-xs bg-green-100 text-green-700 border-green-300">
-          ✨ 최적화 완료
+        <Badge className="text-xs text-[rgb(49,130,247)] border-[rgba(49,130,247,0.3)] bg-[rgba(49,130,247,0.12)]">
+          최적화 완료
         </Badge>
       );
 
     case "completed":
       return (
         <Badge className="text-xs bg-purple-100 text-purple-700 border-purple-300">
-          🎉 여행 완료
+          여행 완료
         </Badge>
       );
 
@@ -101,16 +101,14 @@ function getStatusBadge(status: TripStatus, placeCount: number) {
 }
 
 /**
- * 날짜 포맷 (YYYY-MM-DD → M월 D일)
+ * 날짜 포맷 (YYYY-MM-DD -> M/D)
  */
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
-  return `${date.getMonth() + 1}월 ${date.getDate()}일`;
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  return `${month}/${day}`;
 }
-
-/**
- * 상대 시간 포맷 (간략하게)
- */
 function formatRelativeTime(dateStr: string): string {
   const now = new Date();
   const date = new Date(dateStr);
@@ -119,22 +117,18 @@ function formatRelativeTime(dateStr: string): string {
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  // 1분 이내
   if (diffMins < 1) {
-    return "방금";
+    return "방금 전";
   }
 
-  // 1시간 이내
   if (diffMins < 60) {
     return `${diffMins}분 전`;
   }
 
-  // 오늘 (24시간 이내)
   if (diffHours < 24 && date.getDate() === now.getDate()) {
     return `${diffHours}시간 전`;
   }
 
-  // 어제
   if (
     diffDays === 1 ||
     (diffHours < 48 && date.getDate() === now.getDate() - 1)
@@ -144,36 +138,28 @@ function formatRelativeTime(dateStr: string): string {
     return `어제 ${hours}:${mins}`;
   }
 
-  // 일주일 이내
   if (diffDays < 7) {
     return `${diffDays}일 전`;
   }
 
-  // 그 외 (날짜 표시)
   const month = date.getMonth() + 1;
   const day = date.getDate();
   const hours = date.getHours().toString().padStart(2, "0");
   const mins = date.getMinutes().toString().padStart(2, "0");
 
-  // 올해면 연도 생략
   if (date.getFullYear() === now.getFullYear()) {
     return `${month}월 ${day}일 ${hours}:${mins}`;
   }
 
-  // 작년 이상이면 연도 포함
   return `${date.getFullYear()}.${month}.${day}`;
 }
-
-/**
- * 이동수단 아이콘
- */
 function TransportIcon({ modes }: { modes: TransportMode[] }) {
   if (modes.length === 1) {
-    if (modes.includes("walking")) return <span className="text-base">🚶</span>;
-    if (modes.includes("public")) return <span className="text-base">🚇</span>;
-    if (modes.includes("car")) return <span className="text-base">🚗</span>;
+    if (modes.includes("walking")) return <Footprints className="h-4 w-4" />;
+    if (modes.includes("public")) return <TrainFront className="h-4 w-4" />;
+    if (modes.includes("car")) return <Car className="h-4 w-4" />;
   }
-  return <span className="text-base">🚀</span>;
+  return <Route className="h-4 w-4" />;
 }
 
 /**
@@ -183,13 +169,9 @@ function getTransportModeText(modes: TransportMode[]): string {
   const labels: string[] = [];
   if (modes.includes("walking")) labels.push("도보");
   if (modes.includes("public")) labels.push("대중교통");
-  if (modes.includes("car")) labels.push("차량");
+  if (modes.includes("car")) labels.push("자동차");
   return labels.join(" + ");
 }
-
-/**
- * 여행 카드 컴포넌트
- */
 function TripCard({
   trip,
   onDelete,
@@ -231,7 +213,7 @@ function TripCard({
                 {/* 장소 수 */}
                 <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                   <LuMapPin className="w-4 h-4 shrink-0" />
-                  <span>장소 {trip.placeCount}곳</span>
+                  <span>장소 {trip.placeCount}개</span>
                 </div>
 
                 {/* 이동수단 */}
@@ -361,9 +343,9 @@ export default function MyTripsPage() {
         setTrips((prev) => prev.filter((t) => t.id !== tripToDelete.id));
         setDeleteDialogOpen(false);
         setTripToDelete(null);
-        showSuccessToast("여행이 삭제되었습니다");
+        showSuccessToast("여행이 삭제되었습니다.");
       } else {
-        showErrorToast(result.error || "삭제에 실패했습니다");
+        showErrorToast(result.error || "삭제에 실패했습니다.");
       }
     });
   };
@@ -377,9 +359,9 @@ export default function MyTripsPage() {
   if (!user) {
     return (
       <main className="flex flex-col items-center justify-center min-h-[calc(100dvh-64px)] px-4 gap-4">
-        <p className="text-muted-foreground">로그인이 필요합니다</p>
+        <p className="text-muted-foreground">Please sign in.</p>
         <Link href="/sign-in">
-          <Button className="touch-target">로그인하기</Button>
+          <Button className="touch-target">Sign in</Button>
         </Link>
       </main>
     );
@@ -409,23 +391,16 @@ export default function MyTripsPage() {
           <Button
             className="
               relative overflow-hidden touch-target
-              bg-gradient-to-r from-violet-500 via-purple-500 to-fuchsia-500
-              hover:from-violet-600 hover:via-purple-600 hover:to-fuchsia-600
-              text-white font-semibold text-sm
+              bg-[var(--primary)]
+              text-[var(--primary-foreground)] font-semibold text-sm
               px-4 py-2 rounded-full
-              shadow-lg shadow-purple-500/30
-              hover:shadow-xl hover:shadow-purple-500/40
+              shadow-lg shadow-[rgba(49,130,247,0.3)]
+              hover:shadow-xl hover:shadow-[rgba(49,130,247,0.4)] hover:opacity-95
               hover:scale-105 active:scale-95
-              transition-all duration-300 ease-out
+              active:opacity-90 transition-all duration-300 ease-out
               border-0
             "
           >
-            {/* 반짝이는 배경 효과 */}
-            <span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out" />
-
-            {/* 글로우 효과 */}
-            <span className="absolute inset-0 rounded-full bg-gradient-to-r from-violet-400 via-purple-400 to-fuchsia-400 opacity-0 group-hover:opacity-50 blur-xl transition-opacity duration-300" />
-
             {/* 컨텐츠 */}
             <span className="relative flex items-center gap-1.5">
               <span className="animate-[pulse_2s_ease-in-out_infinite]">

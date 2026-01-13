@@ -42,7 +42,7 @@ export default function PlacesPage({ params }: PlacesPageProps) {
   const [isLoading, setIsLoading] = useState(false);
   const placesListScrollRef = useRef<HTMLDivElement>(null);
 
-  // DB에서 장소 로드
+  // DB?먯꽌 ?μ냼 濡쒕뱶
   const loadPlacesFromDB = useCallback(async () => {
     try {
       const result = await getPlaces(tripId);
@@ -51,35 +51,32 @@ export default function PlacesPage({ params }: PlacesPageProps) {
         savePlaces(result.data);
       }
     } catch (error) {
-      console.error("장소 로드 실패:", error);
+      console.error("?μ냼 濡쒕뱶 ?ㅽ뙣:", error);
     }
   }, [tripId, savePlaces]);
 
-  // 저장 완료 처리
+  // ????꾨즺 泥섎━
   const handleSaveComplete = async () => {
     try {
-      // Trip 상태를 'optimizing'으로 변경
       await updateTrip(tripId, { status: "optimizing" });
-      // 편집 페이지로 돌아가기
       window.location.href = `/plan/${tripId}`;
     } catch (error) {
-      console.error("저장 완료 처리 실패:", error);
+      console.error("????꾨즺 泥섎━ ?ㅽ뙣:", error);
       showErrorToast("오류가 발생했습니다.");
     }
   };
-
-  // 초기 로드: DB에서 장소 가져오기
+  // Initial load: fetch places from DB first
   useEffect(() => {
     if (!isLoaded || isInitialized) return;
 
     const init = async () => {
-      // 먼저 DB에서 로드 시도
+      // 癒쇱? DB?먯꽌 濡쒕뱶 ?쒕룄
       const result = await getPlaces(tripId);
       if (result.success && result.data && result.data.length > 0) {
         setPlaces(result.data);
         savePlaces(result.data);
       } else {
-        // DB에 없으면 sessionStorage에서 로드
+        // DB???놁쑝硫?sessionStorage?먯꽌 濡쒕뱶
         const draft = getDraftByTripId(tripId);
         if (draft?.places) {
           setPlaces(draft.places);
@@ -90,8 +87,7 @@ export default function PlacesPage({ params }: PlacesPageProps) {
 
     init();
   }, [tripId, getDraftByTripId, isLoaded, isInitialized, savePlaces]);
-
-  // 장소 검색 결과 선택 → DB에 저장
+  // Place select handler
   const handlePlaceSelect = async (result: PlaceSearchResult) => {
     setIsLoading(true);
     try {
@@ -102,7 +98,7 @@ export default function PlacesPage({ params }: PlacesPageProps) {
         lat: result.coordinate.lat,
         lng: result.coordinate.lng,
         kakaoPlaceId: result.id,
-        estimatedDuration: 60, // 기본 1시간
+        estimatedDuration: 60, // 湲곕낯 1?쒓컙
       });
 
       if (!addResult.success || !addResult.data) {
@@ -110,13 +106,13 @@ export default function PlacesPage({ params }: PlacesPageProps) {
         return;
       }
 
-      // 성공 시 로컬 상태 업데이트
+      // ?깃났 ??濡쒖뺄 ?곹깭 ?낅뜲?댄듃
       setPlaces((prev) => [...prev, addResult.data!]);
       savePlaces([...places, addResult.data]);
-      // Sheet를 닫지 않고 계속 열어둠 (연속 추가 가능)
-      showSuccessToast(`${result.name}이(가) 추가되었습니다.`);
+      // Sheet瑜??レ? ?딄퀬 怨꾩냽 ?댁뼱??(?곗냽 異붽? 媛??
+      showSuccessToast(`'${result.name}' 장소가 추가되었습니다`);
 
-      // 장소 목록 스크롤을 맨 아래로 이동
+      // ?μ냼 紐⑸줉 ?ㅽ겕濡ㅼ쓣 留??꾨옒濡??대룞
       setTimeout(() => {
         if (placesListScrollRef.current) {
           placesListScrollRef.current.scrollTop =
@@ -124,16 +120,15 @@ export default function PlacesPage({ params }: PlacesPageProps) {
         }
       }, 100);
     } catch (error) {
-      console.error("장소 추가 실패:", error);
+      console.error("?μ냼 異붽? ?ㅽ뙣:", error);
       showErrorToast("장소 추가에 실패했습니다.");
     } finally {
       setIsLoading(false);
     }
   };
-
-  // 체류 시간 변경 → DB에 저장
+  // Duration change handler
   const handleDurationChange = async (placeId: string, duration: number) => {
-    // 즉시 UI 업데이트
+    // 利됱떆 UI ?낅뜲?댄듃
     setPlaces((prev) =>
       prev.map((place) =>
         place.id === placeId
@@ -146,17 +141,17 @@ export default function PlacesPage({ params }: PlacesPageProps) {
       const result = await updatePlaceDuration(placeId, tripId, duration);
       if (!result.success) {
         showErrorToast(result.error || "체류 시간 변경에 실패했습니다.");
-        // 실패 시 롤백 (DB에서 다시 로드)
+        // ?ㅽ뙣 ??濡ㅻ갚 (DB?먯꽌 ?ㅼ떆 濡쒕뱶)
         await loadPlacesFromDB();
       }
     } catch (error) {
-      console.error("체류 시간 변경 실패:", error);
+      console.error("泥대쪟 ?쒓컙 蹂寃??ㅽ뙣:", error);
     }
   };
 
-  // 장소 삭제 → DB에서 삭제
+  // ?μ냼 ??젣 ??DB?먯꽌 ??젣
   const handleDelete = async (placeId: string) => {
-    // 즉시 UI 업데이트
+    // 利됱떆 UI ?낅뜲?댄듃
     const prevPlaces = places;
     setPlaces((prev) => prev.filter((place) => place.id !== placeId));
 
@@ -164,22 +159,21 @@ export default function PlacesPage({ params }: PlacesPageProps) {
       const result = await removePlace(placeId, tripId);
       if (!result.success) {
         showErrorToast(result.error || "장소 삭제에 실패했습니다.");
-        // 실패 시 롤백
+        // ?ㅽ뙣 ??濡ㅻ갚
         setPlaces(prevPlaces);
       }
     } catch (error) {
-      console.error("장소 삭제 실패:", error);
+      console.error("?μ냼 ??젣 ?ㅽ뙣:", error);
       setPlaces(prevPlaces);
     }
   };
-
-  // 순서 변경 → DB에 저장
+  // Reorder handler
   const handleReorder = async (placeIds: string[]) => {
     const reordered = placeIds
       .map((id) => places.find((p) => p.id === id))
       .filter((p): p is Place => p !== undefined);
 
-    // 즉시 UI 업데이트
+    // 利됱떆 UI ?낅뜲?댄듃
     const prevPlaces = places;
     setPlaces(reordered);
 
@@ -187,23 +181,23 @@ export default function PlacesPage({ params }: PlacesPageProps) {
       const result = await reorderPlaces({ tripId, placeIds });
       if (!result.success) {
         showErrorToast(result.error || "순서 변경에 실패했습니다.");
-        // 실패 시 롤백
+        // ?ㅽ뙣 ??濡ㅻ갚
         setPlaces(prevPlaces);
       }
     } catch (error) {
-      console.error("순서 변경 실패:", error);
+      console.error("?쒖꽌 蹂寃??ㅽ뙣:", error);
       setPlaces(prevPlaces);
     }
   };
 
-  // 전체 삭제 → DB에서 삭제
+  // ?꾩껜 ??젣 ??DB?먯꽌 ??젣
   const handleClearAll = async () => {
     if (!confirm("모든 장소를 삭제하시겠습니까?")) return;
 
     const prevPlaces = places;
     const placeIds = places.map((p) => p.id);
 
-    // 즉시 UI 업데이트
+    // 利됱떆 UI ?낅뜲?댄듃
     setPlaces([]);
 
     try {
@@ -215,7 +209,7 @@ export default function PlacesPage({ params }: PlacesPageProps) {
         showSuccessToast("모든 장소가 삭제되었습니다.");
       }
     } catch (error) {
-      console.error("전체 삭제 실패:", error);
+      console.error("?꾩껜 ??젣 ?ㅽ뙣:", error);
       setPlaces(prevPlaces);
     }
   };
@@ -232,7 +226,7 @@ export default function PlacesPage({ params }: PlacesPageProps) {
         >
           <LuChevronLeft className="w-5 h-5" />
         </Button>
-        <h1 className="font-semibold text-lg flex-1">장소 관리</h1>
+        <h1 className="font-semibold text-lg flex-1">장소</h1>
         <Button
           size="sm"
           onClick={() => setIsSearchOpen(true)}
@@ -243,7 +237,7 @@ export default function PlacesPage({ params }: PlacesPageProps) {
         </Button>
       </header>
 
-      {/* 장소 목록 */}
+      {/* ?μ냼 紐⑸줉 */}
       <div className="flex-1 px-4 py-4">
         <PlaceListHeader
           count={places.length}
@@ -256,29 +250,29 @@ export default function PlacesPage({ params }: PlacesPageProps) {
           onDelete={handleDelete}
           onReorder={handleReorder}
           onAddClick={() => setIsSearchOpen(true)}
-          emptyMessage="방문하고 싶은 장소를 추가해보세요"
+          emptyMessage="아직 추가된 장소가 없습니다. 장소를 추가해주세요"
         />
       </div>
 
-      {/* 하단 버튼 */}
+      {/* ?섎떒 踰꾪듉 */}
       {places.length > 0 && (
         <div className="sticky bottom-0 p-4 backdrop-blur-sm bg-background/80 border-t pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:static md:border-t-0 md:pt-4 md:pb-0">
           <Button className="w-full h-12" onClick={handleSaveComplete}>
-            {places.length}개 장소 저장 완료
+            저장
           </Button>
         </div>
       )}
 
-      {/* 장소 검색 Sheet */}
+      {/* ?μ냼 寃??Sheet */}
       <Sheet open={isSearchOpen} onOpenChange={setIsSearchOpen}>
         <SheetContent
           side="bottom"
           className="h-[80vh] flex flex-col max-w-md mx-auto px-8"
         >
-          <SheetHeader>
+                    <SheetHeader>
             <SheetTitle>장소 검색</SheetTitle>
             <SheetDescription>
-              방문하고 싶은 장소를 검색해서 추가하세요
+              여행에 추가할 장소를 검색하세요.
             </SheetDescription>
           </SheetHeader>
 
@@ -290,13 +284,11 @@ export default function PlacesPage({ params }: PlacesPageProps) {
             />
           </div>
 
-          {/* 추가된 장소 목록 */}
+          {/* 異붽????μ냼 紐⑸줉 */}
           {places.length > 0 && (
             <div className="mt-6 flex-1 overflow-hidden flex flex-col min-h-0">
               <div className="flex items-center justify-between mb-3 shrink-0">
-                <h4 className="font-medium text-sm">
-                  추가된 장소 ({places.length}개)
-                </h4>
+                                <h4 className="font-medium text-sm">선택된 장소 ({places.length}개)</h4>
               </div>
               <div
                 ref={placesListScrollRef}
@@ -336,16 +328,16 @@ export default function PlacesPage({ params }: PlacesPageProps) {
             </div>
           )}
 
-          {/* 하단 저장 버튼 */}
+          {/* ?섎떒 ???踰꾪듉 */}
           {places.length > 0 && (
-            <div className="sticky bottom-0 mt-4 p-4 backdrop-blur-sm bg-background/80 border-t shrink-0">
+                        <div className="sticky bottom-0 mt-4 p-4 backdrop-blur-sm bg-background/80 border-t shrink-0">
               <Button
                 className="w-full h-12"
                 onClick={() => {
                   setIsSearchOpen(false);
                 }}
               >
-                장소 저장
+                완료
               </Button>
             </div>
           )}
@@ -354,3 +346,13 @@ export default function PlacesPage({ params }: PlacesPageProps) {
     </main>
   );
 }
+
+
+
+
+
+
+
+
+
+

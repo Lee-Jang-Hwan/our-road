@@ -118,6 +118,8 @@ export type {
 
 export {
   DEFAULT_OPTIMIZE_CONFIG,
+  DEFAULT_MIDDLE_DAY_START_TIME,
+  DEFAULT_MIDDLE_DAY_END_TIME,
   normalizeTime,
   timeToMinutes,
   minutesToTime,
@@ -125,7 +127,10 @@ export {
   addMinutesToTime,
   getDaysBetween,
   generateDateRange,
+  generateDailyTimeConfigs,
 } from "./types";
+
+export type { DailyTimeConfigOptions } from "./types";
 
 // ============================================
 // Recalculate Time Exports

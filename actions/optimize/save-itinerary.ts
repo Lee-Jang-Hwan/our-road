@@ -168,6 +168,30 @@ function convertTransportToRow(transport: {
   };
 }
 
+function convertCheckInEventToRow(
+  event: DailyItinerary["checkInEvent"],
+): TripItineraryRow["check_in_event"] {
+  if (!event) return undefined;
+  return {
+    accommodation_name: event.accommodationName,
+    accommodation_address: event.accommodationAddress,
+    lat: event.lat,
+    lng: event.lng,
+    check_in_time: event.checkInTime,
+    duration_min: event.durationMin,
+    arrival_time: event.arrivalTime,
+    start_time: event.startTime,
+    end_time: event.endTime,
+    insert_after_order: event.insertAfterOrder,
+    transport_to_hotel: event.transportToHotel
+      ? convertTransportToRow(event.transportToHotel)
+      : undefined,
+    transport_from_hotel: event.transportFromHotel
+      ? convertTransportToRow(event.transportFromHotel)
+      : undefined,
+  };
+}
+
 /**
  * DailyItinerary를 DB Row 형식으로 변환
  */
@@ -209,6 +233,7 @@ function convertItineraryToRow(
       : undefined,
     daily_start_time: itinerary.dailyStartTime,
     daily_end_time: itinerary.dailyEndTime,
+    check_in_event: convertCheckInEventToRow(itinerary.checkInEvent),
   };
 }
 

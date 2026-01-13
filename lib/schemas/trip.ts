@@ -56,6 +56,7 @@ export const dailyAccommodationSchema = z
     endDate: dateSchema,
     location: tripLocationSchema,
     checkInTime: timeSchema.optional(),
+    checkInDurationMin: z.number().int().min(0).max(180).optional(),
     checkOutTime: timeSchema.optional(),
   })
   .refine((data) => data.startDate <= data.endDate, {

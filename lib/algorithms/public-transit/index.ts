@@ -1,12 +1,13 @@
-// ============================================
+﻿// ============================================
 // Public Transit Algorithm Entry
 // ============================================
 
-import type { TripInput, TripOutput, Waypoint, Cluster } from "@/types";
+import type { TripInput, TripOutput, Waypoint, Cluster, LatLng } from "@/types";
 import { preprocessWaypoints, determineTripMode } from "./preprocess";
-import { balancedClustering } from "./clustering";
+import { zoneClustering } from "./clustering";
 import { chooseEndAnchor, orderClustersOneDirection } from "./cluster-ordering";
 import { generateDayPlans } from "./day-plan";
+import { applyCheckInSplit } from "./check-in-split";
 import { calculateCentroid } from "../utils/geo";
 import {
   exceedsDailyLimitProxy,
@@ -19,43 +20,57 @@ import {
 import { extractSegments, callRoutingAPIForSegments } from "./api-caller";
 import { buildOutput } from "./output-builder";
 
+const PUBLIC_TRANSIT_DEBUG = process.env.PUBLIC_TRANSIT_DEBUG === "1";
+
+function logPublicTransitDebug(message: string, data?: unknown): void {
+  if (!PUBLIC_TRANSIT_DEBUG) return;
+  if (data === undefined) {
+    console.log(`[PublicTransit] ${message}`);
+    return;
+  }
+  console.log(`[PublicTransit] ${message}`, data);
+}
+
 /**
- * 날짜 문자열을 로컬 날짜로 파싱 (타임존 문제 방지)
- * @param dateStr "YYYY-MM-DD" 형식의 날짜 문자열
- * @returns 로컬 타임존 기준 Date 객체
+ * ?좎쭨 臾몄옄?댁쓣 濡쒖뺄 ?좎쭨濡??뚯떛 (??꾩〈 臾몄젣 諛⑹?)
+ * @param dateStr "YYYY-MM-DD" ?뺤떇???좎쭨 臾몄옄?? * @returns 濡쒖뺄 ??꾩〈 湲곗? Date 媛앹껜
  */
+function normalizeDateOnly(dateStr: string): string {
+  const trimmed = dateStr.trim();
+  return trimmed.split("T")[0].split(" ")[0];
+}
+
 function parseLocalDate(dateStr: string): Date {
-  const [year, month, day] = dateStr.split("-").map(Number);
-  // 월은 0부터 시작하므로 -1
+  const normalized = normalizeDateOnly(dateStr);
+  const [year, month, day] = normalized.split("-").map(Number);
+  // ?붿? 0遺???쒖옉?섎?濡?-1
   return new Date(year, month - 1, day);
 }
 
 /**
- * 고정 일정이 있는 장소를 날짜별로 그룹화
- * @param waypoints 모든 경유지
- * @param tripStartDate 여행 시작 날짜 (YYYY-MM-DD)
- * @returns dayIndex -> waypoint[] 매핑
+ * 怨좎젙 ?쇱젙???덈뒗 ?μ냼瑜??좎쭨蹂꾨줈 洹몃９?? * @param waypoints 紐⑤뱺 寃쎌쑀吏
+ * @param tripStartDate ?ы뻾 ?쒖옉 ?좎쭨 (YYYY-MM-DD)
+ * @returns dayIndex -> waypoint[] 留ㅽ븨
  */
 function groupFixedWaypointsByDay(
   waypoints: Waypoint[],
   tripStartDate?: string
 ): Map<number, Waypoint[]> {
   const grouped = new Map<number, Waypoint[]>();
-  
+
   if (!tripStartDate) {
     return grouped;
   }
 
   const startDate = parseLocalDate(tripStartDate);
-  
+
   for (const wp of waypoints) {
     if (wp.isFixed && wp.fixedDate) {
       const fixedDate = parseLocalDate(wp.fixedDate);
-      // 날짜 차이 계산 (일 단위)
       const dayIndex = Math.floor(
         (fixedDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
       );
-      
+
       if (dayIndex >= 0) {
         if (!grouped.has(dayIndex)) {
           grouped.set(dayIndex, []);
@@ -64,36 +79,64 @@ function groupFixedWaypointsByDay(
       }
     }
   }
-  
+
   return grouped;
 }
 
-/**
- * 고정 일정이 올바른 날짜에 배정되었는지 검증
- * @param clusters 클러스터 목록
- * @param fixedByDay 날짜별 고정 장소
- */
+function getCheckInAdjustment(
+  input: TripInput
+): { dayIndex: number; durationMin: number } | null {
+  if (!input.tripStartDate || !input.checkInDate || !input.checkInTime) {
+    return null;
+  }
+  const startDate = parseLocalDate(input.tripStartDate);
+  const checkInDate = parseLocalDate(input.checkInDate);
+  const dayIndex = Math.floor(
+    (checkInDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)
+  );
+  if (dayIndex < 0 || dayIndex >= input.days) {
+    return null;
+  }
+  const durationMin = input.checkInDurationMin ?? 30;
+  if (!Number.isFinite(durationMin) || durationMin < 0) {
+    return null;
+  }
+  return { dayIndex, durationMin };
+}
+
+function buildDayAnchors(
+  input: TripInput
+): Array<{ start?: LatLng; end?: LatLng }> {
+  return Array.from({ length: input.days }, (_, index) => {
+    const isFirst = index === 0;
+    const isLast = index === input.days - 1;
+    const start = isFirst ? input.start : input.lodging;
+    const end = isLast ? input.end ?? input.lodging : input.lodging;
+    return { start, end };
+  });
+}
+
 function validateFixedWaypointAssignments(
   clusters: Cluster[],
   fixedByDay: Map<number, Waypoint[]>
 ): void {
   for (const [dayIndex, fixedWaypoints] of fixedByDay.entries()) {
     if (dayIndex >= clusters.length) {
-      continue; // 이미 경고가 출력됨
+      continue;
     }
 
     const cluster = clusters[dayIndex];
     const clusterWaypointIds = new Set(cluster.waypointIds);
 
     for (const fixedWp of fixedWaypoints) {
-      // 올바른 날짜의 클러스터에 있는지 확인
+      // ?щ컮瑜??좎쭨???대윭?ㅽ꽣???덈뒗吏 ?뺤씤
       if (!clusterWaypointIds.has(fixedWp.id)) {
         console.warn(
           `[validateFixedWaypoints] Fixed waypoint ${fixedWp.id} is missing from day ${dayIndex + 1} cluster`
         );
       }
 
-      // 다른 클러스터에 중복되어 있는지 확인
+      // ?ㅻⅨ ?대윭?ㅽ꽣??以묐났?섏뼱 ?덈뒗吏 ?뺤씤
       for (let i = 0; i < clusters.length; i++) {
         if (i === dayIndex) continue;
         if (clusters[i].waypointIds.includes(fixedWp.id)) {
@@ -107,17 +150,16 @@ function validateFixedWaypointAssignments(
 }
 
 /**
- * 클러스터에 고정 일정 장소를 강제 배정
- * @param clusters 클러스터 목록
- * @param fixedByDay 날짜별 고정 장소
- * @param waypoints 전체 경유지 맵
- */
+ * ?대윭?ㅽ꽣??怨좎젙 ?쇱젙 ?μ냼瑜?媛뺤젣 諛곗젙
+ * @param clusters ?대윭?ㅽ꽣 紐⑸줉
+ * @param fixedByDay ?좎쭨蹂?怨좎젙 ?μ냼
+ * @param waypoints ?꾩껜 寃쎌쑀吏 留? */
 function assignFixedWaypointsToClusters(
   clusters: Cluster[],
   fixedByDay: Map<number, Waypoint[]>,
   waypoints: Waypoint[]
 ): void {
-  // 먼저 모든 고정 일정 waypoint ID를 수집
+  // 癒쇱? 紐⑤뱺 怨좎젙 ?쇱젙 waypoint ID瑜??섏쭛
   const fixedWaypointIds = new Set<string>();
   for (const fixedWaypoints of fixedByDay.values()) {
     for (const fixedWp of fixedWaypoints) {
@@ -125,26 +167,26 @@ function assignFixedWaypointsToClusters(
     }
   }
 
-  // 모든 클러스터에서 고정 일정 waypoint 제거 (잘못된 클러스터에 배정된 것 제거)
+  // 紐⑤뱺 ?대윭?ㅽ꽣?먯꽌 怨좎젙 ?쇱젙 waypoint ?쒓굅 (?섎せ???대윭?ㅽ꽣??諛곗젙??寃??쒓굅)
   for (const cluster of clusters) {
     cluster.waypointIds = cluster.waypointIds.filter(
       (id) => !fixedWaypointIds.has(id)
     );
   }
 
-  // 올바른 날짜의 클러스터에 고정 일정 추가
+  // ?щ컮瑜??좎쭨???대윭?ㅽ꽣??怨좎젙 ?쇱젙 異붽?
   for (const [dayIndex, fixedWaypoints] of fixedByDay.entries()) {
     if (dayIndex < clusters.length) {
       const cluster = clusters[dayIndex];
       
-      // 고정 장소를 클러스터에 추가
+      // 怨좎젙 ?μ냼瑜??대윭?ㅽ꽣??異붽?
       for (const fixedWp of fixedWaypoints) {
         if (!cluster.waypointIds.includes(fixedWp.id)) {
           cluster.waypointIds.push(fixedWp.id);
         }
       }
       
-      // centroid 재계산 (waypointIds를 사용하여 Waypoint 객체 찾기)
+      // centroid ?ш퀎??(waypointIds瑜??ъ슜?섏뿬 Waypoint 媛앹껜 李얘린)
       const clusterWaypoints = cluster.waypointIds
         .map((id) => waypoints.find((wp) => wp.id === id))
         .filter((wp): wp is Waypoint => wp !== undefined);
@@ -191,31 +233,58 @@ export async function generatePublicTransitRoute(
     throw new Error("No valid waypoints after preprocessing");
   }
 
+  logPublicTransitDebug("input", {
+    tripId: input.tripId,
+    days: input.days,
+    waypoints: waypoints.length,
+    dailyMaxMinutes: input.dailyMaxMinutes ?? null,
+    hasLodging: Boolean(input.lodging),
+    hasDestination: Boolean(input.end),
+  });
+
   const mode = determineTripMode(input.lodging, input.start, input.end);
+  const waypointNameById = PUBLIC_TRANSIT_DEBUG
+    ? new Map(waypoints.map((wp) => [wp.id, wp.name]))
+    : null;
 
   // Calculate clustering parameters
   const targetPerDay = Math.ceil(waypoints.length / input.days);
   const fixedIds = waypoints.filter((wp) => wp.isFixed).map((wp) => wp.id);
-
-  // 고정 일정을 날짜별로 그룹화
   const fixedByDay = groupFixedWaypointsByDay(waypoints, input.tripStartDate);
+  const dayAnchors = buildDayAnchors(input);
 
   // Perform clustering
-  const clusters = balancedClustering({
+  const clusters = zoneClustering({
     waypoints,
     N: input.days,
     targetPerDay,
     fixedIds,
+    tripStartDate: input.tripStartDate,
+    dailyMaxMinutes: input.dailyMaxMinutes,
+    anchors: dayAnchors,
   });
 
   if (clusters.length === 0) {
     throw new Error("Clustering produced no valid clusters");
   }
 
-  // 클러스터에 고정 일정 강제 배정
+  // ?대윭?ㅽ꽣??怨좎젙 ?쇱젙 媛뺤젣 諛곗젙
+  if (PUBLIC_TRANSIT_DEBUG && waypointNameById) {
+    logPublicTransitDebug(
+      "clusters",
+      clusters.map((cluster, index) => ({
+        dayIndex: index + 1,
+        waypointCount: cluster.waypointIds.length,
+        waypointNames: cluster.waypointIds.map(
+          (id) => waypointNameById.get(id) ?? id
+        ),
+      }))
+    );
+  }
+
   assignFixedWaypointsToClusters(clusters, fixedByDay, waypoints);
 
-  // 검증: 고정 일정이 올바른 날짜에 배정되었는지 확인
+  // 寃利? 怨좎젙 ?쇱젙???щ컮瑜??좎쭨??諛곗젙?섏뿀?붿? ?뺤씤
   validateFixedWaypointAssignments(clusters, fixedByDay);
 
   // Order clusters with start position consideration
@@ -238,13 +307,44 @@ export async function generatePublicTransitRoute(
     throw new Error("Failed to generate day plans");
   }
 
+  applyCheckInSplit({
+    dayPlans,
+    waypoints: waypointMap,
+    input,
+  });
+
+  const checkInAdjustment = getCheckInAdjustment(input);
+
+  if (PUBLIC_TRANSIT_DEBUG && waypointNameById) {
+    logPublicTransitDebug(
+      "day plan order",
+      dayPlans.map((plan) => ({
+        dayIndex: plan.dayIndex,
+        waypointOrder: plan.waypointOrder.map(
+          (id) => waypointNameById.get(id) ?? id
+        ),
+      }))
+    );
+  }
+  // 일자별 시간 제약 배열 생성 (dailyTimeLimits 또는 단일 dailyMaxMinutes 사용)
+  const dailyMaxMinutesArray: number[] = input.dailyTimeLimits
+    ? input.dailyTimeLimits.map((limit) => limit.maxMinutes)
+    : input.dailyMaxMinutes
+      ? Array(input.days).fill(input.dailyMaxMinutes)
+      : [];
+
   // Complexity-based removal with safeguards
-  if (input.dailyMaxMinutes) {
+  if (dailyMaxMinutesArray.length > 0) {
     const maxRemovalIterations = Math.floor(waypoints.length * 0.5); // Remove max 50% of waypoints
     let removalCount = 0;
 
     while (
-      exceedsDailyLimitProxy(dayPlans, input.dailyMaxMinutes, waypointMap) &&
+      exceedsDailyLimitProxy(
+        dayPlans,
+        dailyMaxMinutesArray,
+        waypointMap,
+        checkInAdjustment
+      ) &&
       removalCount < maxRemovalIterations
     ) {
       const worstPoint = selectWorstComplexityPoint(
@@ -280,7 +380,7 @@ export async function generatePublicTransitRoute(
   let segmentCosts = await callRoutingAPIForSegments(segments);
 
   // API-based time optimization (Phase 2)
-  if (input.dailyMaxMinutes) {
+  if (dailyMaxMinutesArray.length > 0) {
     const maxReoptimizationRounds = 3;
     let roundCount = 0;
 
@@ -293,11 +393,12 @@ export async function generatePublicTransitRoute(
       const dayTimeInfos = calculateActualDailyTimes(
         dayPlans,
         segmentCosts,
-        waypointMap
+        waypointMap,
+        checkInAdjustment
       );
       const overloadedDays = identifyOverloadedDays(
         dayTimeInfos,
-        input.dailyMaxMinutes
+        dailyMaxMinutesArray
       );
 
       if (overloadedDays.length === 0) {
@@ -383,3 +484,9 @@ export async function generatePublicTransitRoute(
     segmentCosts,
   });
 }
+
+
+
+
+
+

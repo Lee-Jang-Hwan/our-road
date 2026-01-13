@@ -16,21 +16,43 @@ const WEIGHTS = {
   ZETA_STAYTIME: 1.0,
 };
 
+/**
+ * 일자별 시간 제한을 초과하는지 프록시 체크
+ * @param dayPlans - 일자별 계획
+ * @param dailyMaxMinutesOrArray - 단일 값 또는 일자별 최대 시간 배열
+ * @param waypoints - 웨이포인트 맵
+ */
+export interface CheckInAdjustment {
+  dayIndex: number;
+  durationMin: number;
+}
+
 export function exceedsDailyLimitProxy(
   dayPlans: DayPlan[],
-  dailyMaxMinutes: number,
-  waypoints: Map<string, Waypoint>
+  dailyMaxMinutesOrArray: number | number[],
+  waypoints: Map<string, Waypoint>,
+  checkInAdjustment?: CheckInAdjustment
 ): boolean {
   if (!Array.isArray(dayPlans) || dayPlans.length === 0) {
     return false;
   }
 
-  if (!Number.isFinite(dailyMaxMinutes) || dailyMaxMinutes <= 0) {
-    return false;
-  }
+  // 일자별 최대 시간 배열로 변환
+  const dailyMaxMinutesArray = Array.isArray(dailyMaxMinutesOrArray)
+    ? dailyMaxMinutesOrArray
+    : dayPlans.map(() => dailyMaxMinutesOrArray);
 
-  return dayPlans.some((dayPlan) => {
+  return dayPlans.some((dayPlan, dayIndex) => {
     if (!dayPlan || !Array.isArray(dayPlan.waypointOrder)) {
+      return false;
+    }
+
+    const dailyMaxMinutes = dailyMaxMinutesArray[dayIndex] ?? (
+      Array.isArray(dailyMaxMinutesOrArray)
+        ? dailyMaxMinutesOrArray[0]
+        : dailyMaxMinutesOrArray
+    );
+    if (!Number.isFinite(dailyMaxMinutes) || dailyMaxMinutes <= 0) {
       return false;
     }
 
@@ -63,7 +85,14 @@ export function exceedsDailyLimitProxy(
     }
 
     const distanceKm = distanceMeters / 1000;
-    const estimatedMinutes = distanceKm * MINUTES_PER_KM;
+    let estimatedMinutes = distanceKm * MINUTES_PER_KM;
+    if (
+      checkInAdjustment &&
+      dayIndex === checkInAdjustment.dayIndex &&
+      dayPlan.checkInBreakIndex !== undefined
+    ) {
+      estimatedMinutes += checkInAdjustment.durationMin;
+    }
     return estimatedMinutes > dailyMaxMinutes;
   });
 }
@@ -244,7 +273,8 @@ export interface DayTimeInfo {
 export function calculateActualDailyTimes(
   dayPlans: DayPlan[],
   segmentCosts: import("@/types").SegmentCost[],
-  waypoints: Map<string, Waypoint>
+  waypoints: Map<string, Waypoint>,
+  checkInAdjustment?: CheckInAdjustment
 ): DayTimeInfo[] {
   const costMap = new Map<string, import("@/types").SegmentCost>();
   for (const cost of segmentCosts) {
@@ -294,6 +324,14 @@ export function calculateActualDailyTimes(
       }
     }
 
+    if (
+      checkInAdjustment &&
+      index === checkInAdjustment.dayIndex &&
+      dayPlan.checkInBreakIndex !== undefined
+    ) {
+      totalMinutes += checkInAdjustment.durationMin;
+    }
+
     return {
       dayIndex: index,
       totalMinutes,
@@ -304,16 +342,30 @@ export function calculateActualDailyTimes(
 
 /**
  * Identify days that exceed the daily time limit
+ * @param dayTimeInfos - 일자별 시간 정보
+ * @param dailyMaxMinutesOrArray - 단일 값 또는 일자별 최대 시간 배열
  */
 export function identifyOverloadedDays(
   dayTimeInfos: DayTimeInfo[],
-  dailyMaxMinutes: number
+  dailyMaxMinutesOrArray: number | number[]
 ): DayTimeInfo[] {
+  // 일자별 최대 시간 배열로 변환
+  const dailyMaxMinutesArray = Array.isArray(dailyMaxMinutesOrArray)
+    ? dailyMaxMinutesOrArray
+    : dayTimeInfos.map(() => dailyMaxMinutesOrArray);
+
   return dayTimeInfos
-    .map((info) => ({
-      ...info,
-      exceedMinutes: Math.max(0, info.totalMinutes - dailyMaxMinutes),
-    }))
+    .map((info) => {
+      const dailyMaxMinutes = dailyMaxMinutesArray[info.dayIndex] ?? (
+        Array.isArray(dailyMaxMinutesOrArray)
+          ? dailyMaxMinutesOrArray[0]
+          : dailyMaxMinutesOrArray
+      );
+      return {
+        ...info,
+        exceedMinutes: Math.max(0, info.totalMinutes - dailyMaxMinutes),
+      };
+    })
     .filter((info) => info.exceedMinutes > 0)
     .sort((a, b) => b.exceedMinutes - a.exceedMinutes); // Most overloaded first
 }

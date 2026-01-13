@@ -36,6 +36,8 @@ const formatDuration = (minutes: number): string => {
 interface ScheduleItemProps {
   /** 일정 항목 */
   item: ScheduleItemType;
+  /** 순서 번호 색상 */
+  orderColor?: string;
   /** 클릭 핸들러 */
   onClick?: () => void;
   /** 수정 핸들러 */
@@ -63,6 +65,7 @@ interface ScheduleItemProps {
  */
 export function ScheduleItem({
   item,
+  orderColor,
   onClick,
   onEdit,
   onDelete,
@@ -115,6 +118,7 @@ export function ScheduleItem({
             ? "bg-primary text-primary-foreground shadow-sm"
             : "bg-muted text-muted-foreground",
         )}
+        style={orderColor ? { backgroundColor: orderColor } : undefined}
       >
         {item.order}
       </div>
@@ -245,6 +249,8 @@ export function ScheduleItem({
 interface ScheduleItemCompactProps {
   /** 일정 항목 */
   item: ScheduleItemType;
+  /** 순서 번호 색상 */
+  orderColor?: string;
   /** 클릭 핸들러 */
   onClick?: () => void;
   /** 추가 클래스 */
@@ -256,6 +262,7 @@ interface ScheduleItemCompactProps {
  */
 export function ScheduleItemCompact({
   item,
+  orderColor,
   onClick,
   className,
 }: ScheduleItemCompactProps) {
@@ -272,10 +279,13 @@ export function ScheduleItemCompact({
       <span
         className={cn(
           "flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold shrink-0",
-          item.isFixed
-            ? "bg-primary text-primary-foreground"
-            : "bg-muted-foreground/20 text-foreground",
+          orderColor
+            ? "text-white"
+            : item.isFixed
+              ? "bg-primary text-primary-foreground"
+              : "bg-muted-foreground/20 text-foreground"
         )}
+        style={orderColor ? { backgroundColor: orderColor } : undefined}
       >
         {item.order}
       </span>
