@@ -1,4 +1,4 @@
-import Image from "next/image";
+﻿import Image from "next/image";
 import Link from "next/link";
 
 export default function AuthLayout({
@@ -8,11 +8,11 @@ export default function AuthLayout({
 }) {
   return (
     <div className="flex flex-col min-h-[calc(100dvh-64px)]">
-      {/* 로고 헤더 */}
+      {/* 濡쒓퀬 ?ㅻ뜑 */}
       <div className="py-6 px-4">
         <Link href="/" className="flex items-center justify-center gap-2">
           <Image
-            src="/2026.png"
+            src="/RUrogo.png"
             alt="RootUs logo"
             width={40}
             height={40}
@@ -22,7 +22,7 @@ export default function AuthLayout({
         </Link>
       </div>
 
-      {/* 인증 컴포넌트 */}
+      {/* ?몄쬆 而댄룷?뚰듃 */}
       {children}
     </div>
   );

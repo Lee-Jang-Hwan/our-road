@@ -1,10 +1,10 @@
-import { MetadataRoute } from "next";
+﻿import { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "RootUs - 우리한테 딱 맞는 여행&데이트 코스",
+    name: "RootUs - ?곕━?쒗뀒 ??留욌뒗 ?ы뻾&?곗씠??肄붿뒪",
     short_name: "RootUs",
-    description: "우리한테 딱 맞는 여행&데이트 코스",
+    description: "?곕━?쒗뀒 ??留욌뒗 ?ы뻾&?곗씠??肄붿뒪",
     start_url: "/",
     display: "standalone",
     background_color: "#ffffff",
@@ -13,13 +13,13 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: "/",
     icons: [
       {
-        src: "/2026.png",
+        src: "/RUrogo.png",
         sizes: "1024x1024",
         type: "image/png",
         purpose: "any",
       },
       {
-        src: "/2026.png",
+        src: "/RUrogo.png",
         sizes: "1024x1024",
         type: "image/png",
         purpose: "maskable",

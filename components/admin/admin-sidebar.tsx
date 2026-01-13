@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import Image from "next/image";
@@ -40,15 +40,15 @@ interface NavItem {
 }
 
 interface AdminSidebarProps {
-  /** 미해결 에러 수 (배지 표시용) */
+  /** 誘명빐寃??먮윭 ??(諛곗? ?쒖떆?? */
   unresolvedErrorCount?: number;
-  /** 현재 사용자 이름 */
+  /** ?꾩옱 ?ъ슜???대쫫 */
   userName?: string;
-  /** 사용자 역할 */
+  /** ?ъ슜????븷 */
   userRole?: "admin" | "super_admin";
-  /** 로그아웃 핸들러 */
+  /** 濡쒓렇?꾩썐 ?몃뱾??*/
   onLogout?: () => void;
-  /** 클래스명 */
+  /** ?대옒?ㅻ챸 */
   className?: string;
 }
 
@@ -89,7 +89,7 @@ const NAV_ITEMS: NavItem[] = [
 // ============================================
 
 /**
- * 네비게이션 아이템 컴포넌트
+ * ?ㅻ퉬寃뚯씠???꾩씠??而댄룷?뚰듃
  */
 function NavItemComponent({
   item,
@@ -131,7 +131,7 @@ function NavItemComponent({
 }
 
 /**
- * 사이드바 컨텐츠 컴포넌트
+ * ?ъ씠?쒕컮 而⑦뀗痢?而댄룷?뚰듃
  */
 function SidebarContent({
   navItems,
@@ -150,11 +150,11 @@ function SidebarContent({
 }) {
   return (
     <div className="flex h-full flex-col">
-      {/* 로고/헤더 */}
+      {/* 濡쒓퀬/?ㅻ뜑 */}
       <div className="flex h-16 items-center border-b px-4">
         <Link href="/admin" className="flex items-center gap-2">
           <Image
-            src="/2026.png"
+            src="/RUrogo.png"
             alt="RootUs logo"
             width={28}
             height={28}
@@ -164,7 +164,7 @@ function SidebarContent({
         </Link>
       </div>
 
-      {/* 네비게이션 */}
+      {/* ?ㅻ퉬寃뚯씠??*/}
       <nav className="flex-1 space-y-1 overflow-y-auto p-4">
         {navItems.map((item) => (
           <NavItemComponent
@@ -176,9 +176,9 @@ function SidebarContent({
         ))}
       </nav>
 
-      {/* 하단 영역 */}
+      {/* ?섎떒 ?곸뿭 */}
       <div className="border-t p-4">
-        {/* 메인 사이트 링크 */}
+        {/* 硫붿씤 ?ъ씠??留곹겕 */}
         <Link
           href="/"
           className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -187,7 +187,7 @@ function SidebarContent({
           <span>메인 사이트로</span>
         </Link>
 
-        {/* 사용자 정보 */}
+        {/* ?ъ슜???뺣낫 */}
         {userName && (
           <div className="mt-4 rounded-lg bg-muted/50 p-3">
             <div className="flex items-center gap-3">
@@ -220,7 +220,7 @@ function SidebarContent({
 }
 
 /**
- * 사이드바 스켈레톤
+ * ?ъ씠?쒕컮 ?ㅼ펷?덊넠
  */
 function SidebarSkeleton() {
   return (
@@ -245,16 +245,16 @@ function SidebarSkeleton() {
 // ============================================
 
 /**
- * 관리자 사이드바 컴포넌트
+ * 愿由ъ옄 ?ъ씠?쒕컮 而댄룷?뚰듃
  *
- * 관리자 페이지의 좌측 사이드바입니다.
- * 데스크톱에서는 고정형, 모바일에서는 햄버거 메뉴로 표시됩니다.
+ * 愿由ъ옄 ?섏씠吏??醫뚯륫 ?ъ씠?쒕컮?낅땲??
+ * ?곗뒪?ы넲?먯꽌??怨좎젙?? 紐⑤컮?쇱뿉?쒕뒗 ?꾨쾭嫄?硫붾돱濡??쒖떆?⑸땲??
  *
  * @example
  * ```tsx
  * <AdminSidebar
  *   unresolvedErrorCount={15}
- *   userName="관리자"
+ *   userName="愿由ъ옄"
  *   userRole="super_admin"
  *   onLogout={() => signOut()}
  * />
@@ -270,7 +270,7 @@ export function AdminSidebar({
   const pathname = usePathname();
   const [isOpen, setIsOpen] = React.useState(false);
 
-  // 네비게이션 아이템에 배지 추가
+  // ?ㅻ퉬寃뚯씠???꾩씠?쒖뿉 諛곗? 異붽?
   const navItems = NAV_ITEMS.map((item) => {
     if (item.href === "/admin/error-logs" && unresolvedErrorCount > 0) {
       return {
@@ -284,7 +284,7 @@ export function AdminSidebar({
 
   return (
     <>
-      {/* 데스크톱 사이드바 */}
+      {/* ?곗뒪?ы넲 ?ъ씠?쒕컮 */}
       <aside
         className={cn(
           "hidden h-screen w-64 shrink-0 border-r bg-background md:block",
@@ -300,7 +300,7 @@ export function AdminSidebar({
         />
       </aside>
 
-      {/* 모바일 헤더 바 */}
+      {/* 紐⑤컮???ㅻ뜑 諛?*/}
       <header className="fixed inset-x-0 top-0 z-50 flex h-16 items-center gap-4 border-b bg-background px-4 md:hidden">
         <Sheet open={isOpen} onOpenChange={setIsOpen}>
           <SheetTrigger asChild>
@@ -318,7 +318,7 @@ export function AdminSidebar({
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-[280px] p-0 sm:w-72">
-            {/* 접근성을 위한 숨겨진 제목 */}
+            {/* 접근성을 위한 숨김 제목 */}
             <SheetTitle className="sr-only">관리자 메뉴</SheetTitle>
             <SidebarContent
               navItems={navItems}
@@ -331,10 +331,10 @@ export function AdminSidebar({
           </SheetContent>
         </Sheet>
 
-        {/* 로고 */}
+        {/* 濡쒓퀬 */}
         <Link href="/admin" className="flex items-center gap-2">
           <Image
-            src="/2026.png"
+            src="/RUrogo.png"
             alt="RootUs logo"
             width={24}
             height={24}
@@ -348,7 +348,7 @@ export function AdminSidebar({
 }
 
 /**
- * 미니멀 사이드바 컴포넌트 (아이콘만)
+ * 誘몃땲硫 ?ъ씠?쒕컮 而댄룷?뚰듃 (?꾩씠肄섎쭔)
  */
 export function AdminSidebarMinimal({
   unresolvedErrorCount = 0,
@@ -374,14 +374,14 @@ export function AdminSidebarMinimal({
         className
       )}
     >
-      {/* 로고 */}
+      {/* 濡쒓퀬 */}
       <div className="flex h-16 items-center justify-center border-b">
         <Link href="/admin">
           <Shield className="size-6 text-primary" />
         </Link>
       </div>
 
-      {/* 네비게이션 */}
+      {/* ?ㅻ퉬寃뚯씠??*/}
       <nav className="flex flex-1 flex-col items-center gap-2 py-4">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
@@ -413,7 +413,7 @@ export function AdminSidebarMinimal({
         })}
       </nav>
 
-      {/* 하단 */}
+      {/* ?섎떒 */}
       <div className="flex flex-col items-center gap-2 border-t py-4">
         <Link
           href="/"
@@ -428,7 +428,7 @@ export function AdminSidebarMinimal({
 }
 
 /**
- * 관리자 헤더 컴포넌트 (모바일용)
+ * 愿由ъ옄 ?ㅻ뜑 而댄룷?뚰듃 (紐⑤컮?쇱슜)
  */
 export function AdminHeader({
   title,
@@ -465,9 +465,9 @@ export function AdminHeader({
 }
 
 /**
- * 관리자 레이아웃 컴포넌트
+ * 愿由ъ옄 ?덉씠?꾩썐 而댄룷?뚰듃
  *
- * 사이드바와 메인 컨텐츠를 포함하는 레이아웃입니다.
+ * ?ъ씠?쒕컮? 硫붿씤 而⑦뀗痢좊? ?ы븿?섎뒗 ?덉씠?꾩썐?낅땲??
  */
 export function AdminLayout({
   children,
@@ -485,7 +485,7 @@ export function AdminLayout({
         onLogout={onLogout}
       />
       <main className="flex-1 overflow-y-auto">
-        {/* 모바일 헤더 영역 공간 확보 */}
+        {/* 紐⑤컮???ㅻ뜑 ?곸뿭 怨듦컙 ?뺣낫 */}
         <div className="h-16 md:hidden" />
         {children}
       </main>

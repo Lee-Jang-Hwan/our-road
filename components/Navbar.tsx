@@ -1,4 +1,4 @@
-import { SignedOut, SignInButton, SignedIn, UserButton } from "@clerk/nextjs";
+﻿import { SignedOut, SignInButton, SignedIn, UserButton } from "@clerk/nextjs";
 import Image from "next/image";
 import Link from "next/link";
 import React from "react";
@@ -9,7 +9,7 @@ const Navbar = () => {
     <header className="flex justify-between items-center px-4 h-16">
       <Link href="/" className="flex items-center gap-2">
         <Image
-          src="/2026.png"
+          src="/RUrogo.png"
           alt="RootUs logo"
           width={32}
           height={32}
