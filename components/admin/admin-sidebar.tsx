@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -152,8 +153,14 @@ function SidebarContent({
       {/* 로고/헤더 */}
       <div className="flex h-16 items-center border-b px-4">
         <Link href="/admin" className="flex items-center gap-2">
-          <Shield className="size-6 text-primary" />
-          <span className="text-lg font-bold">OurRoad Admin</span>
+          <Image
+            src="/2026.png"
+            alt="RootUs logo"
+            width={28}
+            height={28}
+            className="h-7 w-7 rounded-md"
+          />
+          <span className="text-lg font-bold">RootUs Admin</span>
         </Link>
       </div>
 
@@ -326,8 +333,14 @@ export function AdminSidebar({
 
         {/* 로고 */}
         <Link href="/admin" className="flex items-center gap-2">
-          <Shield className="size-5 text-primary" />
-          <span className="font-semibold">OurRoad Admin</span>
+          <Image
+            src="/2026.png"
+            alt="RootUs logo"
+            width={24}
+            height={24}
+            className="h-6 w-6 rounded-md"
+          />
+          <span className="font-semibold">RootUs Admin</span>
         </Link>
       </header>
     </>

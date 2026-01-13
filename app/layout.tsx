@@ -70,14 +70,8 @@ export const metadata: Metadata = {
     images: ["/og-image.png"],
   },
   icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
-      { url: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png" },
-    ],
-    apple: [
-      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
-    ],
+    icon: [{ url: "/2026.png", sizes: "1024x1024", type: "image/png" }],
+    apple: [{ url: "/2026.png", sizes: "1024x1024", type: "image/png" }],
   },
   manifest: "/manifest.json",
 };
