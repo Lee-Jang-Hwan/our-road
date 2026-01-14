@@ -460,6 +460,16 @@ async function createDailyItinerary(
     endTime = addMinutesToTime(endTime, transportToDestination.duration);
   }
 
+  // 일과 종료 시간(dailyEndTime)을 절대 상한으로 강제
+  // - 중간 일차는 20:00
+  // - 1일차는 여행 시작 시간 ~ 20:00
+  // - 마지막 일차는 10:00 ~ 사용자가 설정한 도착 시간
+  const endTimeMinutes = timeToMinutes(endTime);
+  const dailyEndTimeMinutes = timeToMinutes(dailyEndTime);
+  if (endTimeMinutes > dailyEndTimeMinutes) {
+    endTime = dailyEndTime;
+  }
+
   return {
     dayNumber,
     date,
