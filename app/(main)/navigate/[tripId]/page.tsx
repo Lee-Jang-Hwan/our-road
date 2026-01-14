@@ -1273,7 +1273,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
           onClick={() => setDaySelectOpen(true)}
           className="touch-target"
         >
-          {currentDayItinerary.dayNumber}??깃컧
+          {currentDayItinerary.dayNumber}일차
           <LuChevronDown className="w-4 h-4 ml-1" />
         </Button>
       </header>
@@ -1357,7 +1357,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-semibold">{itinerary.dayNumber}??깃컧</p>
+                    <p className="font-semibold">{itinerary.dayNumber}일차</p>
                     <p
                       className={`text-sm ${index === selectedDayIndex ? "text-primary-foreground/80" : "text-muted-foreground"}`}
                     >
@@ -1367,7 +1367,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
                   <div
                     className={`text-sm ${index === selectedDayIndex ? "text-primary-foreground/80" : "text-muted-foreground"}`}
                   >
-                    {itinerary.placeCount}揶??關??
+                    장소 {itinerary.placeCount}개
                   </div>
                 </div>
               </button>
