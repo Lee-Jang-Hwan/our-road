@@ -313,13 +313,28 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
   }, [user, isLoaded, tripId, runOptimization]);
 
   // 일자 탭 데이터
+  // - 여행 기간(startDate ~ endDate)을 기준으로 모든 일차를 생성해
+  //   과거 데이터에서 특정 일차 itinerary가 누락되어 있어도 탭이 항상 보이도록 보장
   const days = useMemo(() => {
-    if (!trip?.itinerary) return [];
-    return trip.itinerary.map((it) => ({
-      dayNumber: it.dayNumber,
-      date: it.date,
-    }));
-  }, [trip?.itinerary]);
+    if (!trip) return [];
+
+    const { days: totalDays } = calculateTripDuration(
+      trip.startDate,
+      trip.endDate,
+    );
+
+    const start = new Date(trip.startDate);
+
+    return Array.from({ length: totalDays }, (_, index) => {
+      const date = new Date(start);
+      date.setDate(start.getDate() + index);
+
+      return {
+        dayNumber: index + 1,
+        date: date.toISOString().split("T")[0],
+      };
+    });
+  }, [trip]);
 
   // 스와이프로 일자 전환
   const swipeHandlers = useSwipe({
