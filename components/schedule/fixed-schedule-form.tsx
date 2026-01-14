@@ -126,19 +126,33 @@ export function FixedScheduleForm({
 
   // 여행 기간 내 날짜만 선택 가능
   const isDateDisabled = (date: Date) => {
-    // tripDates가 아직 로드되지 않았으면 제한 없이 선택 가능하게 둠
-    if (!tripDates.startDate || !tripDates.endDate) {
+    const parseTripDate = (dateStr: string): Date | undefined => {
+      if (!dateStr) return undefined;
+      const [year, month, day] = dateStr.slice(0, 10).split("-").map(Number);
+      if (!year || !month || !day) return undefined;
+      return new Date(year, month - 1, day);
+    };
+
+    const startDate = parseTripDate(tripDates.startDate);
+    const endDate = parseTripDate(tripDates.endDate);
+
+    if (!startDate || !endDate) {
       return false;
     }
-    const dateStr = format(date, "yyyy-MM-dd");
-    return dateStr < tripDates.startDate || dateStr > tripDates.endDate;
+
+    const startDay = new Date(startDate);
+    startDay.setHours(0, 0, 0, 0);
+    const endDay = new Date(endDate);
+    endDay.setHours(23, 59, 59, 999);
+
+    return date < startDay || date > endDay;
   };
 
   // 선택된 날짜를 Date 객체로 변환 (로컬 타임존 기준)
   const parseDate = (dateStr: string): Date | undefined => {
     if (!dateStr) return undefined;
-    // YYYY-MM-DD 형식을 로컬 타임존 기준으로 파싱
-    const [year, month, day] = dateStr.split("-").map(Number);
+    const [year, month, day] = dateStr.slice(0, 10).split("-").map(Number);
+    if (!year || !month || !day) return undefined;
     return new Date(year, month - 1, day);
   };
 
