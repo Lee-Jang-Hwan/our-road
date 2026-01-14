@@ -1,4 +1,4 @@
-![배너이미지](https://github.com/user-attachments/assets/88b79e58-6fa3-4095-97a6-2b038990af8e)
+![배너이미지](https://github.com/user-attachments/assets/a0eaae2f-b0c1-4e20-bfbe-3755b7bb1878)
 # 🗺️ RootUs (루트어스)
 > **대중교통·도보·자동차까지 계산해, 스트레스가 줄어드는 여행 동선 설계 서비스** > "여행 계획은 쉽게, 동선은 최적으로"
 
@@ -19,7 +19,6 @@
 | :---: | :---: | :---: |
 | <img src="https://avatars.githubusercontent.com/placeholder" width="100px" /> | <img src="https://avatars.githubusercontent.com/placeholder" width="100px" /> | <img src="https://avatars.githubusercontent.com/placeholder" width="100px" /> |
 | **Full Stack** | **Full Stack** | **Full Stack** |
-| [@GithubID](https://github.com/) | [@GithubID](https://github.com/) | [@GithubID](https://github.com/) |
 | dlwkdghks0807@gmail.com | wnsqja2209@gmail.com | dkrhd200197@gmail.com |
 
 <br/>
@@ -47,7 +46,7 @@
 <br/>
 
 ## 🌐 서비스 아키텍처
-![아키텍처](https://placeholder.com/architecture.png)
+![아키텍처](https://github.com/user-attachments/assets/61b76e6a-bbc9-44ca-b2e7-c0b7399ea81e)
 <br/>
 
 ## 🛠 Tech Stack
