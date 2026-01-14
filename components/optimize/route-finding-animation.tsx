@@ -446,39 +446,18 @@ export function RouteFindingAnimation({
         ))}
       </div>
 
-      {/* 안내 문구 - 웨이브 & 그라데이션 효과 */}
+      {/* 안내 문구 - 웨이브 효과 */}
       <div className="mt-6 px-4">
-        <p className="text-base font-extrabold flex flex-wrap justify-center">
-          {"현재 시간 기준으로 최적화된 경로를 탐색합니다".split("").map((char, i, arr) => {
-            // 각 글자에 그라데이션 색상 적용
-            const colors = [
-              "#8B5CF6", // violet
-              "#A855F7", // purple
-              "#D946EF", // fuchsia
-              "#EC4899", // pink
-              "#F43F5E", // rose
-              "#F97316", // orange
-              "#FBBF24", // amber
-              "#22D3EE", // cyan
-              "#06B6D4", // cyan
-              "#0EA5E9", // sky
-            ];
-            const colorIndex = Math.floor((i / arr.length) * colors.length);
-            const color = colors[Math.min(colorIndex, colors.length - 1)];
-
-            return (
-              <span
-                key={i}
-                className="inline-block animate-[textWaveGradient_2s_ease-in-out_infinite]"
-                style={{
-                  animationDelay: `${i * 0.04}s`,
-                  color: color,
-                }}
-              >
-                {char === " " ? "\u00A0" : char}
-              </span>
-            );
-          })}
+        <p className="text-base font-extrabold flex flex-wrap justify-center text-black dark:text-black">
+          {"현재 시간 기준으로 최적화된 경로를 탐색합니다".split("").map((char, i) => (
+            <span
+              key={i}
+              className="inline-block animate-[textWave_1.5s_ease-in-out_infinite]"
+              style={{ animationDelay: `${i * 0.05}s` }}
+            >
+              {char === " " ? "\u00A0" : char}
+            </span>
+          ))}
         </p>
       </div>
     </div>
