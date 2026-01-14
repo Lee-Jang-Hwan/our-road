@@ -44,13 +44,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   createFixedScheduleSchema,
@@ -133,14 +126,20 @@ export function FixedScheduleForm({
 
   // 여행 기간 내 날짜만 선택 가능
   const isDateDisabled = (date: Date) => {
+    // tripDates가 아직 로드되지 않았으면 모든 날짜 비활성화
+    if (!tripDates.startDate || !tripDates.endDate) {
+      return true;
+    }
     const dateStr = format(date, "yyyy-MM-dd");
     return dateStr < tripDates.startDate || dateStr > tripDates.endDate;
   };
 
-  // 선택된 날짜를 Date 객체로 변환
+  // 선택된 날짜를 Date 객체로 변환 (로컬 타임존 기준)
   const parseDate = (dateStr: string): Date | undefined => {
     if (!dateStr) return undefined;
-    return new Date(dateStr);
+    // YYYY-MM-DD 형식을 로컬 타임존 기준으로 파싱
+    const [year, month, day] = dateStr.split("-").map(Number);
+    return new Date(year, month - 1, day);
   };
 
   // 선택된 장소의 체류 시간 가져오기
@@ -205,50 +204,66 @@ export function FixedScheduleForm({
         <FormField
           control={form.control}
           name="date"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>날짜</FormLabel>
-              <Popover open={dateOpen} onOpenChange={setDateOpen}>
-                <PopoverTrigger asChild>
-                  <FormControl>
-                    <Button
-                      variant="outline"
-                      className={cn(
-                        "w-full justify-start text-left font-normal touch-target",
-                        !field.value && "text-muted-foreground"
-                      )}
+          render={({ field }) => {
+            // tripDates가 로드되지 않았으면 비활성화
+            const isDatesLoaded = tripDates.startDate && tripDates.endDate;
+            
+            return (
+              <FormItem>
+                <FormLabel>날짜</FormLabel>
+                <Popover open={dateOpen} onOpenChange={setDateOpen}>
+                  <PopoverTrigger asChild>
+                    <FormControl>
+                      <Button
+                        variant="outline"
+                        disabled={!isDatesLoaded}
+                        className={cn(
+                          "w-full justify-start text-left font-normal touch-target",
+                          !field.value && "text-muted-foreground",
+                          !isDatesLoaded && "opacity-50 cursor-not-allowed"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {!isDatesLoaded ? (
+                          <span>날짜 정보를 불러오는 중...</span>
+                        ) : field.value ? (
+                          format(parseDate(field.value) || new Date(), "yyyy년 M월 d일 (E)", {
+                            locale: ko,
+                          })
+                        ) : (
+                          <span>날짜를 선택하세요</span>
+                        )}
+                      </Button>
+                    </FormControl>
+                  </PopoverTrigger>
+                  {isDatesLoaded && (
+                    <PopoverContent
+                      className="w-auto p-0"
+                      align="start"
                     >
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {field.value ? (
-                        format(new Date(field.value), "yyyy년 M월 d일 (E)", {
-                          locale: ko,
-                        })
-                      ) : (
-                        <span>날짜를 선택하세요</span>
-                      )}
-                    </Button>
-                  </FormControl>
-                </PopoverTrigger>
-                <PopoverContent
-                  className="w-auto p-0"
-                  align="start"
-                >
-                  <Calendar
-                    mode="single"
-                    selected={parseDate(field.value)}
-                    onSelect={(date) => {
-                      field.onChange(date ? format(date, "yyyy-MM-dd") : "");
-                      setDateOpen(false);
-                    }}
-                    disabled={isDateDisabled}
-                    locale={ko}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-              <FormMessage />
-            </FormItem>
-          )}
+                      <Calendar
+                        mode="single"
+                        selected={parseDate(field.value)}
+                        onSelect={(date) => {
+                          field.onChange(date ? format(date, "yyyy-MM-dd") : "");
+                          setDateOpen(false);
+                        }}
+                        disabled={isDateDisabled}
+                        locale={ko}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  )}
+                </Popover>
+                <FormMessage />
+                {!isDatesLoaded && (
+                  <p className="text-xs text-muted-foreground">
+                    여행 기간 정보를 불러오는 중입니다...
+                  </p>
+                )}
+              </FormItem>
+            );
+          }}
         />
 
         {/* 시작 시간 선택 */}
@@ -359,41 +374,9 @@ export function FixedScheduleDialog({
 }: FixedScheduleDialogProps) {
   const isEditMode = !!props.existingSchedule;
 
-  // 모바일 감지
-  const [isMobile, setIsMobile] = React.useState(false);
-
-  React.useEffect(() => {
-    setIsMobile(window.innerWidth < 640);
-    const handleResize = () => setIsMobile(window.innerWidth < 640);
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  // 모바일: Sheet
-  if (isMobile) {
-    return (
-      <Sheet open={open} onOpenChange={(isOpen) => !isOpen && onCancel()}>
-        <SheetContent side="bottom" className="h-auto max-h-[90vh]">
-          <SheetHeader>
-            <SheetTitle>
-              {isEditMode ? "고정 일정 수정" : "고정 일정 추가"}
-            </SheetTitle>
-            <SheetDescription>
-              특정 시간에 반드시 방문해야 하는 일정을 설정하세요
-            </SheetDescription>
-          </SheetHeader>
-          <div className="mt-4 pb-4">
-            <FixedScheduleForm onCancel={onCancel} {...props} />
-          </div>
-        </SheetContent>
-      </Sheet>
-    );
-  }
-
-  // 데스크톱: Dialog
   return (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onCancel()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md w-[90vw] sm:w-full max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {isEditMode ? "고정 일정 수정" : "고정 일정 추가"}
@@ -446,7 +429,12 @@ export function FixedScheduleCard({
           <span className="text-xs text-primary font-medium">고정</span>
         </div>
         <div className="text-xs text-muted-foreground">
-          {format(new Date(schedule.date), "M월 d일")} {schedule.startTime}
+          {(() => {
+            // YYYY-MM-DD 형식을 로컬 타임존 기준으로 파싱
+            const [year, month, day] = schedule.date.split("-").map(Number);
+            const date = new Date(year, month - 1, day);
+            return format(date, "M월 d일");
+          })()} {schedule.startTime}
           {duration && ` (${formatDuration(duration)})`}
         </div>
         {schedule.note && (
