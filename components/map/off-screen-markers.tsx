@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Focus } from "lucide-react";
 import { useKakaoMap } from "./kakao-map";
 import type { Coordinate } from "@/types/place";
 
@@ -265,7 +266,8 @@ export function FitBoundsButton({ markers, className }: FitBoundsButtonProps) {
     map.setBounds(bounds, 50, 50, 50, 50);
   };
 
-  if (markers.length <= 1) return null;
+  // 마커가 없으면 버튼 숨김 (출발지/도착지 포함 최소 1개 이상이면 표시)
+  if (markers.length === 0) return null;
 
   return (
     <button
@@ -273,18 +275,7 @@ export function FitBoundsButton({ markers, className }: FitBoundsButtonProps) {
       className={`absolute top-3 right-3 z-10 bg-white text-gray-700 p-2 rounded-lg shadow-md hover:bg-gray-50 transition-colors ${className || ""}`}
       title="모든 장소 보기"
     >
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-      </svg>
+      <Focus className="w-5 h-5" />
     </button>
   );
 }
