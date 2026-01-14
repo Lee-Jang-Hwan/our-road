@@ -250,6 +250,7 @@ export function FixedScheduleForm({
                   <PopoverContent
                     className="w-auto p-0"
                     align="start"
+                    portalled={false}
                   >
                     <Calendar
                       mode="single"
