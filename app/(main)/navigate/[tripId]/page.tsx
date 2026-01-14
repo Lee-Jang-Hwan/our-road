@@ -54,12 +54,12 @@ interface NavigatePageProps {
 }
 
 /**
- * 燁삳똻萸??삠룋 嚥≪뮄???袁⑹뵠?? */
+ * 카카오맵 아이콘 컴포넌트 */
 function KakaoMapIcon({ className }: { className?: string }) {
   return (
     <Image
       src="/kakaomap_basic.png"
-      alt="燁삳똻萸??삠룋"
+      alt="카카오맵"
       width={24}
       height={24}
       className={className}
@@ -68,7 +68,7 @@ function KakaoMapIcon({ className }: { className?: string }) {
 }
 
 /**
- * ??쇱뵠甕곌쑬??嚥≪뮄???袁⑹뵠?? */
+ * 네이버맵 아이콘 컴포넌트 */
 function NaverMapIcon({ className }: { className?: string }) {
   return (
     <Image
@@ -82,7 +82,7 @@ function NaverMapIcon({ className }: { className?: string }) {
 }
 
 /**
- * ?닌?筌?嚥≪뮄???袁⑹뵠?? */
+ * 구글맵 아이콘 컴포넌트 */
 function GoogleMapIcon({ className }: { className?: string }) {
   return (
     <Image
@@ -96,7 +96,7 @@ function GoogleMapIcon({ className }: { className?: string }) {
 }
 
 /**
- * 椰꾧퀡??????(沃섎챸苑???km)
+ * 거리 포맷팅 (미터 → km)
  */
 function formatDistance(meters: number): string {
   if (meters < 1000) {
@@ -106,7 +106,7 @@ function formatDistance(meters: number): string {
 }
 
 /**
- * ??볦퍢 ????(??????볦퍢)
+ * 소요 시간 포맷팅 (분 → 시간)
  */
 function formatDuration(minutes: number): string {
   if (minutes < 60) {
@@ -118,7 +118,7 @@ function formatDuration(minutes: number): string {
 }
 
 /**
- * ?醫롮? ????(YYYY-MM-DD ??M??D??
+ * 날짜 포맷팅 (YYYY-MM-DD → M/D)
  */
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -126,10 +126,10 @@ function formatDate(dateStr: string): string {
 }
 
 /**
- * Haversine 椰꾧퀡???④쑴沅?(沃섎챸苑?
+ * Haversine 거리 계산 (미터)
  */
 function calculateDistance(from: Coordinate, to: Coordinate): number {
-  const R = 6371000; // 筌왖??獄쏆꼷???(沃섎챸苑?
+  const R = 6371000; // 筌왖요금獄쏆꼷요금?(沃섎챸苑?
   const dLat = ((to.lat - from.lat) * Math.PI) / 180;
   const dLng = ((to.lng - from.lng) * Math.PI) / 180;
   const a =
@@ -143,7 +143,7 @@ function calculateDistance(from: Coordinate, to: Coordinate): number {
 }
 
 /**
- * 燁삳똻萸??삠룋 ????용┛ (疫뀀챷媛쇗묾?
+ * 카카오맵 네비게이션 열기 (새 창)
  */
 function openKakaoMapNavigation(
   destination: { name: string; coordinate: Coordinate },
@@ -177,7 +177,7 @@ function openKakaoMapNavigation(
 }
 
 /**
- * ??쇱뵠甕곌쑬??????용┛ (疫뀀챷媛쇗묾?
+ * 네이버맵 네비게이션 열기 (새 창)
  */
 function openNaverMapNavigation(
   destination: { name: string; coordinate: Coordinate },
@@ -209,7 +209,7 @@ function openNaverMapNavigation(
 }
 
 /**
- * ?닌?筌?????용┛ (疫뀀챷媛쇗묾?
+ * 구글맵 네비게이션 열기 (새 창)
  */
 function openGoogleMapNavigation(
   destination: { name: string; coordinate: Coordinate },
@@ -238,48 +238,48 @@ function openGoogleMapNavigation(
 }
 
 /**
- * ?닌덉퍢 ????녿퓠 ?怨뺚뀲 ?袁⑹뵠??獄쏆꼹??
+ * 교통수단 타입에 따른 아이콘 반환
  */
 function getTrafficIcon(trafficType: number) {
   switch (trafficType) {
     case 1: // 吏?섏쿋
-      return "\uC9C0\uD558\uCCA0";
+      
       return <Train className="w-3 h-3" />;
-    case 2: // 踰꾩뒪
-      return "\uBC84\uC2A4";
-    case 6: // ?쒖쇅踰꾩뒪
-      return "\uC2DC\uC678\uBC84\uC2A4";
-    case 3: // ?袁⑤궖
-      return "\uB3C4\uBCF4";
+    case 2: // 버스
+      return <Bus className="w-3 h-3" />;
+    case 6: // 시외버스
+      return <Bus className="w-3 h-3" />;
+    case 3: // 도보
+      return <Footprints className="w-3 h-3" />;
     default:
-      return "\uB300\uC911\uAD50\uD1B5";
+      return null;
   }
 }
 
 /**
- * ?닌덉퍢 ????녿퓠 ?怨뺚뀲 ??곌볼 獄쏆꼹??
+ * 교통수단 타입에 따른 라벨 반환
  */
 function getTrafficLabel(trafficType: number) {
   switch (trafficType) {
     case 1:
-      return "\uC9C0\uD558\uCCA0";
+      return "지하철";
     case 2:
-      return "\uBC84\uC2A4";
+      return "버스";
     case 3:
-      return "\uB3C4\uBCF4";
+      return "도보";
     case 4:
-      return "\uAE30\uCC28";
+      return "기차";
     case 5:
-      return "\uACE0\uC18D\uBC84\uC2A4";
+      return "고속버스";
     case 6:
-      return "\uC2DC\uC678\uBC84\uC2A4";
+      return "시외버스";
     default:
-      return "\uB300\uC911\uAD50\uD1B5";
+      return "대중교통";
   }
 }
 
 /**
- * ??삵돩野껊슣?????롫뼊 ??ㅺ섯
+ * 네비게이션 하단 패널 컴포넌트
  */
 function NavigationBottomPanel({
   currentItem,
@@ -319,7 +319,7 @@ function NavigationBottomPanel({
 
   return (
     <div className="absolute bottom-0 left-0 right-0 bg-background border-t shadow-lg safe-area-bottom">
-      {/* ?類ㅼ삢 ?醫? */}
+      {/* 접기/펼치기 버튼 */}
       <button
         className="w-full flex items-center justify-center py-2 border-b"
         onClick={onToggleExpand}
@@ -332,9 +332,9 @@ function NavigationBottomPanel({
       </button>
 
       <div className="p-4 space-y-4">
-        {/* ?袁⑹삺 筌뤴뫗?삼쭪? ?類ｋ궖 + ??삵돩野껊슣???甕곌쑵??*/}
+        {/* 현재 장소 정보 + 네비게이션 버튼 */}
         <div className="flex items-center gap-3">
-          {/* ??곸읈 甕곌쑵??*/}
+          {/* 이전 버튼 */}
           <Button
             variant="outline"
             size="icon"
@@ -345,16 +345,16 @@ function NavigationBottomPanel({
             <LuChevronLeft className="w-5 h-5" />
           </Button>
 
-          {/* ??뽮퐣 甕곕뜇??*/}
+          {/* 순서 표시 */}
           <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-bold text-lg shrink-0">
             {isOriginSegment
-              ? "\uCD9C\uBC1C"
+              ? "출발"
               : isDestinationSegment
-                ? "\uB3C4\uCC29"
+                ? "도착"
                 : currentItem.order}
           </div>
 
-          {/* ?關???類ｋ궖 */}
+          {/* 장소 이름 */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h3 className="font-semibold text-lg truncate">
@@ -370,7 +370,7 @@ function NavigationBottomPanel({
             )}
           </div>
 
-          {/* ??쇱벉 甕곌쑵??*/}
+          {/* 다음 버튼 */}
           <Button
             variant="outline"
             size="icon"
@@ -382,14 +382,14 @@ function NavigationBottomPanel({
           </Button>
         </div>
 
-        {/* ?類ㅼ삢???類ｋ궖 */}
+        {/* 상세 정보 */}
         {isExpanded && (
           <>
-            {/* ??쇱벉 筌뤴뫗?삼쭪? 沃섎챶?곮퉪?용┛ */}
+            {/* 다음 장소 미리보기 */}
             {nextItem && (
               <div className="p-3 bg-muted/50 rounded-lg">
                 <p className="text-xs text-muted-foreground mb-1">
-                  ??쇱벉 筌뤴뫗?삼쭪?
+                  다음 장소
                 </p>
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 rounded-full bg-muted text-muted-foreground flex items-center justify-center text-xs font-bold">
@@ -402,7 +402,7 @@ function NavigationBottomPanel({
               </div>
             )}
 
-            {/* ??猷??類ｋ궖 */}
+            {/* 요금猷요금類ｋ궖 */}
             {currentItem.transportToNext && (
               <div className="space-y-2">
                 <div className="flex items-center gap-4 text-sm">
@@ -430,7 +430,7 @@ function NavigationBottomPanel({
                   </div>
                 </div>
 
-                {/* ??餓λ쵌????怨멸쉭 ?類ｋ궖 */}
+                {/* 요금餓λ쵌요금요금怨멸쉭 ?類ｋ궖 */}
                 {currentItem.transportToNext.mode === "public" &&
                   currentItem.transportToNext.transitDetails && (
                     <div className="space-y-2">
@@ -461,34 +461,34 @@ function NavigationBottomPanel({
                           ))}
                       </div>
 
-                      {/* ?遺쏀닊 獄???뤿뱟 ?類ｋ궖 */}
+                      {/* ?遺쏀닊 獄요금?뤿뱟 ?類ｋ궖 */}
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         {currentItem.transportToNext.transitDetails.totalFare >
                           0 && (
                           <span className="text-primary font-medium">
-                            ??                            {currentItem.transportToNext.transitDetails.totalFare.toLocaleString()}
+                            {currentItem.transportToNext.transitDetails.totalFare.toLocaleString()}
                           </span>
                         )}
                         {currentItem.transportToNext.transitDetails
                           .transferCount > 0 && (
                           <span>
-                            ??뤿뱟{" "}
+                            환승{" "}
                             {
                               currentItem.transportToNext.transitDetails
                                 .transferCount
                             }
-                            ??                          </span>
+                            분 </span>
                         )}
                         {currentItem.transportToNext.transitDetails
                           .walkingTime > 0 && (
                           <span className="flex items-center gap-1">
                             <Footprints className="w-3 h-3" />
-                            ?袁⑤궖{" "}
+                            도보{" "}
                             {
                               currentItem.transportToNext.transitDetails
                                 .walkingTime
                             }
-                            ??                          </span>
+                            분 </span>
                         )}
                       </div>
                     </div>
@@ -498,7 +498,7 @@ function NavigationBottomPanel({
           </>
         )}
 
-        {/* 筌왖????獄쏅뗀以덂첎?疫?甕곌쑵???*/}
+        {/* 筌왖요금요금獄쏅뗀以덂첎?疫?甕곌쑵요금?*/}
         <div className="flex gap-4 justify-center">
           <Button
             variant="outline"
@@ -531,7 +531,7 @@ function NavigationBottomPanel({
 }
 
 /**
- * 筌왖????? ?뚮똾猷??곕뱜 (KakaoMapContext ??곷퓠??????
+ * 筌왖요금요금? ?뚮똾猷요금곕뱜 (KakaoMapContext 요금곷퓠요금요금요금
  */
 function NavigationMapContent({
   trip,
@@ -559,7 +559,7 @@ function NavigationMapContent({
     return map;
   }, [trip.places]);
 
-  // 筌띾뜆鍮??怨쀬뵠????밴쉐 (?닌덉퍢癰???깃맒 ?怨몄뒠)
+  // 마커 생성 (구간별 색상 적용)
   const markers = useMemo(() => {
     return currentDayItinerary.schedule.map((item, index) => {
       const coordinate = placeCoordinates.get(item.placeId) || {
@@ -573,24 +573,24 @@ function NavigationMapContent({
         name: item.placeName,
         isFixed: item.isFixed,
         clickable: true,
-        color: getSegmentColor(index), // ?닌덉퍢癰???깃맒 ?怨몄뒠
+        color: getSegmentColor(index), // 구간별 색상 적용
       };
     });
   }, [currentDayItinerary.schedule, placeCoordinates]);
 
-  // ?袁⑹삺 獄???쇱벉 筌뤴뫗?삼쭪?
+  // 현재 및 다음 장소 정보
   const currentScheduleItem = currentDayItinerary.schedule[currentIndex];
 
   const currentDestination = currentScheduleItem
     ? placeCoordinates.get(currentScheduleItem.placeId)
     : null;
 
-  // nextDestination?? ?袁⑹삺 ?????? ???筌??館????????됱젟
+  // nextDestination는 현재 위치에서 다음 위치로 이동할 때 사용 (주석 처리)
   // const nextDestination = nextScheduleItem
   //   ? placeCoordinates.get(nextScheduleItem.placeId)
   //   : null;
 
-  // 野껋럥以??닌덉퍢 獄쏄퀣肉?(??쇱젫 ??餓λ쵌???野껋럥以???뽯뻻)
+  // 경로 구간 생성 (출발지 대중교통 경로 구간별 표시)
   const routeSegments = useMemo(() => {
     const segments: Array<{
       from: Coordinate;
@@ -609,7 +609,7 @@ function NavigationMapContent({
       ? ("car" as const)
       : ("public" as const);
 
-    // ??덈꺖 ?袁⑺뒄 ?類ㅼ뵥
+    // 요금덈꺖 ?袁⑺뒄 ?類ㅼ뵥
     const lodgingLocation = trip.accommodations?.[0]?.location;
     const isAccommodationCoord = (coord: Coordinate) => {
       if (!lodgingLocation) return false;
@@ -619,7 +619,7 @@ function NavigationMapContent({
       );
     };
 
-    // ?곗뮆而삼쭪? ??筌??關??(subPaths ?브쑬??
+    // 출발지에서 첫 장소로 (subPaths 있으면)
     if (
       currentDayItinerary.dayOrigin &&
       currentDayItinerary.transportFromOrigin &&
@@ -633,7 +633,7 @@ function NavigationMapContent({
       const toCoord = markers[0].coordinate;
       const isFromAccommodation = isAccommodationCoord(fromCoord);
 
-      // subPaths揶쎛 ??됱몵筌??브쑬?? ??곸몵筌??袁⑷퍥 野껋럥以?????
+      // subPaths揶쎛 요금됱몵筌요금브쑬요금 요금곸몵筌요금袁⑷퍥 野껋럥以요금요금?
       if (
         transport.transitDetails?.subPaths &&
         transport.transitDetails.subPaths.length > 0
@@ -660,7 +660,7 @@ function NavigationMapContent({
           });
         }
       } else {
-        // subPaths揶쎛 ??곸몵筌??袁⑷퍥 野껋럥以?????(??뉕탢??
+        // subPaths揶쎛 요금곸몵筌요금袁⑷퍥 野껋럥以요금요금?(요금뉕탢요금
         segments.push({
           from: fromCoord,
           to: toCoord,
@@ -672,7 +672,7 @@ function NavigationMapContent({
       }
     }
 
-    // ?關???????(subPaths ?브쑬??
+    // 장소 간 이동 (subPaths 있으면)
     for (let i = 0; i < currentDayItinerary.schedule.length - 1; i++) {
       const scheduleItem = currentDayItinerary.schedule[i];
       if (markers[i] && markers[i + 1]) {
@@ -682,7 +682,7 @@ function NavigationMapContent({
         const fromCoord = markers[i].coordinate;
         const toCoord = markers[i + 1].coordinate;
 
-        // subPaths揶쎛 ??됱몵筌??브쑬?? ??곸몵筌??袁⑷퍥 野껋럥以?????
+        // subPaths揶쎛 요금됱몵筌요금브쑬요금 요금곸몵筌요금袁⑷퍥 野껋럥以요금요금?
         if (
           transport.transitDetails?.subPaths &&
           transport.transitDetails.subPaths.length > 0
@@ -696,7 +696,7 @@ function NavigationMapContent({
             const subFrom = subPath.startCoord || fromCoord;
             const subTo = subPath.endCoord || toCoord;
 
-            // ??餓λ쵌????닌덉퍢: passStopCoords揶쎛 ??됱몵筌?path嚥?????
+            // 요금餓λ쵌요금요금닌덉퍢: passStopCoords揶쎛 요금됱몵筌?path嚥요금요금?
             let pathCoords: Coordinate[] | undefined;
             if (
               subPath.trafficType !== 3 &&
@@ -721,7 +721,7 @@ function NavigationMapContent({
             });
           }
         } else {
-          // subPaths揶쎛 ??곸몵筌??袁⑷퍥 野껋럥以?????(??뉕탢??
+          // subPaths揶쎛 요금곸몵筌요금袁⑷퍥 野껋럥以요금요금?(요금뉕탢요금
           segments.push({
             from: fromCoord,
             to: toCoord,
@@ -735,7 +735,7 @@ function NavigationMapContent({
       }
     }
 
-    // 筌띾뜆?筌??關?????袁⑷컩筌왖 (subPaths ?브쑬??
+    // 筌띾뜆?筌요금關요금요금?袁⑷컩筌왖 (subPaths ?브쑬요금
     if (
       currentDayItinerary.dayDestination &&
       currentDayItinerary.transportToDestination &&
@@ -753,7 +753,7 @@ function NavigationMapContent({
         !isToAccommodation &&
         currentDayItinerary.dayDestination.type === "destination";
 
-      // subPaths揶쎛 ??됱몵筌??브쑬?? ??곸몵筌??袁⑷퍥 野껋럥以?????
+      // subPaths揶쎛 요금됱몵筌요금브쑬요금 요금곸몵筌요금袁⑷퍥 野껋럥以요금요금?
       if (
         transport.transitDetails?.subPaths &&
         transport.transitDetails.subPaths.length > 0
@@ -781,7 +781,7 @@ function NavigationMapContent({
           });
         }
       } else {
-        // subPaths揶쎛 ??곸몵筌??袁⑷퍥 野껋럥以?????(??뉕탢??
+        // subPaths揶쎛 요금곸몵筌요금袁⑷퍥 野껋럥以요금요금?(요금뉕탢요금
         segments.push({
           from: fromCoord,
           to: toCoord,
@@ -797,7 +797,7 @@ function NavigationMapContent({
     return segments;
   }, [currentDayItinerary, markers, trip.transportModes, trip.accommodations]);
 
-  // ?λ뜃由?獄쏅뗄?????쇱젟
+  // 지도 범위 자동 조정
   useEffect(() => {
     if (!isReady || markers.length === 0) return;
 
@@ -809,7 +809,7 @@ function NavigationMapContent({
     setBounds(coordinates, 80);
   }, [isReady, markers, currentLocation, setBounds]);
 
-  // ?袁⑹삺 筌뤴뫗?삼쭪?嚥?筌왖????猷?
+  // ?袁⑹삺 筌뤴뫗?삼쭪?嚥?筌왖요금요금猷?
   useEffect(() => {
     if (!map || !isReady || !currentDestination) return;
 
@@ -822,7 +822,7 @@ function NavigationMapContent({
 
   return (
     <>
-      {/* ?袁⑹삺 ?袁⑺뒄 筌띾뜆鍮?*/}
+      {/* 현재 위치 마커*/}
       <CurrentLocationTracker
         enabled={true}
         showAccuracy={true}
@@ -830,7 +830,7 @@ function NavigationMapContent({
         followLocation={false}
       />
 
-      {/* 野껋럥以??????깆뵥 (??쇱젫 ??餓λ쵌???野껋럥以? */}
+      {/* 野껋럥以요금?요금?깆뵥 (요금쇱젫 요금餓λ쵌요금?野껋럥以? */}
       {routeSegments.length > 0 && (
         <RealRoutePolyline
           segments={routeSegments}
@@ -840,7 +840,7 @@ function NavigationMapContent({
         />
       )}
 
-      {/* ?곗뮆而삼쭪? 筌띾뜆鍮?(dayOrigin????됱뱽 ???춸) */}
+      {/* 출발지 마커 (dayOrigin이 있으면 표시) */}
       {currentDayItinerary.dayOrigin && (
         <SingleMarker
           coordinate={{
@@ -855,7 +855,7 @@ function NavigationMapContent({
         />
       )}
 
-      {/* ?關??筌띾뜆鍮??*/}
+      {/* 장소 마커들*/}
       <PlaceMarkers
         markers={markers}
         selectedId={currentScheduleItem?.placeId}
@@ -863,7 +863,7 @@ function NavigationMapContent({
         size="md"
       />
 
-      {/* ?袁⑷컩筌왖 筌띾뜆鍮?(dayDestination????됱뱽 ???춸) */}
+      {/* ?袁⑷컩筌왖 筌띾뜆鍮?(dayDestination요금요금됱뱽 요금?춸) */}
       {currentDayItinerary.dayDestination && (
         <SingleMarker
           coordinate={{
@@ -879,7 +879,7 @@ function NavigationMapContent({
         />
       )}
 
-      {/* ?袁⑹삺 ?袁⑺뒄嚥???猷?甕곌쑵??*/}
+      {/* ?袁⑹삺 ?袁⑺뒄嚥요금?猷?甕곌쑵요금*/}
       <Button
         variant="secondary"
         size="icon"
@@ -904,14 +904,14 @@ export default function NavigatePage({ params }: NavigatePageProps) {
   const [isPanelExpanded, setIsPanelExpanded] = useState(false);
   const [daySelectOpen, setDaySelectOpen] = useState(false);
 
-  // ?袁⑹삺 ?袁⑺뒄 ?곕뗄??
+  // 현재 위치 추적
   const { coordinate: currentLocation, error: locationError } =
     useCurrentLocation({
       enabled: true,
       enableHighAccuracy: true,
     });
 
-  // ??六??怨쀬뵠??嚥≪뮆諭?
+  // 여행 데이터 로드
   useEffect(() => {
     async function loadTrip() {
       if (!user) return;
@@ -924,7 +924,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
       if (result.success && result.data) {
         setTrip(result.data);
 
-        // ??삳뮎 ?醫롮????????롫뮉 ??깃컧 筌≪뼐由?
+        // 요금삳뮎 ?醫롮요금요금?요금?롫뮉 요금깃컧 筌≪뼐由?
         if (result.data.itinerary && result.data.itinerary.length > 0) {
           const today = new Date().toISOString().split("T")[0];
           const todayIndex = result.data.itinerary.findIndex(
@@ -934,17 +934,17 @@ export default function NavigatePage({ params }: NavigatePageProps) {
             setSelectedDayIndex(todayIndex);
           }
 
-          // ?λ뜃由?currentIndex ??쇱젟: dayOrigin????됱몵筌?-1, ??곸몵筌?0
+          // 초기 currentIndex 설정: dayOrigin이 있으면 -1, 없으면 0
           const initialItinerary =
             result.data.itinerary[todayIndex !== -1 ? todayIndex : 0];
           if (initialItinerary?.dayOrigin) {
-            setCurrentIndex(-1); // ?곗뮆而삼쭪? ??筌?野껋럩?筌왖 ?닌덉퍢?봔????뽰삂
+            setCurrentIndex(-1); // ?곗뮆而삼쭪? 요금筌?野껋럩?筌왖 ?닌덉퍢?봔요금요금뽰삂
           } else {
-            setCurrentIndex(0); // 筌?甕곕뜆??野껋럩?筌왖?봔????뽰삂
+            setCurrentIndex(0); // 筌?甕곕뜆요금野껋럩?筌왖?봔요금요금뽰삂
           }
         }
       } else {
-        setError(result.error || "??六??類ｋ궖???븍뜄???삳뮉????쎈솭??됰뮸??덈뼄.");
+        setError(result.error || "여행 정보를 불러오는 중 오류가 발생했습니다.");
       }
 
       setIsLoading(false);
@@ -957,7 +957,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     }
   }, [user, isLoaded, tripId]);
 
-  // ?袁⑹삺 ??깆젟
+  // 현재 일정
   const currentDayItinerary = useMemo(() => {
     if (!trip?.itinerary || trip.itinerary.length === 0) return null;
     return trip.itinerary[selectedDayIndex] || trip.itinerary[0];
@@ -972,16 +972,16 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     return map;
   }, [trip]);
 
-  // ?袁⑹삺 ??깆젟 ??????ル슦紐??곕떽?
-  // currentIndex = -1: ?곗뮆而삼쭪? ??筌?野껋럩?筌왖
-  // currentIndex = 0~N: 野껋럩?筌왖??  // currentIndex = schedule.length: 筌띾뜆?筌?野껋럩?筌왖 ???袁⑷컩筌왖
+  // 현재 일정 요금요금요금ル슦紐요금곕떽?
+  // currentIndex = -1: ?곗뮆而삼쭪? 요금筌?野껋럩?筌왖
+  // currentIndex = 0~N: 野껋럩?筌왖요금  // currentIndex = schedule.length: 筌띾뜆?筌?野껋럩?筌왖 요금?袁⑷컩筌왖
   const currentItemWithCoordinate = useMemo(() => {
     if (!currentDayItinerary || currentDayItinerary.schedule.length === 0)
       return null;
 
-    // ?곗뮆而삼쭪? ??筌?野껋럩?筌왖 ?닌덉퍢
+    // ?곗뮆而삼쭪? 요금筌?野껋럩?筌왖 ?닌덉퍢
     if (currentIndex === -1 && currentDayItinerary.dayOrigin) {
-      // ?곗뮆而삼쭪? ?類ｋ궖 獄쏆꼹??
+      // ?곗뮆而삼쭪? ?類ｋ궖 獄쏆꼹요금
       return {
         placeId: "origin",
         placeName: currentDayItinerary.dayOrigin.name,
@@ -993,11 +993,11 @@ export default function NavigatePage({ params }: NavigatePageProps) {
         departureTime: "",
         duration: 0,
         isFixed: false,
-        order: 0, // ?곗뮆而삼쭪???0甕?        transportToNext: currentDayItinerary.transportFromOrigin,
+        order: 0, // 숙소는 0번        transportToNext: currentDayItinerary.transportFromOrigin,
       };
     }
 
-    // 筌띾뜆?筌?野껋럩?筌왖 ???袁⑷컩筌왖 ?닌덉퍢
+    // 筌띾뜆?筌?野껋럩?筌왖 요금?袁⑷컩筌왖 ?닌덉퍢
     if (
       currentIndex === currentDayItinerary.schedule.length &&
       currentDayItinerary.dayDestination
@@ -1018,7 +1018,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
       };
     }
 
-    // ??곗뺘 野껋럩?筌왖
+    // 요금곗뺘 野껋럩?筌왖
     const item = currentDayItinerary.schedule[currentIndex];
     if (!item) return null;
     const coordinate = placeCoordinates.get(item.placeId);
@@ -1026,11 +1026,11 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     return { ...item, coordinate };
   }, [currentDayItinerary, currentIndex, placeCoordinates]);
 
-  // ??쇱벉 ??깆젟 ??????ル슦紐??곕떽?
+  // 요금쇱벉 요금깆젟 요금요금요금ル슦紐요금곕떽?
   const nextItemWithCoordinate = useMemo(() => {
     if (!currentDayItinerary) return undefined;
 
-    // ?곗뮆而삼쭪? ?닌덉퍢?癒?퐣??筌?野껋럩?筌왖揶쎛 ??쇱벉
+    // ?곗뮆而삼쭪? ?닌덉퍢?癒?퐣요금筌?野껋럩?筌왖揶쎛 요금쇱벉
     if (currentIndex === -1) {
       const firstPlace = currentDayItinerary.schedule[0];
       if (!firstPlace) return undefined;
@@ -1039,7 +1039,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
       return { ...firstPlace, coordinate };
     }
 
-    // 筌띾뜆?筌?野껋럩?筌왖 筌욊낯???욱??袁⑷컩筌왖揶쎛 ??됱몵筌??袁⑷컩筌왖揶쎛 ??쇱벉
+    // 筌띾뜆?筌?野껋럩?筌왖 筌욊낯요금?욱요금袁⑷컩筌왖揶쎛 요금됱몵筌요금袁⑷컩筌왖揶쎛 요금쇱벉
     if (
       currentIndex === currentDayItinerary.schedule.length - 1 &&
       currentDayItinerary.dayDestination
@@ -1060,7 +1060,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
       };
     }
 
-    // ??쇱벉 野껋럩?筌왖
+    // 요금쇱벉 野껋럩?筌왖
     if (currentIndex >= currentDayItinerary.schedule.length - 1)
       return undefined;
     const item = currentDayItinerary.schedule[currentIndex + 1];
@@ -1083,15 +1083,15 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     [currentDayItinerary],
   );
 
-  // ?袁⑹삺 ?袁⑺뒄嚥?筌왖????猷?
+  // ?袁⑹삺 ?袁⑺뒄嚥?筌왖요금요금猷?
   const handleCenterToCurrentLocation = useCallback(() => {
-    // ??疫꿸퀡??? map ref?????퉸 ?닌뗭겱??곷튊 ???筌?
-    // KakaoMap ?뚮똾猷??곕뱜 ?紐??癒?퐣 筌욊낯???臾롫젏???????
-    // ?怨뺤뵬????由??뺣뮉 揶쏄쑬????닌뗭겱
+    // 현재 위치로 map ref를 통해 지도를 이동하는 기능
+    // KakaoMap ?뚮똾猷요금곕뱜 ?紐요금癒?퐣 筌욊낯요금?臾롫젏요금요금요금?
+    // 추후 구현 예정
   }, []);
 
-  // ??곸읈/??쇱벉 ?關?쇗에???猷?
-  // currentIndex 甕곕뗄?? -1(?곗뮆而삼쭪?) ~ schedule.length(?袁⑷컩筌왖)
+  // 요금곸읈/요금쇱벉 ?關?쇗에요금?猷?
+  // currentIndex 甕곕뗄요금 -1(?곗뮆而삼쭪?) ~ schedule.length(?袁⑷컩筌왖)
   const handlePrevious = useCallback(() => {
     const minIndex = currentDayItinerary?.dayOrigin ? -1 : 0;
     if (currentIndex > minIndex) {
@@ -1110,7 +1110,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     }
   }, [currentDayItinerary, currentIndex]);
 
-  // 燁삳똻萸??삠룋 ????용┛
+  // 카카오맵 네비게이션 열기
   const handleOpenKakaoMap = useCallback(() => {
     if (!currentItemWithCoordinate) return;
     openKakaoMapNavigation(
@@ -1122,7 +1122,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     );
   }, [currentItemWithCoordinate, currentLocation]);
 
-  // ??쇱뵠甕곌쑬??????용┛
+  // 네이버맵 네비게이션 열기
   const handleOpenNaverMap = useCallback(() => {
     if (!currentItemWithCoordinate) return;
     openNaverMapNavigation(
@@ -1134,7 +1134,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     );
   }, [currentItemWithCoordinate, currentLocation]);
 
-  // ?닌?筌?????용┛
+  // 구글맵 네비게이션 열기
   const handleOpenGoogleMap = useCallback(() => {
     if (!currentItemWithCoordinate) return;
     openGoogleMapNavigation(
@@ -1173,7 +1173,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     );
   }
 
-  // ?癒?쑎 ?怨밴묶
+  // 에러 상태
   if (error || !trip) {
     return (
       <main className="flex flex-col h-[calc(100dvh-64px)]">
@@ -1190,14 +1190,14 @@ export default function NavigatePage({ params }: NavigatePageProps) {
         </header>
         <ErrorState
           type="generic"
-          description={error || "??六??類ｋ궖??筌≪뼚??????곷뮸??덈뼄."}
+          description={error || "여행 정보를 불러오는 중 오류가 발생했습니다."}
           onBack={() => window.history.back()}
         />
       </main>
     );
   }
 
-  // ??깆젟????용뮉 野껋럩??
+  // 일정이 없는 경우
   if (!trip.itinerary || trip.itinerary.length === 0 || !currentDayItinerary) {
     return (
       <main className="flex flex-col h-[calc(100dvh-64px)]">
@@ -1214,15 +1214,15 @@ export default function NavigatePage({ params }: NavigatePageProps) {
         </header>
         <EmptyState
           type="itinerary"
-          description="筌ㅼ뮇??遺얜쭆 ??깆젟????곷뮸??덈뼄. ??깆젟??筌ㅼ뮇??酉釉?????삵돩野껊슣???륁뱽 ??뽰삂??곻폒?紐꾩뒄."
-          actionLabel="??깆젟 ?紐꾩춿??띾┛"
+          description="아직 생성된 일정이 없습니다. 일정을 최적화하여 네비게이션을 시작해보세요."
+          actionLabel="일정 최적화하기"
           onAction={() => (window.location.href = `/plan/${tripId}`)}
         />
       </main>
     );
   }
 
-  // ??깆젟???關?쇔첎? ??용뮉 野껋럩??
+  // 일정이 있지만 장소가 없는 경우
   if (currentDayItinerary.schedule.length === 0) {
     return (
       <main className="flex flex-col h-[calc(100dvh-64px)]">
@@ -1239,22 +1239,22 @@ export default function NavigatePage({ params }: NavigatePageProps) {
         </header>
         <EmptyState
           icon={<LuMapPin className="w-8 h-8" />}
-          title={`${selectedDayIndex + 1}??깃컧????깆젟????곷뮸??덈뼄`}
-          description="??삘뀲 ??깃컧???醫뤾문??곻폒?紐꾩뒄."
-          actionLabel="??깃컧 ?醫뤾문"
+          title={`${selectedDayIndex + 1}일차에 일정이 없습니다`}
+          description="이 날짜에 방문할 장소를 추가해주세요."
+          actionLabel="일차 선택"
           onAction={() => setDaySelectOpen(true)}
         />
       </main>
     );
   }
 
-  // 筌왖???λ뜃由?餓λ쵐???ル슦紐?
+  // 筌왖요금?λ뜃由?餓λ쵐요금?ル슦紐?
   const initialCenter = currentItemWithCoordinate?.coordinate ||
     trip.places[0]?.coordinate || { lat: 37.5665, lng: 126.978 };
 
   return (
     <main className="flex flex-col h-[calc(100dvh-64px)]">
-      {/* ?ㅻ뜑 */}
+      {/* 헤더 */}
       <header className="flex items-center gap-3 px-4 py-1 border-b bg-background z-10">
         <Button
           variant="ghost"
@@ -1278,14 +1278,14 @@ export default function NavigatePage({ params }: NavigatePageProps) {
         </Button>
       </header>
 
-      {/* ?袁⑺뒄 亦낅슦釉???살첒 ??뽯뻻 */}
+      {/* 현재 위치 오류 알림 */}
       {locationError && (
         <div className="px-4 py-2 bg-yellow-100 text-yellow-800 text-sm">
-          ?袁⑺뒄 ?類ｋ궖: {locationError}
+          현재 위치 오류: {locationError}
         </div>
       )}
 
-      {/* 筌왖???怨몃열 */}
+      {/* 筌왖요금?怨몃열 */}
       <div className="flex-1 relative overflow-hidden">
         <KakaoMap
           center={initialCenter}
@@ -1302,7 +1302,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
           />
         </KakaoMap>
 
-        {/* ??롫뼊 ??삵돩野껊슣?????ㅺ섯 */}
+        {/* 하단 네비게이션 패널 */}
         {currentItemWithCoordinate && (
           <NavigationBottomPanel
             currentItem={currentItemWithCoordinate}
@@ -1333,11 +1333,11 @@ export default function NavigatePage({ params }: NavigatePageProps) {
         )}
       </div>
 
-      {/* ??깃컧 ?醫뤾문 Sheet */}
+      {/* 일차 선택 Sheet */}
       <Sheet open={daySelectOpen} onOpenChange={setDaySelectOpen}>
         <SheetContent side="bottom" className="max-h-[60vh]">
           <SheetHeader>
-            <SheetTitle>??깃컧 ?醫뤾문</SheetTitle>
+            <SheetTitle>일차 선택</SheetTitle>
           </SheetHeader>
           <div className="py-4 space-y-2 overflow-y-auto">
             {trip.itinerary?.map((itinerary, index) => (
@@ -1350,7 +1350,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
                 }`}
                 onClick={() => {
                   setSelectedDayIndex(index);
-                  // dayOrigin????됱몵筌?-1, ??곸몵筌?0?봔????뽰삂
+                  // dayOrigin요금요금됱몵筌?-1, 요금곸몵筌?0?봔요금요금뽰삂
                   setCurrentIndex(itinerary.dayOrigin ? -1 : 0);
                   setDaySelectOpen(false);
                 }}
