@@ -104,7 +104,6 @@ export function recalculateItineraryTimes(
 
     // 마지막 장소의 출발 시간이 일과 종료 시간을 초과하는지 확인
     const lastItem = recalculatedSchedule[recalculatedSchedule.length - 1];
-    const lastDepartureMinutes = timeToMinutes(lastItem.departureTime);
     const endTimeMinutes = timeToMinutes(normalizedEndTime);
 
     // 일과 종료 시간 계산
@@ -115,6 +114,15 @@ export function recalculateItineraryTimes(
         lastItem.departureTime,
         itinerary.transportToDestination.duration,
       );
+    }
+
+    // 일과 종료 시간(dailyEndTime)을 절대 상한으로 강제
+    // - 중간 일차는 20:00
+    // - 1일차는 여행 시작 시간 ~ 20:00
+    // - 마지막 일차는 10:00 ~ 사용자가 설정한 도착 시간
+    const finalEndMinutes = timeToMinutes(finalEndTime);
+    if (finalEndMinutes > endTimeMinutes) {
+      finalEndTime = normalizedEndTime;
     }
 
     // 총 이동 거리 및 시간 재계산
