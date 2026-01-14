@@ -1,19 +1,16 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-// TODO: 고정 일정 선택 오류 디버깅 후 다시 활성화
-// import { format } from "date-fns";
+import { format } from "date-fns";
 import {
   LuChevronLeft,
   LuMapPin,
-  // TODO: 고정 일정 선택 오류 디버깅 후 다시 활성화
-  // LuCalendarClock,
+  LuCalendarClock,
   LuSparkles,
   LuPencil,
   LuLoader,
 } from "react-icons/lu";
-// TODO: 고정 일정 선택 오류 디버깅 후 다시 활성화
-// import { Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -222,17 +219,16 @@ export default function TripEditPage({ params }: TripEditPageProps) {
       countLabel: "개 장소",
       isComplete: trip.placeCount > 0,
     },
-    // TODO: 고정 일정 선택 오류 디버깅 후 다시 활성화
-    // {
-    //   icon: LuCalendarClock,
-    //   title: "고정 일정 설정",
-    //   description: "예약된 시간이 있다면 설정하세요",
-    //   href: `/plan/${tripId}/schedule`,
-    //   count: trip.fixedScheduleCount,
-    //   countLabel: "개 일정",
-    //   isComplete: false,
-    //   isOptional: true,
-    // },
+    {
+      icon: LuCalendarClock,
+      title: "고정 일정 설정",
+      description: "예약된 시간이 있다면 설정하세요",
+      href: `/plan/${tripId}/schedule`,
+      count: trip.fixedScheduleCount,
+      countLabel: "개 일정",
+      isComplete: trip.fixedScheduleCount > 0,
+      isOptional: true,
+    },
   ];
 
   return (
@@ -285,12 +281,10 @@ export default function TripEditPage({ params }: TripEditPageProps) {
         {steps.map((step, index) => {
           const Icon = step.icon;
           const isPlaceStep = step.title === "장소 추가";
-          // TODO: 고정 일정 선택 오류 디버깅 후 다시 활성화
-          // const isFixedScheduleStep = step.title === "고정 일정 설정";
+          const isFixedScheduleStep = step.title === "고정 일정 설정";
           const hasPlaces = isPlaceStep && trip.places.length > 0;
-          // TODO: 고정 일정 선택 오류 디버깅 후 다시 활성화
-          // const hasFixedSchedules =
-          //   isFixedScheduleStep && trip.fixedSchedules.length > 0;
+          const hasFixedSchedules =
+            isFixedScheduleStep && trip.fixedSchedules.length > 0;
 
           const isNavigatingToStep = isNavigatingTo(step.href);
 
@@ -359,7 +353,7 @@ export default function TripEditPage({ params }: TripEditPageProps) {
 
                 {/* TODO: 고정 일정 선택 오류 디버깅 후 다시 활성화 */}
                 {/* 고정 일정 미리보기 */}
-                {/* {hasFixedSchedules && (
+                {hasFixedSchedules && (
                   <CardContent className="pt-0 pb-3">
                     <div className="space-y-2">
                       {trip.fixedSchedules.slice(0, 3).map((schedule) => {
@@ -379,7 +373,12 @@ export default function TripEditPage({ params }: TripEditPageProps) {
                                 {place?.name || "알 수 없는 장소"}
                               </p>
                               <p className="text-xs text-zinc-400">
-                                {format(new Date(schedule.date), "M월 d일")}{" "}
+                                {(() => {
+                                  // YYYY-MM-DD 형식을 로컬 타임존 기준으로 파싱
+                                  const [year, month, day] = schedule.date.split("-").map(Number);
+                                  const date = new Date(year, month - 1, day);
+                                  return format(date, "M월 d일");
+                                })()}{" "}
                                 {schedule.startTime}
                               </p>
                             </div>
@@ -396,7 +395,7 @@ export default function TripEditPage({ params }: TripEditPageProps) {
                       )}
                     </div>
                   </CardContent>
-                )} */}
+                )}
 
                 {/* 네비게이션 중 표시 */}
                 {isNavigatingToStep && (
