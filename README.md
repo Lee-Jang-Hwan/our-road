@@ -17,7 +17,7 @@
 
 | **이장환** | **천준범** | **손민** |
 | :---: | :---: | :---: |
-| <img src="https://avatars.githubusercontent.com/placeholder" width="100px" /> | <img src="https://avatars.githubusercontent.com/placeholder" width="100px" /> | <img src="https://avatars.githubusercontent.com/placeholder" width="100px" /> |
+| <img src="https://github.com/user-attachments/assets/1695a778-bed5-4b98-9865-bdc04fd1ac53" width="100px" /> | <img src="https://github.com/user-attachments/assets/650e3f9f-aed7-4733-8dad-c6a70f40a394" width="100px" /> | <img src="https://github.com/user-attachments/assets/a56a22d8-7abb-4f35-9832-c01d6f447b88" width="100px" /> |
 | **Full Stack** | **Full Stack** | **Full Stack** |
 | dlwkdghks0807@gmail.com | wnsqja2209@gmail.com | dkrhd200197@gmail.com |
 
