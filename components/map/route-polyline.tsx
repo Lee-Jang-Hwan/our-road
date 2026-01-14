@@ -371,7 +371,7 @@ interface RealRoutePolylineProps {
  * - ?????롪퍔?δ빳?귥쾸? ?롪퍓????????덈뒆???諭???⑤챷???琉우뿰 ???????戮?뻣
  * - ??ルㅎ臾???롪퍔?δ빳???????????釉띾쐡??듭춻??뽯┃?? ???닺땻???롪퍔?δ빳??????類Β???筌???우벟 ??戮?뻣
  */
-export function RealRoutePolyline({
+export const RealRoutePolyline = React.memo(function RealRoutePolyline({
   segments,
   strokeWeight = 4,
   strokeOpacity = 0.8,
@@ -395,7 +395,7 @@ export function RealRoutePolyline({
     return keys;
   }, [segments, getSegmentKey]);
 
-  // ???덈뒆????ｌ뫒亦?(?????롪퍔?δ빳?귥쾸? ?롪퍓????????????戮?뻣)
+  
   const offsets = React.useMemo(() => {
     if (!enableOffset || segments.length <= 1) {
       return segments.map(() => 0);
@@ -496,7 +496,41 @@ export function RealRoutePolyline({
       })}
     </>
   );
-}
+}, (prevProps, nextProps) => {
+  // segments 배열이 변경되었는지 확인
+  if (prevProps.segments.length !== nextProps.segments.length) {
+    return false;
+  }
+  
+  // props 비교
+  if (
+    prevProps.strokeWeight !== nextProps.strokeWeight ||
+    prevProps.strokeOpacity !== nextProps.strokeOpacity ||
+    prevProps.useSegmentColors !== nextProps.useSegmentColors
+  ) {
+    return false;
+  }
+  
+  // 각 segment의 주요 속성 비교
+  for (let i = 0; i < prevProps.segments.length; i++) {
+    const prev = prevProps.segments[i];
+    const next = nextProps.segments[i];
+    
+    if (
+      prev.from.lat !== next.from.lat ||
+      prev.from.lng !== next.from.lng ||
+      prev.to.lat !== next.to.lat ||
+      prev.to.lng !== next.to.lng ||
+      prev.encodedPath !== next.encodedPath ||
+      prev.path?.length !== next.path?.length ||
+      prev.transportMode !== next.transportMode
+    ) {
+      return false;
+    }
+  }
+  
+  return true;
+});
 
 export type {
   RoutePolylineProps,

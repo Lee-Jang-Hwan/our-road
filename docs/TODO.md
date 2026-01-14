@@ -9,6 +9,7 @@
 
 1. [Phase 0: 프로젝트 초기 설정](#phase-0-프로젝트-초기-설정)
 2. [백엔드 (Backend)](#백엔드-backend)
+   - [Phase 12: 경로 재사용 시스템](#phase-12-경로-재사용-시스템-성능-최적화)
 3. [프론트엔드 (Frontend)](#프론트엔드-frontend)
 4. [마케팅 (Marketing)](#마케팅-marketing)
 5. [마일스톤](#마일스톤)
@@ -348,6 +349,82 @@
   - [x] Critical 에러 헬퍼 (logCriticalError)
 - [x] `index.ts` - 통합 export
 
+### Phase 12: 경로 재사용 시스템 (성능 최적화)
+
+> **목적**: 편집 모드에서 경로 재계산 시 API 호출을 최소화하고 성능을 개선하기 위한 경로 캐시 시스템
+
+#### 문제 정의
+
+- [ ] 현재 문제점 정리
+  - [ ] 장소 추가/삭제 시 재최적화로 인한 긴 대기 시간
+  - [ ] API 호출 재실행으로 인한 비용 및 지연
+  - [ ] `trip_itineraries.schedule` JSONB 순회 방식의 비효율성
+  - [ ] 순서 변경 시 이전 경로 정보 찾기 어려움
+
+#### 데이터베이스 마이그레이션
+
+> 파일: `supabase/migrations/`
+
+- [ ] `YYYYMMDDHHmmss_create_trip_route_segments.sql` - 경로 캐시 테이블 생성
+  - [ ] 테이블 생성 (from_place_id, to_place_id, transport_mode, route_data)
+  - [ ] 유니크 제약 설정 (전역 공유 방식)
+  - [ ] 인덱스 생성 (조회 성능 최적화)
+  - [ ] RLS 정책 설정 (인증된 사용자 모두 조회 가능)
+  - [ ] 통계 정보 업데이트 (ANALYZE)
+
+#### 경로 조회 로직 수정
+
+> 파일: `lib/optimize/`
+
+- [ ] `reuse-route-info.ts` 수정
+  - [ ] `getRouteFromStoredItinerary()` 함수를 `trip_route_segments` 테이블 조회로 변경
+  - [ ] 함수명 변경 고려: `getRouteFromRouteSegments()`
+  - [ ] trip_id 파라미터 제거 (전역 공유)
+  - [ ] transport_mode 파라미터 추가
+
+#### 경로 저장 로직 추가
+
+> 파일: `lib/optimize/`
+
+- [ ] `sync-route-segments.ts` 생성 (새 파일)
+  - [ ] `syncRouteSegments()` 함수 구현
+  - [ ] schedule 배열에서 경로 정보 추출
+  - [ ] `trip_route_segments`에 UPSERT 로직
+  - [ ] 중복 방지 (유니크 제약 활용)
+
+#### 일정 저장/업데이트 시 동기화
+
+> 파일: `actions/`
+
+- [ ] `optimize/save-itinerary.ts` 수정
+  - [ ] `saveItinerary()` 함수에 `syncRouteSegments()` 호출 추가
+  - [ ] `trip_itineraries` 저장 후 경로 동기화
+
+- [ ] `itinerary/update-itinerary.ts` 수정
+  - [ ] `updateDayItinerary()` 함수에 `syncRouteSegments()` 호출 추가
+  - [ ] `reorderScheduleItems()` 함수에 동기화 로직 추가
+  - [ ] `moveScheduleItem()` 함수에 동기화 로직 추가
+
+- [ ] `itinerary/recalculate-routes.ts` 수정
+  - [ ] API 호출 후 경로 정보를 `trip_route_segments`에 저장
+  - [ ] 기존 `getRouteFromStoredItinerary()` 호출 부분은 유지 (내부 로직만 변경)
+
+#### 기존 데이터 마이그레이션 (선택)
+
+> 파일: `supabase/migrations/` 또는 스크립트
+
+- [ ] `YYYYMMDDHHmmss_migrate_existing_routes.sql` 생성 (선택)
+  - [ ] 기존 `trip_itineraries.schedule`에서 경로 정보 추출
+  - [ ] `trip_route_segments`에 저장하는 SQL 스크립트
+
+#### 예상 효과
+
+- [ ] API 호출 감소 (50-80% 예상)
+- [ ] 조회 속도 향상 (JSONB 순회 → 인덱스 기반 조회)
+- [ ] 사용자 경험 개선 (편집 모드에서 즉각적인 피드백)
+- [ ] 경로 정보 영구 보존 (schedule 업데이트와 무관)
+- [ ] 전역 공유로 저장 공간 절약
+
 ---
 
 ## 프론트엔드 (Frontend)
@@ -649,6 +726,22 @@
   - [x] SwipeableContainer, SwipeDeleteHint
   - [x] globals.css에 swipe-hint 애니메이션 추가
 
+### Phase 12: 버그 수정 및 디버깅
+
+> **중요**: 프로덕션 배포 전 필수 버그 수정
+
+#### 고정 일정 선택 오류
+
+- [ ] 고정 일정 선택 시 발생하는 오류 디버깅
+  - [ ] 오류 원인 파악 (알고리즘 로직 확인)
+  - [ ] `app/(main)/plan/[tripId]/schedule/page.tsx` 오류 분석
+  - [ ] 관련 Server Actions 및 최적화 엔진 로직 점검
+  - [ ] 오류 수정 및 테스트
+  - [ ] `app/(main)/plan/[tripId]/page.tsx`에서 주석처리된 버튼 다시 활성화
+    - [ ] `steps` 배열의 "고정 일정 설정" 항목 주석 해제
+    - [ ] 관련 import 및 변수 주석 해제 (`LuCalendarClock`, `Clock`, `format`)
+    - [ ] 고정 일정 미리보기 UI 주석 해제
+
 ---
 
 ## 마케팅 (Marketing)
@@ -798,17 +891,17 @@
 
 > ⚠️ **주의**: 실제 구현 상태는 [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md)를 참조하세요
 
-| 마일스톤 | 목표 | 주요 완료 항목 | 상태 |
-|---------|------|--------------|------|
-| **M0** | 프로젝트 초기화 | Next.js, Clerk, Supabase 연동, DB 스키마 | ✅ 완료 |
-| **M1** | 백엔드 로직 | 최적화 엔진, API 통합, 타입 정의 | ✅ 완료 |
-| **M2** | Server Actions | 데이터 CRUD, 최적화 실행 | ❌ 미시작 |
-| **M3** | UI 컴포넌트 | trip, places, itinerary, map 컴포넌트 | 🔄 진행 중 (10%) |
-| **M4** | 핵심 페이지 | 여행 생성, 장소 추가, 결과 확인 | ❌ 미시작 |
-| **M5** | 네비게이션 | 현재 위치, 경로 안내, 앱 연동 | ❌ 미시작 |
-| **M6** | 관리자 기능 | 에러 로그 관리 페이지 | ❌ 미시작 |
-| **M7** | 마케팅 준비 | 브랜드 에셋, SNS 계정, 콘텐츠 제작 | ⏳ 대기 |
-| **M8** | 런칭 | 서비스 오픈, 런칭 캠페인, 모니터링 | ⏳ 대기 |
+| 마일스톤 | 목표            | 주요 완료 항목                           | 상태             |
+| -------- | --------------- | ---------------------------------------- | ---------------- |
+| **M0**   | 프로젝트 초기화 | Next.js, Clerk, Supabase 연동, DB 스키마 | ✅ 완료          |
+| **M1**   | 백엔드 로직     | 최적화 엔진, API 통합, 타입 정의         | ✅ 완료          |
+| **M2**   | Server Actions  | 데이터 CRUD, 최적화 실행                 | ❌ 미시작        |
+| **M3**   | UI 컴포넌트     | trip, places, itinerary, map 컴포넌트    | 🔄 진행 중 (10%) |
+| **M4**   | 핵심 페이지     | 여행 생성, 장소 추가, 결과 확인          | ❌ 미시작        |
+| **M5**   | 네비게이션      | 현재 위치, 경로 안내, 앱 연동            | ❌ 미시작        |
+| **M6**   | 관리자 기능     | 에러 로그 관리 페이지                    | ❌ 미시작        |
+| **M7**   | 마케팅 준비     | 브랜드 에셋, SNS 계정, 콘텐츠 제작       | ⏳ 대기          |
+| **M8**   | 런칭            | 서비스 오픈, 런칭 캠페인, 모니터링       | ⏳ 대기          |
 
 ---
 
@@ -838,17 +931,17 @@
 
 ### 주요 파일 통계 (실제)
 
-| 카테고리 | 계획 파일 수 | 실제 파일 수 | 상태 |
-|---------|------------|------------|------|
-| actions/ | 36 | 0 | ❌ 미구현 |
-| types/ | 9 | 9 | ✅ 완료 |
-| lib/schemas/ | 9 | 0 | ❌ 미구현 |
-| lib/api/ | 2 | 4 | ✅ 완료 + 추가 (tmap, rate-limiter) |
-| lib/optimize/ | 6 | 7 | ✅ 완료 + 개선 |
-| lib/utils/ | 3 | 1 | 🔄 부분 완료 |
-| components/ | 38 | ~10 | 🔄 진행 중 (26%) |
-| hooks/ | 4 | 1 | 🔄 진행 중 (25%) |
-| app/ | 18+ | 5 | 🔄 진행 중 (28%, 테스트 페이지 포함) |
+| 카테고리      | 계획 파일 수 | 실제 파일 수 | 상태                                 |
+| ------------- | ------------ | ------------ | ------------------------------------ |
+| actions/      | 36           | 0            | ❌ 미구현                            |
+| types/        | 9            | 9            | ✅ 완료                              |
+| lib/schemas/  | 9            | 0            | ❌ 미구현                            |
+| lib/api/      | 2            | 4            | ✅ 완료 + 추가 (tmap, rate-limiter)  |
+| lib/optimize/ | 6            | 7            | ✅ 완료 + 개선                       |
+| lib/utils/    | 3            | 1            | 🔄 부분 완료                         |
+| components/   | 38           | ~10          | 🔄 진행 중 (26%)                     |
+| hooks/        | 4            | 1            | 🔄 진행 중 (25%)                     |
+| app/          | 18+          | 5            | 🔄 진행 중 (28%, 테스트 페이지 포함) |
 
 ---
 

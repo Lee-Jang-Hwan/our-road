@@ -11,6 +11,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
+import { useSafeNavigation } from "@/hooks/use-safe-navigation";
 import {
   LuChevronLeft,
   LuPencil,
@@ -24,11 +25,9 @@ import {
   LuNavigation,
 } from "react-icons/lu";
 
-import { useSafeBack } from "@/hooks/use-safe-back";
-
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, SquarePen } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -61,6 +60,7 @@ import { deleteTrip } from "@/actions/trips/delete-trip";
 import { getPlaces } from "@/actions/places";
 import { optimizeRoute } from "@/actions/optimize/optimize-route";
 import { saveItinerary } from "@/actions/optimize/save-itinerary";
+import { recalculateRoutes } from "@/actions/itinerary/recalculate-routes";
 import { getSegmentColor } from "@/lib/utils";
 import { showErrorToast, showSuccessToast } from "@/lib/toast";
 import type { TripWithDetails, TripStatus, Coordinate } from "@/types";
@@ -145,7 +145,10 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
   const { tripId } = use(params);
   const router = useRouter();
   const { user, isLoaded } = useUser();
-  const handleBack = useSafeBack("/my");
+  const { navigate, isNavigating, isNavigatingTo } = useSafeNavigation();
+  const handleBack = () => {
+    navigate("/my");
+  };
   const [trip, setTrip] = useState<TripWithDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -155,6 +158,8 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
   // 선택된 장소의 좌표 (맵 이동용)
   const [selectedPlaceCenter, setSelectedPlaceCenter] =
     useState<Coordinate | null>(null);
+  // 경로 재계산 상태
+  const [isRecalculating, setIsRecalculating] = useState(false);
 
   // 최적화 관련 상태
   const [isOptimizing, setIsOptimizing] = useState(false);
@@ -188,7 +193,13 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
       }
 
       if (result.data?.itinerary) {
-        console.log("[TripDetail] checkInEvents:", result.data.itinerary.map((it) => ({ day: it.dayNumber, checkInEvent: it.checkInEvent })));
+        console.log(
+          "[TripDetail] checkInEvents:",
+          result.data.itinerary.map((it) => ({
+            day: it.dayNumber,
+            checkInEvent: it.checkInEvent,
+          })),
+        );
         // 누락된 장소 확인 (상세 정보 포함)
         const unassignedError = result.data.errors?.find(
           (e) => e.code === "EXCEEDS_DAILY_LIMIT",
@@ -268,7 +279,10 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
 
       if (result.success && result.data) {
         setTrip(result.data);
-        console.log("[TripDetail] accommodation startDate:", result.data.accommodations?.[0]?.startDate);
+        console.log(
+          "[TripDetail] accommodation startDate:",
+          result.data.accommodations?.[0]?.startDate,
+        );
 
         // 자동 최적화 조건: draft 또는 optimizing 상태면 무조건 재최적화
         const shouldOptimize =
@@ -547,6 +561,54 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
     });
   }, [currentItinerary, trip?.places]);
 
+  // FitBoundsButton용 전체 마커 (출발지/도착지 포함)
+  const allMarkersForFitBounds = useMemo(() => {
+    const markers: Array<{
+      id: string;
+      coordinate: Coordinate;
+      order: number;
+      name?: string;
+    }> = [];
+
+    // 출발지 마커 추가
+    if (dayEndpoints.origin) {
+      markers.push({
+        id: `origin-${selectedDay}`,
+        coordinate: {
+          lat: dayEndpoints.origin.lat,
+          lng: dayEndpoints.origin.lng,
+        },
+        order: 0,
+        name: "출발지",
+      });
+    }
+
+    // 장소 마커들 추가
+    currentDayMarkers.forEach((marker) => {
+      markers.push({
+        id: marker.id,
+        coordinate: marker.coordinate,
+        order: marker.order,
+        name: marker.name,
+      });
+    });
+
+    // 도착지 마커 추가
+    if (dayEndpoints.destination) {
+      markers.push({
+        id: `destination-${selectedDay}`,
+        coordinate: {
+          lat: dayEndpoints.destination.lat,
+          lng: dayEndpoints.destination.lng,
+        },
+        order: currentDayMarkers.length + 1,
+        name: "도착지",
+      });
+    }
+
+    return markers;
+  }, [currentDayMarkers, dayEndpoints, selectedDay]);
+
   // 맵 중심점 계산 (일자별 시작점, 장소들, 일자별 끝점 모두 포함)
   const mapCenter = useMemo<Coordinate>(() => {
     const allCoords: Coordinate[] = [];
@@ -650,7 +712,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
                 ? subPath.polyline
                 : subPath.polyline || transport.polyline,
             transportMode: subTransportMode,
-            segmentIndex: 0,
+            segmentIndex: 0, // 출발지 → 첫 장소: 첫 번째 장소 마커 색상과 일치
             isFromAccommodation,
           });
         }
@@ -661,7 +723,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
           to: toCoord,
           encodedPath: transport.polyline,
           transportMode: baseTransportMode,
-          segmentIndex: 0,
+          segmentIndex: 0, // 출발지 → 첫 장소: 첫 번째 장소 마커 색상과 일치
           isFromAccommodation,
         });
       }
@@ -710,7 +772,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
                   : subPath.polyline || transport.polyline,
               path: pathCoords,
               transportMode: subTransportMode,
-              segmentIndex: i + 1,
+              segmentIndex: i + 1, // i번째 장소 → (i+1)번째 장소: (i+1)번째 장소 마커 색상과 일치
               isFromAccommodation: isAccommodationCoord(subFrom),
               isToAccommodation: isAccommodationCoord(subTo),
             });
@@ -722,7 +784,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
             to: toCoord,
             encodedPath: transport.polyline,
             transportMode: baseTransportMode,
-            segmentIndex: i + 1,
+            segmentIndex: i + 1, // i번째 장소 → (i+1)번째 장소: (i+1)번째 장소 마커 색상과 일치
             isFromAccommodation: isAccommodationCoord(fromCoord),
             isToAccommodation: isAccommodationCoord(toCoord),
           });
@@ -770,7 +832,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
                 ? subPath.polyline
                 : subPath.polyline || transport.polyline,
             transportMode: subTransportMode,
-            segmentIndex: lastIndex,
+            segmentIndex: lastIndex, // 마지막 장소 → 도착지: 마지막 장소 마커 색상과 일치
             isToAccommodation,
             isToDestination,
           });
@@ -782,7 +844,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
           to: toCoord,
           encodedPath: transport.polyline,
           transportMode: baseTransportMode,
-          segmentIndex: lastIndex,
+          segmentIndex: lastIndex, // 마지막 장소 → 도착지: 마지막 장소 마커 색상과 일치
           isToAccommodation,
           isToDestination,
         });
@@ -820,7 +882,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
       const result = await deleteTrip(tripId);
 
       if (result.success) {
-        router.push("/my");
+        navigate("/my");
       } else {
         setError(result.error || "삭제에 실패했습니다.");
         setDeleteDialogOpen(false);
@@ -850,13 +912,38 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
 
   // 네비게이션 시작
   const handleStartNavigation = () => {
-    router.push(`/navigate/${tripId}`);
+    navigate(`/navigate/${tripId}`);
   };
 
   // 최적화 재시도
   const handleRetryOptimization = () => {
     setOptimizeError(null);
     runOptimization();
+  };
+
+  // 경로 재계산 핸들러
+  const handleRecalculateRoutes = async () => {
+    setIsRecalculating(true);
+    try {
+      const result = await recalculateRoutes({
+        tripId,
+      });
+
+      if (result.success && result.data) {
+        // DB에서 최신 데이터 다시 로드
+        const reloadResult = await getTripWithDetails(tripId);
+        if (reloadResult.success && reloadResult.data) {
+          setTrip(reloadResult.data);
+        }
+        showSuccessToast("경로가 재계산되었습니다.");
+      } else {
+        showErrorToast(result.error || "경로 재계산에 실패했습니다.");
+      }
+    } catch (error) {
+      showErrorToast("경로 재계산 중 오류가 발생했습니다.");
+    } finally {
+      setIsRecalculating(false);
+    }
   };
 
   // 로딩 중 또는 최적화 중 화면 (스켈레톤 대신 애니메이션 표시)
@@ -903,6 +990,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
             size="icon"
             className="shrink-0"
             onClick={handleBack}
+            disabled={isNavigating}
           >
             <LuChevronLeft className="w-5 h-5" />
           </Button>
@@ -910,8 +998,20 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
         </header>
         <div className="flex-1 flex flex-col items-center justify-center px-4 gap-4">
           <p className="text-destructive">{error}</p>
-          <Button variant="outline" onClick={handleBack}>
-            목록으로 돌아가기
+          <Button
+            variant="outline"
+            onClick={handleBack}
+            disabled={isNavigating}
+            className="disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isNavigatingTo("/my") ? (
+              <>
+                <LuLoader className="w-4 h-4 mr-2 animate-spin" />
+                이동 중...
+              </>
+            ) : (
+              "목록으로 돌아가기"
+            )}
           </Button>
         </div>
       </main>
@@ -934,12 +1034,34 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
           size="icon"
           className="shrink-0"
           onClick={handleBack}
+          disabled={isNavigating}
         >
           <LuChevronLeft className="w-5 h-5" />
         </Button>
         <h1 className="font-semibold text-lg flex-1 line-clamp-1">
           {trip.title}
         </h1>
+        {hasItinerary && (
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleStartNavigation}
+            disabled={isNavigating}
+            className="gap-2 bg-black text-white hover:bg-black/90 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isNavigatingTo(`/navigate/${tripId}`) ? (
+              <>
+                <LuLoader className="w-4 h-4 animate-spin" />
+                이동 중...
+              </>
+            ) : (
+              <>
+                <LuNavigation className="w-4 h-4" />
+                네비게이션
+              </>
+            )}
+          </Button>
+        )}
         <Button variant="ghost" size="icon" onClick={handleShare}>
           <LuShare2 className="w-5 h-5" />
         </Button>
@@ -975,10 +1097,19 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
             ) : (
               <>
                 <Button
-                  onClick={() => router.push(`/plan/${tripId}`)}
+                  onClick={() => navigate(`/plan/${tripId}`)}
                   size="sm"
+                  disabled={isNavigating}
+                  className="disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  편집 페이지로
+                  {isNavigatingTo(`/plan/${tripId}`) ? (
+                    <>
+                      <LuLoader className="w-4 h-4 mr-2 animate-spin" />
+                      이동 중...
+                    </>
+                  ) : (
+                    "편집 페이지로"
+                  )}
                 </Button>
                 <Button
                   onClick={() => setOptimizeError(null)}
@@ -1018,18 +1149,6 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
             <LuMapPin className="w-4 h-4 shrink-0" />
             <span>장소 {trip.places.length}곳</span>
           </div>
-          {!hasItinerary && (
-            <Link href={`/plan/${tripId}`}>
-              <Button
-                variant="default"
-                size="sm"
-                className="bg-black text-white hover:bg-gray-900"
-              >
-                <LuPencil className="w-4 h-4 mr-2" />
-                편집하기
-              </Button>
-            </Link>
-          )}
           {hasItinerary && (
             <div className="flex items-center gap-1.5">
               <LuClock className="w-4 h-4 shrink-0" />
@@ -1116,7 +1235,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
             )}
 
             <OffScreenMarkers markers={currentDayMarkers} />
-            <FitBoundsButton markers={currentDayMarkers} />
+            <FitBoundsButton markers={allMarkersForFitBounds} />
           </KakaoMap>
 
           {/* 일정 바텀 시트 */}
@@ -1162,18 +1281,40 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
         <div className="flex gap-3 pb-4">
           <Button
             variant="outline"
-            className="flex-1 h-12"
-            onClick={() => router.push(`/plan/${tripId}`)}
+            className="flex-1 h-12 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => navigate(`/plan/${tripId}`)}
+            disabled={isNavigating}
           >
-            <LuPencil className="w-4 h-4 mr-2" />
-            편집하기
+            {isNavigatingTo(`/plan/${tripId}`) ? (
+              <>
+                <LuLoader className="w-4 h-4 mr-2 animate-spin" />
+                이동 중...
+              </>
+            ) : (
+              <>
+                <LuPencil className="w-4 h-4 mr-2" />
+                자동 경로 변경
+              </>
+            )}
           </Button>
-          {hasItinerary && (
-            <Button className="flex-1 h-12" onClick={handleStartNavigation}>
-              <LuNavigation className="w-4 h-4 mr-2" />
-              네비게이션
-            </Button>
-          )}
+          <Button
+            variant="default"
+            className="flex-1 h-12 bg-black text-white hover:bg-black/90 font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={() => navigate(`/my/trips/${tripId}/edit`)}
+            disabled={isNavigating}
+          >
+            {isNavigatingTo(`/my/trips/${tripId}/edit`) ? (
+              <>
+                <LuLoader className="w-4 h-4 mr-2 animate-spin" />
+                이동 중...
+              </>
+            ) : (
+              <>
+                <SquarePen className="h-4 w-4 mr-2" />
+                수동 경로 변경
+              </>
+            )}
+          </Button>
           {!hasItinerary && (
             <Button
               variant="destructive"

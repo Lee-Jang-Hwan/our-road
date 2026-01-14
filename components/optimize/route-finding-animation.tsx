@@ -445,6 +445,21 @@ export function RouteFindingAnimation({
           />
         ))}
       </div>
+
+      {/* 안내 문구 - 웨이브 효과 */}
+      <div className="mt-6 px-4">
+        <p className="text-base font-extrabold flex flex-wrap justify-center text-black dark:text-black">
+          {"현재 시간 기준으로 최적화된 경로를 탐색합니다".split("").map((char, i) => (
+            <span
+              key={i}
+              className="inline-block animate-[textWave_1.5s_ease-in-out_infinite]"
+              style={{ animationDelay: `${i * 0.05}s` }}
+            >
+              {char === " " ? "\u00A0" : char}
+            </span>
+          ))}
+        </p>
+      </div>
     </div>
   );
 }

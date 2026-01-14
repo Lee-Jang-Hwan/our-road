@@ -669,3 +669,55 @@
     opacity: 1;
   }
 }
+
+/* 웨이브 + 반짝임 효과 (안내 문구용) */
+@keyframes shimmerWave {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.6;
+    color: var(--muted-foreground);
+  }
+  50% {
+    transform: translateY(-4px);
+    opacity: 1;
+    color: var(--primary);
+  }
+}
+
+/* 그라데이션 흐름 효과 */
+@keyframes gradientFlow {
+  0% {
+    background-position: 0% center;
+  }
+  50% {
+    background-position: 100% center;
+  }
+  100% {
+    background-position: 0% center;
+  }
+}
+
+/* 텍스트 웨이브 효과 (그라데이션용) */
+@keyframes textWave {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-4px) scale(1.05);
+  }
+}
+
+/* 텍스트 웨이브 + 반짝임 효과 (직접 색상 적용용) */
+@keyframes textWaveGradient {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: translateY(-5px) scale(1.1);
+    filter: brightness(1.3);
+  }
+}

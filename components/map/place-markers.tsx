@@ -165,7 +165,8 @@ export function PlaceMarkers({
         // 기존 마커 업데이트
         kakaoMarker.setPosition(position);
         kakaoMarker.setImage(markerImage);
-        kakaoMarker.setZIndex(isSelected ? 100 : order);
+        // 경유지 마커는 높은 zIndex로 설정하여 출발지/도착지/숙소 마커보다 앞에 표시
+        kakaoMarker.setZIndex(isSelected ? 200 : 100 + order);
       } else {
         // 새 마커 생성
         kakaoMarker = new window.kakao.maps.Marker({
@@ -173,7 +174,8 @@ export function PlaceMarkers({
           position,
           image: markerImage,
           clickable,
-          zIndex: isSelected ? 100 : order,
+          // 경유지 마커는 높은 zIndex로 설정하여 출발지/도착지/숙소 마커보다 앞에 표시
+          zIndex: isSelected ? 200 : 100 + order,
         });
 
         // 클릭 이벤트
@@ -189,7 +191,7 @@ export function PlaceMarkers({
 
     // 선택된 마커 zIndex 업데이트
     if (selectedId && currentMarkers.has(selectedId)) {
-      currentMarkers.get(selectedId)?.setZIndex(100);
+      currentMarkers.get(selectedId)?.setZIndex(200);
     }
   }, [map, isReady, markers, selectedId, size, onMarkerClick]);
 
@@ -254,13 +256,16 @@ export function SingleMarker({
     if (markerRef.current) {
       markerRef.current.setPosition(position);
       markerRef.current.setImage(markerImage);
+      // 출발지/도착지/숙소 마커는 낮은 zIndex로 설정하여 경유지 마커 뒤에 표시
+      markerRef.current.setZIndex(type === "current" ? 200 : 1);
     } else {
       const marker = new window.kakao.maps.Marker({
         map,
         position,
         image: markerImage,
         clickable: !!onClick,
-        zIndex: type === "current" ? 200 : 50,
+        // 출발지/도착지/숙소 마커는 낮은 zIndex로 설정하여 경유지 마커 뒤에 표시
+        zIndex: type === "current" ? 200 : 1,
       });
 
       if (onClick) {

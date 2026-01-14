@@ -123,6 +123,8 @@ export {
   deleteScheduleItem,
 } from "./update-itinerary";
 
+export { recalculateRoutes } from "./recalculate-routes";
+
 export type {
   UpdateScheduleItemInput,
   UpdateDayItineraryInput,
@@ -133,3 +135,8 @@ export type {
   MoveScheduleItemResult,
   UpdateScheduleItemResult,
 } from "./update-itinerary";
+
+export type {
+  RecalculateRoutesInput,
+  RecalculateRoutesResult,
+} from "./recalculate-routes";

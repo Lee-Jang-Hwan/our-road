@@ -1,7 +1,16 @@
 "use client";
 
 import * as React from "react";
-import { Clock, Pin, MoreVertical, Edit, Trash2, GripVertical, ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  Clock,
+  Pin,
+  MoreVertical,
+  Edit,
+  Trash2,
+  GripVertical,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { normalizeTime } from "@/lib/optimize";
@@ -43,6 +52,8 @@ interface ScheduleItemProps {
   showNavigation?: boolean;
   /** 드래그 가능 여부 */
   draggable?: boolean;
+  /** 시간 정보 숨김 여부 */
+  hideTime?: boolean;
   /** 추가 클래스 */
   className?: string;
 }
@@ -62,6 +73,7 @@ export function ScheduleItem({
   onNext,
   showNavigation = false,
   draggable = false,
+  hideTime = false,
   className,
 }: ScheduleItemProps) {
   const hasActions = onEdit || onDelete;
@@ -69,12 +81,9 @@ export function ScheduleItem({
   return (
     <div
       className={cn(
-        "relative flex items-center gap-2 p-3 rounded-lg transition-colors",
-        item.isFixed
-          ? "bg-primary/10 border-2 border-primary/40 shadow-sm"
-          : "bg-card border border-border",
-        onClick && "cursor-pointer hover:bg-accent/50",
-        className
+        "relative flex items-center gap-3 transition-all duration-200",
+        !className?.includes("bg-transparent") && "p-0",
+        className,
       )}
       onClick={onClick}
     >
@@ -104,8 +113,10 @@ export function ScheduleItem({
       {/* 순서 번호 */}
       <div
         className={cn(
-          "flex items-center justify-center w-10 h-10 rounded-full text-lg font-bold shrink-0",
-          orderColor ? "text-white" : "bg-primary text-primary-foreground"
+          "flex items-center justify-center w-9 h-9 rounded-lg text-sm font-semibold shrink-0 transition-all duration-200",
+          item.isFixed
+            ? "bg-primary text-primary-foreground shadow-sm"
+            : "bg-muted text-muted-foreground",
         )}
         style={orderColor ? { backgroundColor: orderColor } : undefined}
       >
@@ -131,14 +142,18 @@ export function ScheduleItem({
             </div>
 
             {/* 시간 정보 */}
-            <div className="flex items-center gap-2 mt-1.5 text-sm text-muted-foreground">
-              <div className="flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5" />
-                <span>
-                  {normalizeTime(item.arrivalTime)} - {normalizeTime(item.departureTime)}
-                </span>
-              </div>
-              <span className="text-xs text-muted-foreground/50">
+            <div className="flex items-center gap-2.5 mt-1.5 text-sm text-muted-foreground">
+              체류시간 : 
+              {!hideTime && (
+                <div className="flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5" />
+                  <span className="font-medium">
+                    {normalizeTime(item.arrivalTime)} -{" "}
+                    {normalizeTime(item.departureTime)}
+                  </span>
+                </div>
+              )}
+              <span className="text-xs text-muted-foreground/60">
                 ({formatDuration(item.duration)})
               </span>
             </div>
@@ -257,7 +272,7 @@ export function ScheduleItemCompact({
         "flex items-center gap-2 px-3 py-2 rounded-md",
         item.isFixed ? "bg-primary/5" : "bg-muted/50",
         onClick && "cursor-pointer hover:bg-accent/50",
-        className
+        className,
       )}
       onClick={onClick}
     >
@@ -341,7 +356,7 @@ export function ScheduleItemList({
       <div
         className={cn(
           "flex flex-col items-center justify-center py-8 text-center",
-          className
+          className,
         )}
       >
         <p className="text-muted-foreground">{emptyMessage}</p>
