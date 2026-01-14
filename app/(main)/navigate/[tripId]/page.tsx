@@ -129,7 +129,7 @@ function formatDate(dateStr: string): string {
  * Haversine 거리 계산 (미터)
  */
 function calculateDistance(from: Coordinate, to: Coordinate): number {
-  const R = 6371000; // 筌왖요금獄쏆꼷요금?(沃섎챸苑?
+  const R = 6371000; // 지구 반경 (미터)
   const dLat = ((to.lat - from.lat) * Math.PI) / 180;
   const dLng = ((to.lng - from.lng) * Math.PI) / 180;
   const a =
@@ -242,7 +242,7 @@ function openGoogleMapNavigation(
  */
 function getTrafficIcon(trafficType: number) {
   switch (trafficType) {
-    case 1: // 吏?섏쿋
+    case 1: // 지하철
       
       return <Train className="w-3 h-3" />;
     case 2: // 버스
@@ -402,7 +402,7 @@ function NavigationBottomPanel({
               </div>
             )}
 
-            {/* 요금猷요금類ｋ궖 */}
+            {/* 경로 정보 */}
             {currentItem.transportToNext && (
               <div className="space-y-2">
                 <div className="flex items-center gap-4 text-sm">
@@ -430,11 +430,11 @@ function NavigationBottomPanel({
                   </div>
                 </div>
 
-                {/* 요금餓λ쵌요금요금怨멸쉭 ?類ｋ궖 */}
+                {/* 대중교통 상세 정보 */}
                 {currentItem.transportToNext.mode === "public" &&
                   currentItem.transportToNext.transitDetails && (
                     <div className="space-y-2">
-                      {/* ?紐꾧퐨 ?遺용튋 */}
+                      {/* 요금 정보 */}
                       <div className="flex items-center gap-1.5 flex-wrap">
                         {currentItem.transportToNext.transitDetails.subPaths
                           .filter((sp) => sp.trafficType !== 3)
@@ -461,7 +461,7 @@ function NavigationBottomPanel({
                           ))}
                       </div>
 
-                      {/* ?遺쏀닊 獄요금?뤿뱟 ?類ｋ궖 */}
+                      {/* 도보 시간 정보 */}
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
                         {currentItem.transportToNext.transitDetails.totalFare >
                           0 && (
@@ -498,7 +498,7 @@ function NavigationBottomPanel({
           </>
         )}
 
-        {/* 筌왖요금요금獄쏅뗀以덂첎?疫?甕곌쑵요금?*/}
+        {/* 지도 앱 열기 버튼 */}
         <div className="flex gap-4 justify-center">
           <Button
             variant="outline"
@@ -531,7 +531,7 @@ function NavigationBottomPanel({
 }
 
 /**
- * 筌왖요금요금? ?뚮똾猷요금곕뱜 (KakaoMapContext 요금곷퓠요금요금요금
+ * 지도 내부 컨텐츠 컴포넌트 (KakaoMapContext 내부에서 사용)
  */
 function NavigationMapContent({
   trip,
@@ -609,7 +609,7 @@ function NavigationMapContent({
       ? ("car" as const)
       : ("public" as const);
 
-    // 요금덈꺖 ?袁⑺뒄 ?類ㅼ뵥
+    // 현재 위치 추적
     const lodgingLocation = trip.accommodations?.[0]?.location;
     const isAccommodationCoord = (coord: Coordinate) => {
       if (!lodgingLocation) return false;
@@ -633,7 +633,7 @@ function NavigationMapContent({
       const toCoord = markers[0].coordinate;
       const isFromAccommodation = isAccommodationCoord(fromCoord);
 
-      // subPaths揶쎛 요금됱몵筌요금브쑬요금 요금곸몵筌요금袁⑷퍥 野껋럥以요금요금?
+      // subPaths가 있으면 구간별로 경로 생성
       if (
         transport.transitDetails?.subPaths &&
         transport.transitDetails.subPaths.length > 0
@@ -660,7 +660,7 @@ function NavigationMapContent({
           });
         }
       } else {
-        // subPaths揶쎛 요금곸몵筌요금袁⑷퍥 野껋럥以요금요금?(요금뉕탢요금
+        // subPaths가 없으면 전체 경로 생성 (단순 경로)
         segments.push({
           from: fromCoord,
           to: toCoord,
@@ -682,7 +682,7 @@ function NavigationMapContent({
         const fromCoord = markers[i].coordinate;
         const toCoord = markers[i + 1].coordinate;
 
-        // subPaths揶쎛 요금됱몵筌요금브쑬요금 요금곸몵筌요금袁⑷퍥 野껋럥以요금요금?
+      // subPaths가 있으면 구간별로 경로 생성
         if (
           transport.transitDetails?.subPaths &&
           transport.transitDetails.subPaths.length > 0
@@ -696,7 +696,7 @@ function NavigationMapContent({
             const subFrom = subPath.startCoord || fromCoord;
             const subTo = subPath.endCoord || toCoord;
 
-            // 요금餓λ쵌요금요금닌덉퍢: passStopCoords揶쎛 요금됱몵筌?path嚥요금요금?
+            // 대중교통 구간: passStopCoords가 있으면 path로 사용
             let pathCoords: Coordinate[] | undefined;
             if (
               subPath.trafficType !== 3 &&
@@ -721,7 +721,7 @@ function NavigationMapContent({
             });
           }
         } else {
-          // subPaths揶쎛 요금곸몵筌요금袁⑷퍥 野껋럥以요금요금?(요금뉕탢요금
+        // subPaths가 없으면 전체 경로 생성 (단순 경로)
           segments.push({
             from: fromCoord,
             to: toCoord,
@@ -735,7 +735,7 @@ function NavigationMapContent({
       }
     }
 
-    // 筌띾뜆?筌요금關요금요금?袁⑷컩筌왖 (subPaths ?브쑬요금
+    // 마지막 장소에서 도착지로 (subPaths 있으면)
     if (
       currentDayItinerary.dayDestination &&
       currentDayItinerary.transportToDestination &&
@@ -753,7 +753,7 @@ function NavigationMapContent({
         !isToAccommodation &&
         currentDayItinerary.dayDestination.type === "destination";
 
-      // subPaths揶쎛 요금됱몵筌요금브쑬요금 요금곸몵筌요금袁⑷퍥 野껋럥以요금요금?
+      // subPaths가 있으면 구간별로 경로 생성
       if (
         transport.transitDetails?.subPaths &&
         transport.transitDetails.subPaths.length > 0
@@ -781,7 +781,7 @@ function NavigationMapContent({
           });
         }
       } else {
-        // subPaths揶쎛 요금곸몵筌요금袁⑷퍥 野껋럥以요금요금?(요금뉕탢요금
+        // subPaths가 없으면 전체 경로 생성 (단순 경로)
         segments.push({
           from: fromCoord,
           to: toCoord,
@@ -809,7 +809,7 @@ function NavigationMapContent({
     setBounds(coordinates, 80);
   }, [isReady, markers, currentLocation, setBounds]);
 
-  // ?袁⑹삺 筌뤴뫗?삼쭪?嚥?筌왖요금요금猷?
+  // 현재 장소로 지도 이동
   useEffect(() => {
     if (!map || !isReady || !currentDestination) return;
 
@@ -830,7 +830,7 @@ function NavigationMapContent({
         followLocation={false}
       />
 
-      {/* 野껋럥以요금?요금?깆뵥 (요금쇱젫 요금餓λ쵌요금?野껋럥以? */}
+      {/* 경로 폴리라인 (출발지 대중교통 경로 구간별 표시) */}
       {routeSegments.length > 0 && (
         <RealRoutePolyline
           segments={routeSegments}
@@ -863,7 +863,7 @@ function NavigationMapContent({
         size="md"
       />
 
-      {/* ?袁⑷컩筌왖 筌띾뜆鍮?(dayDestination요금요금됱뱽 요금?춸) */}
+      {/* 도착지 마커 (dayDestination이 있으면 표시) */}
       {currentDayItinerary.dayDestination && (
         <SingleMarker
           coordinate={{
@@ -879,7 +879,7 @@ function NavigationMapContent({
         />
       )}
 
-      {/* ?袁⑹삺 ?袁⑺뒄嚥요금?猷?甕곌쑵요금*/}
+      {/* 현재 위치로 이동 버튼 */}
       <Button
         variant="secondary"
         size="icon"
@@ -924,7 +924,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
       if (result.success && result.data) {
         setTrip(result.data);
 
-        // 요금삳뮎 ?醫롮요금요금?요금?롫뮉 요금깃컧 筌≪뼐由?
+        // 오늘 날짜에 해당하는 일차 선택
         if (result.data.itinerary && result.data.itinerary.length > 0) {
           const today = new Date().toISOString().split("T")[0];
           const todayIndex = result.data.itinerary.findIndex(
@@ -938,9 +938,9 @@ export default function NavigatePage({ params }: NavigatePageProps) {
           const initialItinerary =
             result.data.itinerary[todayIndex !== -1 ? todayIndex : 0];
           if (initialItinerary?.dayOrigin) {
-            setCurrentIndex(-1); // ?곗뮆而삼쭪? 요금筌?野껋럩?筌왖 ?닌덉퍢?봔요금요금뽰삂
+            setCurrentIndex(-1); // 숙소에서 출발하는 경로 표시
           } else {
-            setCurrentIndex(0); // 筌?甕곕뜆요금野껋럩?筌왖?봔요금요금뽰삂
+            setCurrentIndex(0); // 첫 장소부터 경로 표시
           }
         }
       } else {
@@ -972,16 +972,16 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     return map;
   }, [trip]);
 
-  // 현재 일정 요금요금요금ル슦紐요금곕떽?
-  // currentIndex = -1: ?곗뮆而삼쭪? 요금筌?野껋럩?筌왖
-  // currentIndex = 0~N: 野껋럩?筌왖요금  // currentIndex = schedule.length: 筌띾뜆?筌?野껋럩?筌왖 요금?袁⑷컩筌왖
+  // 현재 일정 정보 가져오기
+  // currentIndex = -1: 숙소에서 출발하는 경로
+  // currentIndex = 0~N: 장소 간 경로  // currentIndex = schedule.length: 마지막 장소에서 도착지로
   const currentItemWithCoordinate = useMemo(() => {
     if (!currentDayItinerary || currentDayItinerary.schedule.length === 0)
       return null;
 
-    // ?곗뮆而삼쭪? 요금筌?野껋럩?筌왖 ?닌덉퍢
+    // 숙소에서 출발하는 경로
     if (currentIndex === -1 && currentDayItinerary.dayOrigin) {
-      // ?곗뮆而삼쭪? ?類ｋ궖 獄쏆꼹요금
+      // 숙소 정보 반환
       return {
         placeId: "origin",
         placeName: currentDayItinerary.dayOrigin.name,
@@ -997,7 +997,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
       };
     }
 
-    // 筌띾뜆?筌?野껋럩?筌왖 요금?袁⑷컩筌왖 ?닌덉퍢
+    // 마지막 장소에서 도착지로 가는 경로
     if (
       currentIndex === currentDayItinerary.schedule.length &&
       currentDayItinerary.dayDestination
@@ -1018,7 +1018,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
       };
     }
 
-    // 요금곗뺘 野껋럩?筌왖
+    // 일반 장소
     const item = currentDayItinerary.schedule[currentIndex];
     if (!item) return null;
     const coordinate = placeCoordinates.get(item.placeId);
@@ -1026,11 +1026,11 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     return { ...item, coordinate };
   }, [currentDayItinerary, currentIndex, placeCoordinates]);
 
-  // 요금쇱벉 요금깆젟 요금요금요금ル슦紐요금곕떽?
+  // 다음 일정 정보 가져오기
   const nextItemWithCoordinate = useMemo(() => {
     if (!currentDayItinerary) return undefined;
 
-    // ?곗뮆而삼쭪? ?닌덉퍢?癒?퐣요금筌?野껋럩?筌왖揶쎛 요금쇱벉
+    // 숙소에서 출발하면 첫 장소가 다음
     if (currentIndex === -1) {
       const firstPlace = currentDayItinerary.schedule[0];
       if (!firstPlace) return undefined;
@@ -1039,7 +1039,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
       return { ...firstPlace, coordinate };
     }
 
-    // 筌띾뜆?筌?野껋럩?筌왖 筌욊낯요금?욱요금袁⑷컩筌왖揶쎛 요금됱몵筌요금袁⑷컩筌왖揶쎛 요금쇱벉
+    // 마지막 장소에서 다음은 도착지로 가는 경로이므로 도착지가 다음
     if (
       currentIndex === currentDayItinerary.schedule.length - 1 &&
       currentDayItinerary.dayDestination
@@ -1060,7 +1060,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
       };
     }
 
-    // 요금쇱벉 野껋럩?筌왖
+    // 다음 장소
     if (currentIndex >= currentDayItinerary.schedule.length - 1)
       return undefined;
     const item = currentDayItinerary.schedule[currentIndex + 1];
@@ -1083,15 +1083,15 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     [currentDayItinerary],
   );
 
-  // ?袁⑹삺 ?袁⑺뒄嚥?筌왖요금요금猷?
+  // 현재 위치로 지도 이동
   const handleCenterToCurrentLocation = useCallback(() => {
     // 현재 위치로 map ref를 통해 지도를 이동하는 기능
-    // KakaoMap ?뚮똾猷요금곕뱜 ?紐요금癒?퐣 筌욊낯요금?臾롫젏요금요금요금?
+    // KakaoMap 컴포넌트 내부에서 직접 처리하는 것이 더 적합
     // 추후 구현 예정
   }, []);
 
-  // 요금곸읈/요금쇱벉 ?關?쇗에요금?猷?
-  // currentIndex 甕곕뗄요금 -1(?곗뮆而삼쭪?) ~ schedule.length(?袁⑷컩筌왖)
+  // 이전/다음 이동 핸들러
+  // currentIndex 범위: -1(숙소) ~ schedule.length(도착지)
   const handlePrevious = useCallback(() => {
     const minIndex = currentDayItinerary?.dayOrigin ? -1 : 0;
     if (currentIndex > minIndex) {
@@ -1161,7 +1161,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     );
   }
 
-  // 沃섎챶以덃뉩紐꾩뵥 ?怨밴묶
+  // 에러 상태
   if (!user) {
     return (
       <main className="flex flex-col items-center justify-center h-[calc(100dvh-64px)] px-4 gap-4">
@@ -1248,7 +1248,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
     );
   }
 
-  // 筌왖요금?λ뜃由?餓λ쵐요금?ル슦紐?
+  // 지도 중심점 자동 설정
   const initialCenter = currentItemWithCoordinate?.coordinate ||
     trip.places[0]?.coordinate || { lat: 37.5665, lng: 126.978 };
 
@@ -1285,7 +1285,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
         </div>
       )}
 
-      {/* 筌왖요금?怨몃열 */}
+      {/* 지도 영역 */}
       <div className="flex-1 relative overflow-hidden">
         <KakaoMap
           center={initialCenter}
@@ -1350,7 +1350,7 @@ export default function NavigatePage({ params }: NavigatePageProps) {
                 }`}
                 onClick={() => {
                   setSelectedDayIndex(index);
-                  // dayOrigin요금요금됱몵筌?-1, 요금곸몵筌?0?봔요금요금뽰삂
+                  // dayOrigin이 있으면 -1, 없으면 0으로 설정
                   setCurrentIndex(itinerary.dayOrigin ? -1 : 0);
                   setDaySelectOpen(false);
                 }}
