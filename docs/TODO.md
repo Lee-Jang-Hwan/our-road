@@ -726,6 +726,28 @@
   - [x] SwipeableContainer, SwipeDeleteHint
   - [x] globals.css에 swipe-hint 애니메이션 추가
 
+### Phase 12: 버그 수정 및 디버깅
+
+#### 고정 일정 선택 오류
+
+> 파일: `app/(main)/plan/[tripId]/page.tsx`, `app/(main)/plan/[tripId]/schedule/page.tsx`
+
+- [ ] 고정 일정 선택 시 발생하는 오류 원인 파악
+  - [ ] 에러 로그 확인 및 분석
+  - [ ] 관련 알고리즘 로직 검토
+  - [ ] 데이터 흐름 추적
+- [ ] 알고리즘 오류 수정
+  - [ ] 고정 일정 처리 로직 점검
+  - [ ] 제약 조건 검증 로직 확인
+  - [ ] 시간 충돌 감지 알고리즘 검토
+- [ ] 디버깅 완료 후 기능 재활성화
+  - [ ] `app/(main)/plan/[tripId]/page.tsx`의 주석 처리된 버튼 복원
+  - [ ] 테스트 및 검증
+- [ ] 관련 파일
+  - [ ] `app/(main)/plan/[tripId]/schedule/page.tsx` - 고정 일정 설정 페이지
+  - [ ] `lib/optimize/constraint-handler.ts` - 제약 처리 로직
+  - [ ] `actions/schedules/` - 고정 일정 관련 Server Actions
+
 ---
 
 ## 마케팅 (Marketing)

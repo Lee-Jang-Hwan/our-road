@@ -366,6 +366,54 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
     });
   }, [currentItinerary, trip?.places]);
 
+  // FitBoundsButton용 전체 마커 (출발지/도착지 포함)
+  const allMarkersForFitBounds = useMemo(() => {
+    const markers: Array<{
+      id: string;
+      coordinate: Coordinate;
+      order: number;
+      name?: string;
+    }> = [];
+
+    // 출발지 마커 추가
+    if (dayEndpoints.origin) {
+      markers.push({
+        id: `origin-${selectedDay}`,
+        coordinate: {
+          lat: dayEndpoints.origin.lat,
+          lng: dayEndpoints.origin.lng,
+        },
+        order: 0,
+        name: "출발지",
+      });
+    }
+
+    // 장소 마커들 추가
+    currentDayMarkers.forEach((marker) => {
+      markers.push({
+        id: marker.id,
+        coordinate: marker.coordinate,
+        order: marker.order,
+        name: marker.name,
+      });
+    });
+
+    // 도착지 마커 추가
+    if (dayEndpoints.destination) {
+      markers.push({
+        id: `destination-${selectedDay}`,
+        coordinate: {
+          lat: dayEndpoints.destination.lat,
+          lng: dayEndpoints.destination.lng,
+        },
+        order: currentDayMarkers.length + 1,
+        name: "도착지",
+      });
+    }
+
+    return markers;
+  }, [currentDayMarkers, dayEndpoints, selectedDay]);
+
   // 맵 중심점 계산 (일자별 시작점, 장소들, 일자별 끝점 모두 포함)
   const mapCenter = useMemo<Coordinate>(() => {
     const allCoords: Coordinate[] = [];
@@ -1621,7 +1669,7 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
             )}
 
             <OffScreenMarkers markers={currentDayMarkers} />
-            <FitBoundsButton markers={currentDayMarkers} />
+            <FitBoundsButton markers={allMarkersForFitBounds} />
           </KakaoMap>
         </div>
       )}
@@ -1678,7 +1726,6 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
               {isSaving ? (
                 <>
                   <LuLoader className="w-4 h-4 mr-2 animate-spin" />
-                  저장 중...
                 </>
               ) : (
                 "변경 종료"

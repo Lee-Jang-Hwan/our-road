@@ -32,7 +32,7 @@ export function DayHeader({ dayNumber, date, placeCount }: DayHeaderProps) {
   })();
 
   return (
-    <div className="sticky top-0 z-10 flex items-center justify-between py-4 px-6 mb-2 rounded-xl bg-gradient-to-r from-background via-background to-background/95 backdrop-blur-md border border-border/50 shadow-sm">
+    <div className="z-10 flex items-center justify-between py-4 px-6 mb-2 rounded-xl bg-gradient-to-r from-background via-background to-background/95 backdrop-blur-md border border-border/50 shadow-sm">
       <div className="flex items-center gap-3">
         <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 text-primary font-bold text-lg">
           {dayNumber}
@@ -53,4 +53,3 @@ export function DayHeader({ dayNumber, date, placeCount }: DayHeaderProps) {
     </div>
   );
 }
-

@@ -9,6 +9,7 @@ import {
   LuCalendarClock,
   LuSparkles,
   LuPencil,
+  LuLoader,
 } from "react-icons/lu";
 import { Clock } from "lucide-react";
 
@@ -24,6 +25,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useTripDraft } from "@/hooks/use-trip-draft";
 import { useRouter } from "next/navigation";
+import { useSafeNavigation } from "@/hooks/use-safe-navigation";
 import { getTrip } from "@/actions/trips/get-trip";
 import { updateTrip } from "@/actions/trips/update-trip";
 import { getPlaces } from "@/actions/places/get-places";
@@ -40,10 +42,11 @@ interface TripEditPageProps {
 export default function TripEditPage({ params }: TripEditPageProps) {
   const { tripId } = use(params);
   const router = useRouter();
+  const { navigate, isNavigating, isNavigatingTo } = useSafeNavigation();
   const { getDraftByTripId, savePlaces, saveFixedSchedules, isLoaded } =
     useTripDraft();
   const handleBack = () => {
-    router.push("/my");
+    navigate("/my");
   };
   const [tripData, setTripData] = useState<{
     id: string;
@@ -189,7 +192,7 @@ export default function TripEditPage({ params }: TripEditPageProps) {
       // optimized 상태면 상태 변경 없이 그냥 이동
 
       // 3. /my/trips/[tripId]로 이동
-      router.push(`/my/trips/${tripId}`);
+      navigate(`/my/trips/${tripId}`);
     } catch (error) {
       console.error("최적화 버튼 처리 실패:", error);
       showErrorToast("오류가 발생했습니다.");
@@ -208,16 +211,17 @@ export default function TripEditPage({ params }: TripEditPageProps) {
       countLabel: "개 장소",
       isComplete: trip.placeCount > 0,
     },
-    {
-      icon: LuCalendarClock,
-      title: "고정 일정 설정",
-      description: "예약된 시간이 있다면 설정하세요",
-      href: `/plan/${tripId}/schedule`,
-      count: trip.fixedScheduleCount,
-      countLabel: "개 일정",
-      isComplete: false,
-      isOptional: true,
-    },
+    // TODO: 고정 일정 선택 오류 디버깅 후 다시 활성화
+    // {
+    //   icon: LuCalendarClock,
+    //   title: "고정 일정 설정",
+    //   description: "예약된 시간이 있다면 설정하세요",
+    //   href: `/plan/${tripId}/schedule`,
+    //   count: trip.fixedScheduleCount,
+    //   countLabel: "개 일정",
+    //   isComplete: false,
+    //   isOptional: true,
+    // },
   ];
 
   return (
@@ -230,6 +234,7 @@ export default function TripEditPage({ params }: TripEditPageProps) {
             size="icon"
             className="shrink-0"
             onClick={handleBack}
+            disabled={isNavigating}
           >
             <LuChevronLeft className="w-5 h-5" />
           </Button>
@@ -242,11 +247,21 @@ export default function TripEditPage({ params }: TripEditPageProps) {
         </div>
         <Button
           variant="outline"
-          onClick={() => router.push(`/plan/${tripId}/edit`)}
-          className="touch-target"
+          onClick={() => navigate(`/plan/${tripId}/edit`)}
+          disabled={isNavigating}
+          className="touch-target disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <LuPencil className="w-4 h-4" />
-          수정하기
+          {isNavigatingTo(`/plan/${tripId}/edit`) ? (
+            <>
+              <LuLoader className="w-4 h-4 mr-2 animate-spin" />
+              이동 중...
+            </>
+          ) : (
+            <>
+              <LuPencil className="w-4 h-4" />
+              수정하기
+            </>
+          )}
         </Button>
       </header>
 
@@ -264,13 +279,19 @@ export default function TripEditPage({ params }: TripEditPageProps) {
           const hasFixedSchedules =
             isFixedScheduleStep && trip.fixedSchedules.length > 0;
 
+          const isNavigatingToStep = isNavigatingTo(step.href);
+
           return (
-            <Link
+            <div
               key={step.title}
-              href={step.href}
               className="block mb-2 last:mb-0"
             >
-              <Card className="transition-all duration-200 hover:border-primary hover:shadow-lg hover:bg-primary/10 hover:scale-[1.02] active:scale-[0.98] active:bg-primary/20 cursor-pointer">
+              <Card
+                onClick={() => !isNavigating && navigate(step.href)}
+                className={`transition-all duration-200 hover:border-primary hover:shadow-lg hover:bg-primary/10 hover:scale-[1.02] active:scale-[0.98] active:bg-primary/20 cursor-pointer ${
+                  isNavigating ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+              >
                 <CardHeader className="flex flex-row items-start gap-4 pb-2">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
@@ -365,8 +386,18 @@ export default function TripEditPage({ params }: TripEditPageProps) {
                     </div>
                   </CardContent>
                 )}
+
+                {/* 네비게이션 중 표시 */}
+                {isNavigatingToStep && (
+                  <CardContent className="pt-0 pb-3">
+                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                      <LuLoader className="w-4 h-4 animate-spin" />
+                      <span>이동 중...</span>
+                    </div>
+                  </CardContent>
+                )}
               </Card>
-            </Link>
+            </div>
           );
         })}
       </div>
@@ -374,12 +405,26 @@ export default function TripEditPage({ params }: TripEditPageProps) {
       {/* 하단 버튼 */}
       <div className="sticky bottom-0 p-4 backdrop-blur-sm bg-background/80 border-t pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:static md:border-t-0 md:pt-4 md:pb-4">
         <Button
-          className="w-full h-12"
-          disabled={trip.placeCount === 0 || isOptimizing}
+          className="w-full h-12 disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={
+            trip.placeCount === 0 ||
+            isOptimizing ||
+            isNavigating ||
+            isNavigatingTo(`/my/trips/${tripId}`)
+          }
           onClick={handleOptimizeClick}
         >
-          <LuSparkles className="w-4 h-4 mr-2" />
-          {isOptimizing ? "처리 중..." : "일정 최적화하기"}
+          {isOptimizing || isNavigatingTo(`/my/trips/${tripId}`) ? (
+            <>
+              <LuLoader className="w-4 h-4 mr-2 animate-spin" />
+              처리 중...
+            </>
+          ) : (
+            <>
+              <LuSparkles className="w-4 h-4 mr-2" />
+              일정 최적화하기
+            </>
+          )}
         </Button>
       </div>
     </main>

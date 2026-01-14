@@ -1,9 +1,10 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useTransition, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
+import { useSafeNavigation } from "@/hooks/use-safe-navigation";
 import {
   LuMapPin,
   LuCalendar,
@@ -176,10 +177,12 @@ function TripCard({
   trip,
   onDelete,
   onView,
+  isNavigating,
 }: {
   trip: TripListItem;
   onDelete: () => void;
   onView: () => void;
+  isNavigating?: boolean;
 }) {
   const duration = calculateTripDuration(trip.startDate, trip.endDate);
 
@@ -190,7 +193,8 @@ function TripCard({
           <div className="flex items-start justify-between gap-3">
             <button
               onClick={onView}
-              className="flex-1 text-left focus:outline-none touch-target no-tap-highlight"
+              disabled={isNavigating}
+              className="flex-1 text-left focus:outline-none touch-target no-tap-highlight disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="space-y-2">
                 {/* 제목 + 상태 */}
@@ -288,6 +292,7 @@ function LoadingSkeleton() {
 export default function MyTripsPage() {
   const router = useRouter();
   const { user, isLoaded } = useUser();
+  const { navigate, isNavigating, isNavigatingTo } = useSafeNavigation();
   const [trips, setTrips] = useState<TripListItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -387,44 +392,56 @@ export default function MyTripsPage() {
           내 여행
           <Map className="w-5 h-5 text-black" />
         </h1>
-        <Link href="/plan" className="group">
-          <Button
-            className="
-              relative overflow-hidden touch-target
-              bg-[var(--primary)]
-              text-[var(--primary-foreground)] font-semibold text-sm
-              px-4 py-2 rounded-full
-              shadow-lg shadow-[rgba(49,130,247,0.3)]
-              hover:shadow-xl hover:shadow-[rgba(49,130,247,0.4)] hover:opacity-95
-              hover:scale-105 active:scale-95
-              active:opacity-90 transition-all duration-300 ease-out
-              border-0
-            "
-          >
-            {/* 컨텐츠 */}
-            <span className="relative flex items-center gap-1.5">
-              <span className="animate-[pulse_2s_ease-in-out_infinite]">
-                새 여행
-              </span>
-              <Plane className="w-4 h-4 animate-[float_3s_ease-in-out_infinite] group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-300" />
-            </span>
-          </Button>
-        </Link>
+        <Button
+          onClick={() => navigate("/plan")}
+          disabled={isNavigating}
+          className="
+            relative overflow-hidden touch-target group
+            bg-[var(--primary)]
+            text-[var(--primary-foreground)] font-semibold text-sm
+            px-4 py-2 rounded-full
+            shadow-lg shadow-[rgba(49,130,247,0.3)]
+            hover:shadow-xl hover:shadow-[rgba(49,130,247,0.4)] hover:opacity-95
+            hover:scale-105 active:scale-95
+            active:opacity-90 transition-all duration-300 ease-out
+            border-0 disabled:opacity-50 disabled:cursor-not-allowed
+          "
+        >
+          {/* 컨텐츠 */}
+          <span className="relative flex items-center gap-1.5">
+            {isNavigatingTo("/plan") ? (
+              <>
+                <LuLoader className="w-4 h-4 animate-spin" />
+                <span>이동 중...</span>
+              </>
+            ) : (
+              <>
+                <span className="animate-[pulse_2s_ease-in-out_infinite]">
+                  새 여행
+                </span>
+                <Plane className="w-4 h-4 animate-[float_3s_ease-in-out_infinite] group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform duration-300" />
+              </>
+            )}
+          </span>
+        </Button>
       </header>
 
       {/* 여행 목록 with Pull-to-refresh */}
       <PullToRefresh onRefresh={handleRefresh} className="flex-1">
         <div className="px-4 py-4">
           {trips.length === 0 ? (
-            <EmptyState type="trips" onAction={() => router.push("/plan")} />
+            <EmptyState type="trips" onAction={() => navigate("/plan")} />
           ) : (
             <div className="space-y-3">
               {trips.map((trip) => (
                 <TripCard
                   key={trip.id}
                   trip={trip}
-                  onView={() => router.push(`/my/trips/${trip.id}`)}
+                  onView={() => navigate(`/my/trips/${trip.id}`)}
                   onDelete={() => handleDeleteClick(trip)}
+                  isNavigating={
+                    isNavigatingTo(`/my/trips/${trip.id}`) || isNavigating
+                  }
                 />
               ))}
             </div>
