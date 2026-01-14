@@ -126,9 +126,9 @@ export function FixedScheduleForm({
 
   // 여행 기간 내 날짜만 선택 가능
   const isDateDisabled = (date: Date) => {
-    // tripDates가 아직 로드되지 않았으면 모든 날짜 비활성화
+    // tripDates가 아직 로드되지 않았으면 제한 없이 선택 가능하게 둠
     if (!tripDates.startDate || !tripDates.endDate) {
-      return true;
+      return false;
     }
     const dateStr = format(date, "yyyy-MM-dd");
     return dateStr < tripDates.startDate || dateStr > tripDates.endDate;
@@ -205,9 +205,8 @@ export function FixedScheduleForm({
           control={form.control}
           name="date"
           render={({ field }) => {
-            // tripDates가 로드되지 않았으면 비활성화
-            const isDatesLoaded = tripDates.startDate && tripDates.endDate;
-            
+            const isDatesLoaded = !!(tripDates.startDate && tripDates.endDate);
+
             return (
               <FormItem>
                 <FormLabel>날짜</FormLabel>
@@ -216,49 +215,45 @@ export function FixedScheduleForm({
                     <FormControl>
                       <Button
                         variant="outline"
-                        disabled={!isDatesLoaded}
                         className={cn(
                           "w-full justify-start text-left font-normal touch-target",
-                          !field.value && "text-muted-foreground",
-                          !isDatesLoaded && "opacity-50 cursor-not-allowed"
+                          !field.value && "text-muted-foreground"
                         )}
                       >
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        {!isDatesLoaded ? (
-                          <span>날짜 정보를 불러오는 중...</span>
-                        ) : field.value ? (
-                          format(parseDate(field.value) || new Date(), "yyyy년 M월 d일 (E)", {
-                            locale: ko,
-                          })
+                        {field.value ? (
+                          format(
+                            parseDate(field.value) || new Date(),
+                            "yyyy년 M월 d일 (E)",
+                            { locale: ko },
+                          )
                         ) : (
                           <span>날짜를 선택하세요</span>
                         )}
                       </Button>
                     </FormControl>
                   </PopoverTrigger>
-                  {isDatesLoaded && (
-                    <PopoverContent
-                      className="w-auto p-0"
-                      align="start"
-                    >
-                      <Calendar
-                        mode="single"
-                        selected={parseDate(field.value)}
-                        onSelect={(date) => {
-                          field.onChange(date ? format(date, "yyyy-MM-dd") : "");
-                          setDateOpen(false);
-                        }}
-                        disabled={isDateDisabled}
-                        locale={ko}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  )}
+                  <PopoverContent
+                    className="w-auto p-0"
+                    align="start"
+                  >
+                    <Calendar
+                      mode="single"
+                      selected={parseDate(field.value)}
+                      onSelect={(date) => {
+                        field.onChange(date ? format(date, "yyyy-MM-dd") : "");
+                        setDateOpen(false);
+                      }}
+                      disabled={isDateDisabled}
+                      locale={ko}
+                      initialFocus
+                    />
+                  </PopoverContent>
                 </Popover>
                 <FormMessage />
                 {!isDatesLoaded && (
                   <p className="text-xs text-muted-foreground">
-                    여행 기간 정보를 불러오는 중입니다...
+                    여행 기간 정보를 불러오지 못해, 전체 날짜에서 선택할 수 있어요.
                   </p>
                 )}
               </FormItem>
