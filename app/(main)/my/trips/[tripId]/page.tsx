@@ -25,7 +25,6 @@ import {
   LuNavigation,
 } from "react-icons/lu";
 
-
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, SquarePen } from "lucide-react";
@@ -194,7 +193,13 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
       }
 
       if (result.data?.itinerary) {
-        console.log("[TripDetail] checkInEvents:", result.data.itinerary.map((it) => ({ day: it.dayNumber, checkInEvent: it.checkInEvent })));
+        console.log(
+          "[TripDetail] checkInEvents:",
+          result.data.itinerary.map((it) => ({
+            day: it.dayNumber,
+            checkInEvent: it.checkInEvent,
+          })),
+        );
         // 누락된 장소 확인 (상세 정보 포함)
         const unassignedError = result.data.errors?.find(
           (e) => e.code === "EXCEEDS_DAILY_LIMIT",
@@ -274,7 +279,10 @@ export default function TripDetailPage({ params }: TripDetailPageProps) {
 
       if (result.success && result.data) {
         setTrip(result.data);
-        console.log("[TripDetail] accommodation startDate:", result.data.accommodations?.[0]?.startDate);
+        console.log(
+          "[TripDetail] accommodation startDate:",
+          result.data.accommodations?.[0]?.startDate,
+        );
 
         // 자동 최적화 조건: draft 또는 optimizing 상태면 무조건 재최적화
         const shouldOptimize =

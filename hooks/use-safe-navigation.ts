@@ -63,14 +63,14 @@ export function useSafeNavigation() {
         }, 2000);
       });
     },
-    [router, isPending, navigatingTo]
+    [router, isPending, navigatingTo],
   );
 
   const isNavigatingTo = useCallback(
     (path: string) => {
       return navigatingTo === path;
     },
-    [navigatingTo]
+    [navigatingTo],
   );
 
   return {

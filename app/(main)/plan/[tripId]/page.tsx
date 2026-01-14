@@ -1,17 +1,19 @@
 "use client";
 
 import { use, useEffect, useState } from "react";
-import Link from "next/link";
-import { format } from "date-fns";
+// TODO: 고정 일정 선택 오류 디버깅 후 다시 활성화
+// import { format } from "date-fns";
 import {
   LuChevronLeft,
   LuMapPin,
-  LuCalendarClock,
+  // TODO: 고정 일정 선택 오류 디버깅 후 다시 활성화
+  // LuCalendarClock,
   LuSparkles,
   LuPencil,
   LuLoader,
 } from "react-icons/lu";
-import { Clock } from "lucide-react";
+// TODO: 고정 일정 선택 오류 디버깅 후 다시 활성화
+// import { Clock } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -201,7 +203,16 @@ export default function TripEditPage({ params }: TripEditPageProps) {
     }
   };
 
-  const steps = [
+  const steps: Array<{
+    icon: typeof LuMapPin;
+    title: string;
+    description: string;
+    href: string;
+    count: number;
+    countLabel: string;
+    isComplete: boolean;
+    isOptional?: boolean;
+  }> = [
     {
       icon: LuMapPin,
       title: "장소 추가",
@@ -274,18 +285,17 @@ export default function TripEditPage({ params }: TripEditPageProps) {
         {steps.map((step, index) => {
           const Icon = step.icon;
           const isPlaceStep = step.title === "장소 추가";
-          const isFixedScheduleStep = step.title === "고정 일정 설정";
+          // TODO: 고정 일정 선택 오류 디버깅 후 다시 활성화
+          // const isFixedScheduleStep = step.title === "고정 일정 설정";
           const hasPlaces = isPlaceStep && trip.places.length > 0;
-          const hasFixedSchedules =
-            isFixedScheduleStep && trip.fixedSchedules.length > 0;
+          // TODO: 고정 일정 선택 오류 디버깅 후 다시 활성화
+          // const hasFixedSchedules =
+          //   isFixedScheduleStep && trip.fixedSchedules.length > 0;
 
           const isNavigatingToStep = isNavigatingTo(step.href);
 
           return (
-            <div
-              key={step.title}
-              className="block mb-2 last:mb-0"
-            >
+            <div key={step.title} className="block mb-2 last:mb-0">
               <Card
                 onClick={() => !isNavigating && navigate(step.href)}
                 className={`transition-all duration-200 hover:border-primary hover:shadow-lg hover:bg-primary/10 hover:scale-[1.02] active:scale-[0.98] active:bg-primary/20 cursor-pointer ${
@@ -295,7 +305,7 @@ export default function TripEditPage({ params }: TripEditPageProps) {
                 <CardHeader className="flex flex-row items-start gap-4 pb-2">
                   <div
                     className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
-                      step.isComplete || hasFixedSchedules
+                      step.isComplete
                         ? "bg-primary text-primary-foreground"
                         : "bg-muted text-muted-foreground"
                     }`}
@@ -306,7 +316,7 @@ export default function TripEditPage({ params }: TripEditPageProps) {
                     <div className="flex items-center gap-2">
                       <Icon className="w-5 h-5 text-muted-foreground shrink-0" />
                       <CardTitle className="text-base">{step.title}</CardTitle>
-                      {step.isOptional && (
+                      {"isOptional" in step && step.isOptional && (
                         <Badge variant="secondary" className="text-xs">
                           선택
                         </Badge>
@@ -347,8 +357,9 @@ export default function TripEditPage({ params }: TripEditPageProps) {
                   </CardContent>
                 )}
 
+                {/* TODO: 고정 일정 선택 오류 디버깅 후 다시 활성화 */}
                 {/* 고정 일정 미리보기 */}
-                {hasFixedSchedules && (
+                {/* {hasFixedSchedules && (
                   <CardContent className="pt-0 pb-3">
                     <div className="space-y-2">
                       {trip.fixedSchedules.slice(0, 3).map((schedule) => {
@@ -385,7 +396,7 @@ export default function TripEditPage({ params }: TripEditPageProps) {
                       )}
                     </div>
                   </CardContent>
-                )}
+                )} */}
 
                 {/* 네비게이션 중 표시 */}
                 {isNavigatingToStep && (

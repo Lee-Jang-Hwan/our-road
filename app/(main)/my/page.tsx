@@ -355,6 +355,17 @@ export default function MyTripsPage() {
     });
   };
 
+  // trip 상태에 따라 적절한 페이지로 이동
+  const handleTripView = (trip: TripListItem) => {
+    // draft 상태이면 계획 페이지로 이동
+    if (trip.status === "draft") {
+      navigate(`/plan/${trip.id}`);
+    } else {
+      // optimizing, optimized, completed 상태면 상세 페이지로 이동
+      navigate(`/my/trips/${trip.id}`);
+    }
+  };
+
   // 로딩 중
   if (!isLoaded || isLoading) {
     return <LoadingSkeleton />;
@@ -433,17 +444,23 @@ export default function MyTripsPage() {
             <EmptyState type="trips" onAction={() => navigate("/plan")} />
           ) : (
             <div className="space-y-3">
-              {trips.map((trip) => (
-                <TripCard
-                  key={trip.id}
-                  trip={trip}
-                  onView={() => navigate(`/my/trips/${trip.id}`)}
-                  onDelete={() => handleDeleteClick(trip)}
-                  isNavigating={
-                    isNavigatingTo(`/my/trips/${trip.id}`) || isNavigating
-                  }
-                />
-              ))}
+              {trips.map((trip) => {
+                const targetPath =
+                  trip.status === "draft"
+                    ? `/plan/${trip.id}`
+                    : `/my/trips/${trip.id}`;
+                return (
+                  <TripCard
+                    key={trip.id}
+                    trip={trip}
+                    onView={() => handleTripView(trip)}
+                    onDelete={() => handleDeleteClick(trip)}
+                    isNavigating={
+                      isNavigatingTo(targetPath) || isNavigating
+                    }
+                  />
+                );
+              })}
             </div>
           )}
         </div>
