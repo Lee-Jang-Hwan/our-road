@@ -1,4 +1,4 @@
-![배너이미지](<img width="1536" height="864" alt="Image" src="https://github.com/user-attachments/assets/88b79e58-6fa3-4095-97a6-2b038990af8e" />)
+![배너이미지](https://github.com/user-attachments/assets/88b79e58-6fa3-4095-97a6-2b038990af8e)
 # 🗺️ RootUs (루트어스)
 > **대중교통·도보·자동차까지 계산해, 스트레스가 줄어드는 여행 동선 설계 서비스** > "여행 계획은 쉽게, 동선은 최적으로"
 
